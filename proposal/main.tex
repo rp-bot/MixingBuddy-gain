@@ -1,0 +1,55 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+
+% Page setup
+\geometry{margin=1in}
+\onehalfspacing
+
+% Title formatting
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+% Document information
+\title{Research Proposal: Automatic Mixing for Music Production}
+\author{[Your Name]}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% Abstract
+\begin{abstract}
+This research proposal outlines a comprehensive approach to developing automatic mixing systems for music production. The proposed work aims to advance the state-of-the-art in audio processing by creating intelligent systems that can automatically balance and enhance multi-track recordings, reducing the time and expertise required for professional-quality music production.
+\end{abstract}
+
+% Table of Contents
+\tableofcontents
+\newpage
+
+% Main sections
+\input{sections/01_research_statement}
+\input{sections/02_motivation}
+\input{sections/03_related_work}
+\input{sections/04_proposed_method}
+\input{sections/05_proposed_evaluation}
+\input{sections/06_novelty}
+\input{sections/07_required_resources}
+\input{sections/08_deliverables}
+\input{sections/09_timeline}
+
+% Bibliography
+\bibliographystyle{ieeetr}
+\bibliography{references}
+
+\end{document}
