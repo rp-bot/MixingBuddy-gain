@@ -1,0 +1,11 @@
+# @package experiment_tracking
+
+_target_: mlflow.start_run
+
+experiment_name: "llm-lora-automatic-mixing"
+run_name: null # Will be set automatically
+tags:
+  project: "llm-lora-automatic-mixing"
+  framework: "transformers"
+  method: "lora"
+  domain: "music-production"

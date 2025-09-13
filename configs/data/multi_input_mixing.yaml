@@ -1,0 +1,70 @@
+# @package data
+
+# Multi-Input Dataset Configuration for Phase 2
+dataset:
+  name: "multi_input_mixing_dataset"
+  path: "data/processed/multi_input_dataset"
+  train_split: "train"
+  validation_split: "validation"
+  test_split: "test"
+  train_file: "multi_input_mixing_train.jsonl"
+  validation_file: "multi_input_mixing_validation.jsonl"
+  test_file: "multi_input_mixing_test.jsonl"
+
+# Multi-input audio configuration
+audio_inputs:
+  # Audio 1: Problem stem from Version A
+  audio_1_problem_stem:
+    description: "The problematic stem with intentional mixing issue"
+    stem_type: "target_stem" # vocals, drums, bass, other
+
+  # Audio 2: Backing tracks from Version A
+  audio_2_backing_a:
+    description: "Backing tracks from unbalanced mix (all stems except target)"
+    stem_type: "backing_tracks"
+
+  # Audio 3: Solution stem from Version B
+  audio_3_solution_stem:
+    description: "The correct target stem from balanced mix"
+    stem_type: "target_stem"
+
+  # Audio 4: Backing tracks from Version B
+  audio_4_backing_b:
+    description: "Backing tracks from balanced mix (all stems except target)"
+    stem_type: "backing_tracks"
+
+# Data processing
+processing:
+  max_length: 2048
+  padding: "max_length"
+  truncation: true
+  add_special_tokens: true
+
+# Audio processing
+audio:
+  sample_rate: 44100
+  format: "wav"
+  normalization: true
+  max_duration: 30.0 # seconds
+
+# Data loading
+dataloader:
+  batch_size: 2 # Smaller batch size due to 4 audio inputs
+  num_workers: 4
+  pin_memory: true
+  shuffle: true
+  drop_last: true
+
+# Tokenizer
+tokenizer:
+  name: "meta-llama/Llama-2-7b-hf"
+  padding_side: "right"
+  truncation_side: "right"
+  use_fast: true
+
+# Model architecture hints
+model_architecture:
+  input_type: "multi_audio"
+  num_audio_inputs: 4
+  audio_encoder: "whisper" # or "wav2vec2", "hubert"
+  fusion_method: "attention" # or "concat", "cross_attention"

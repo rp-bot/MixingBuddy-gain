@@ -1,0 +1,26 @@
+# @package model
+
+_target_: transformers.AutoModelForCausalLM.from_pretrained
+
+pretrained_model_name_or_path: "meta-llama/Llama-2-13b-hf"
+trust_remote_code: false
+torch_dtype: "auto"
+device_map: "auto"
+
+# LoRA configuration
+lora:
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.1
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  inference_mode: false
+
+# Quantization (recommended for 13B model)
+quantization:
+  load_in_8bit: true
+  load_in_4bit: false
+  bnb_4bit_compute_dtype: "float16"
+  bnb_4bit_use_double_quant: true
+  bnb_4bit_quant_type: "nf4"

@@ -1,0 +1,35 @@
+# @package data
+
+# Dataset configuration
+dataset:
+  name: "musdb_mixing_dataset"
+  path: "data/musdb18_processed"
+  train_split: "train"
+  validation_split: "validation"
+  test_split: "test"
+  train_file: "musdb_mixing_train.jsonl"
+  validation_file: "musdb_mixing_validation.jsonl"
+  test_file: "musdb_mixing_test.jsonl"
+
+# Data processing
+processing:
+  max_length: 2048
+  padding: "max_length"
+  truncation: true
+  add_special_tokens: true
+
+# Data loading
+dataloader:
+  batch_size: 4
+  num_workers: 4
+  pin_memory: true
+  shuffle: true
+  drop_last: true
+
+# Tokenizer for Qwen2-Audio
+tokenizer:
+  name: "Qwen/Qwen2-Audio-7B-Instruct"
+  padding_side: "right"
+  truncation_side: "right"
+  use_fast: true
+  trust_remote_code: true

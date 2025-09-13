@@ -1,0 +1,11 @@
+# @package experiment_tracking
+
+_target_: wandb.init
+
+project: "llm-lora-automatic-mixing"
+entity: null # Set your wandb entity/team name
+name: null # Will be set automatically
+tags: ["lora", "llm", "automatic-mixing", "music-production"]
+notes: "LoRA fine-tuning for automatic mixing research"
+reinit: true
+save_code: true

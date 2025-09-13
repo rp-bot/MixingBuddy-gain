@@ -1,0 +1,80 @@
+# @package data
+
+# MUSDB18 Dataset Configuration
+musdb:
+  path: "data/musdb18hq" # Path to MUSDB18 dataset
+  sample_rate: 44100
+  format: "wav"
+
+# Output configuration
+output:
+  path: "data/musdb18_processed"
+  audio_format: "wav"
+  sample_rate: 44100
+
+# Multi-input architecture
+architecture:
+  type: "multi_input"
+  num_audio_inputs: 4
+  input_structure:
+    audio_1: "problem_stem_a"
+    audio_2: "backing_tracks_a"
+    audio_3: "solution_stem_b"
+    audio_4: "backing_tracks_b"
+
+# Dataset creation settings
+dataset:
+  limit_tracks: null # Set to number for testing, null for full dataset
+  random_seed: 42
+
+# Problem generation settings
+problems:
+  # Gain changes in dB
+  gain_changes:
+    vocals:
+      buried: -5.0
+      too_loud: 4.0
+    drums:
+      too_dominant: 4.0
+      buried: -3.0
+    bass:
+      muddy: 3.0
+      weak: -4.0
+    other:
+      harsh: 2.0
+      buried: -3.0
+
+  # Text descriptions
+  descriptions:
+    vocals:
+      buried: "buried in the mix"
+      too_loud: "too prominent in the mix"
+    drums:
+      too_dominant: "too dominant and overpowering"
+      buried: "buried and lacking punch"
+    bass:
+      muddy: "muddy and overwhelming the low end"
+      weak: "weak and lacking foundation"
+    other:
+      harsh: "harsh and competing with vocals"
+      buried: "buried and lacking presence"
+
+# Text generation
+text:
+  templates:
+    problem_description: |
+      The balance issue in Version A is with the '{stem_name}'. 
+      It is '{problem_description}'. To achieve the correct balance 
+      heard in Version B, the gain on the '{stem_name}' stem should be 
+      '{solution}'.
+
+    detailed_analysis: |
+      Version A has a mixing problem where the '{stem_name}' stem is 
+      '{problem_description}'. This creates an unbalanced mix. 
+      Version B demonstrates the correct balance with the '{stem_name}' 
+      stem properly leveled. The solution is to {solution} the 
+      '{stem_name}' stem to match the professional balance in Version B.
+
+  instruction_template: |
+    Analyze the mixing balance issue in Version A and explain how to 
+    achieve the correct balance shown in Version B.

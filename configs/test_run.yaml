@@ -1,0 +1,38 @@
+# @package _global_
+
+defaults:
+  - model: test_run
+  - data: test_run
+  - training: test_run
+  - experiment_tracking: null # Disable experiment tracking for test
+  - _self_
+
+# Project settings
+project:
+  name: "llm-lora-automatic-mixing-test"
+  version: "0.1.0-test"
+  description: "Test run for LLM Fine-tuning with LoRA for Automatic Mixing Research"
+
+# Paths
+paths:
+  data_dir: "data"
+  output_dir: "outputs/test_run"
+  cache_dir: "cache/test_run"
+  logs_dir: "logs/test_run"
+  checkpoints_dir: "checkpoints/test_run"
+
+# Environment
+env:
+  seed: 42
+  device: "auto" # auto, cpu, cuda, mps
+  mixed_precision: "no" # Disable mixed precision for testing
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Reproducibility
+reproducibility:
+  deterministic: true
+  benchmark: false
