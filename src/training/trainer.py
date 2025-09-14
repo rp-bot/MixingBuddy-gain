@@ -22,8 +22,8 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
-from models.lora_model import LoRAModel
-from utils.experiment_tracking import ExperimentTracker
+from src.models.lora_model import LoRAModel
+from src.utils.experiment_tracking import ExperimentTracker
 
 logger = logging.getLogger(__name__)
 

@@ -52,6 +52,24 @@ clean:
 test:
 	pytest tests/ -v --cov=src --cov-report=html --cov-report=term-missing
 
+test-fast:
+	pytest tests/ -v --cov=src --cov-report=term-missing -x
+
+test-coverage:
+	pytest tests/ -v --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml
+
+test-unit:
+	pytest tests/ -v --cov=src --cov-report=term-missing -m "not slow and not gpu and not integration"
+
+test-integration:
+	pytest tests/ -v --cov=src --cov-report=term-missing -m "integration"
+
+test-gpu:
+	pytest tests/ -v --cov=src --cov-report=term-missing -m "gpu"
+
+test-slow:
+	pytest tests/ -v --cov=src --cov-report=term-missing -m "slow"
+
 lint:
 	flake8 src scripts tests --count --select=E9,F63,F7,F82 --show-source --statistics
 	flake8 src scripts tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
@@ -140,7 +158,17 @@ dev-setup: env-setup
 pipeline: prepare-data train evaluate
 
 # CI/CD simulation
-ci-test: lint type-check test
+ci-test: lint type-check test-unit
+
+# Test coverage analysis
+coverage-report:
+	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
+	@echo "Coverage report generated in htmlcov/index.html"
+
+coverage-clean:
+	rm -rf htmlcov/
+	rm -rf .coverage
+	rm -rf coverage.xml
 
 # Documentation
 docs:
