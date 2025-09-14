@@ -2,7 +2,7 @@
 
 # MUSDB18 Dataset Configuration
 musdb:
-  path: "data/musdb18hq" # Path to MUSDB18 dataset
+  path: "data/musdb18hq/train" # Path to MUSDB18 train dataset
   sample_rate: 44100
   format: "wav"
 

@@ -228,8 +228,8 @@ class MUSDBDatasetCreator:
             track_path, stem_name, problem_type
         )
 
-        # Generate text explanation optimized for Qwen2-Audio
-        instruction = f"<|audio_start|><|audio_pad|>Analyze the mixing balance issue in these audio inputs. You will receive 4 audio files: 1) the problematic {stem_name} stem, 2) the backing tracks from the unbalanced mix, 3) the correct {stem_name} stem, and 4) the backing tracks from the balanced mix. Identify the problem and suggest the solution.<|audio_end|>"
+        # Generate text explanation using Qwen2-Audio multitask format
+        instruction = f"<|startofanalysis|><|unknown|><|analysis|><|en|><|notimestamps|>Analyze the mixing balance issue in these audio inputs. You will receive 4 audio files: 1) the problematic {stem_name} stem, 2) the backing tracks from the unbalanced mix, 3) the correct {stem_name} stem, and 4) the backing tracks from the balanced mix. Identify the problem and suggest the solution."
         response = self.generate_text_explanation(problem_info)
 
         # Save audio files

@@ -78,7 +78,7 @@ class LoRAModel:
         if quantization_config:
             model_kwargs["quantization_config"] = quantization_config
 
-        # Use the correct model class for different models
+        # Use the correct model class for Qwen2-Audio
         model_name = self.config.pretrained_model_name_or_path
         if "qwen2-audio" in model_name.lower() or "qwen2_audio" in model_name.lower():
             self.model = Qwen2AudioForConditionalGeneration.from_pretrained(
@@ -125,7 +125,9 @@ class LoRAModel:
         lora_config = LoraConfig(
             r=self.config.lora.r,
             lora_alpha=self.config.lora.lora_alpha,
-            target_modules=self.config.lora.target_modules,
+            target_modules=list(
+                self.config.lora.target_modules
+            ),  # Convert OmegaConf ListConfig to list
             lora_dropout=self.config.lora.lora_dropout,
             bias=self.config.lora.bias,
             task_type=TaskType.CAUSAL_LM,
@@ -134,6 +136,28 @@ class LoRAModel:
 
         # Apply LoRA to model
         self.peft_model = get_peft_model(self.model, lora_config)
+
+        # Ensure model is in training mode and parameters have gradients
+        self.peft_model.train()
+
+        # Debug: Check which parameters require gradients
+        trainable_params = 0
+        total_params = 0
+        for name, param in self.peft_model.named_parameters():
+            total_params += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+                logger.debug(f"Trainable parameter: {name}, shape: {param.shape}")
+            else:
+                logger.debug(f"Non-trainable parameter: {name}, shape: {param.shape}")
+
+        logger.info(f"Total parameters: {total_params}, Trainable: {trainable_params}")
+
+        # Ensure all LoRA parameters require gradients
+        for name, param in self.peft_model.named_parameters():
+            if "lora" in name.lower() or "peft" in name.lower():
+                param.requires_grad = True
+                logger.debug(f"Set {name} to require gradients")
 
         # Print trainable parameters
         self.peft_model.print_trainable_parameters()

@@ -17,8 +17,6 @@ processing:
   padding: "max_length"
   truncation: true
   add_special_tokens: true
-  audio_segment_duration: 2.0 # Load only 2 seconds of audio for testing
-  sample_rate: 16000 # Downsample to 16kHz for efficiency
 
 # Data loading - minimal workers for testing
 dataloader:

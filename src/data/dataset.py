@@ -7,8 +7,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import librosa
-import numpy as np
 import torch
 from datasets import Dataset as HFDataset
 from datasets import load_dataset
@@ -30,8 +28,6 @@ class AutomaticMixingDataset(Dataset):
         padding: str = "max_length",
         truncation: bool = True,
         add_special_tokens: bool = True,
-        audio_segment_duration: float = 3.0,  # Load only 3 seconds of audio
-        sample_rate: int = 16000,  # Downsample to 16kHz for efficiency
     ):
         """
         Initialize the dataset.
@@ -43,8 +39,6 @@ class AutomaticMixingDataset(Dataset):
             padding: Padding strategy
             truncation: Whether to truncate sequences
             add_special_tokens: Whether to add special tokens
-            audio_segment_duration: Duration of audio segments to load (seconds)
-            sample_rate: Target sample rate for audio
         """
         self.data = data
         self.tokenizer = tokenizer
@@ -52,8 +46,6 @@ class AutomaticMixingDataset(Dataset):
         self.padding = padding
         self.truncation = truncation
         self.add_special_tokens = add_special_tokens
-        self.audio_segment_duration = audio_segment_duration
-        self.sample_rate = sample_rate
 
     def __len__(self) -> int:
         return len(self.data)
@@ -65,9 +57,9 @@ class AutomaticMixingDataset(Dataset):
         # Format the text for causal language modeling
         text = self._format_text(sample)
 
-        # Load audio segments if available (disabled for test run)
-        # audio_tensors = self._load_audio_segments(sample)
-        audio_tensors = {}
+        # Debug: Log the text being tokenized
+        logger.debug(f"Sample {idx} text length: {len(text)} characters")
+        logger.debug(f"Sample {idx} text preview: {text[:200]}...")
 
         # Tokenize
         encoding = self.tokenizer(
@@ -79,125 +71,37 @@ class AutomaticMixingDataset(Dataset):
             return_tensors="pt",
         )
 
+        # Debug: Log tokenization results
+        input_ids = encoding["input_ids"].squeeze()
+        logger.debug(f"Sample {idx} tokenized length: {len(input_ids)} tokens")
+        logger.debug(f"Sample {idx} input_ids shape: {input_ids.shape}")
+
         # For causal LM, labels are the same as input_ids
         encoding["labels"] = encoding["input_ids"].clone()
 
-        result = {
-            "input_ids": encoding["input_ids"].squeeze(),
+        return {
+            "input_ids": input_ids,
             "attention_mask": encoding["attention_mask"].squeeze(),
             "labels": encoding["labels"].squeeze(),
         }
 
-        # Add audio tensors in the format expected by Qwen2-Audio
-        if audio_tensors:
-            # Qwen2-Audio expects 'audio' and 'audio_attention_mask' parameters
-            # For now, let's just pass the first audio tensor as 'audio'
-            if "audio_1" in audio_tensors:
-                result["audio"] = audio_tensors["audio_1"]
-                # Create attention mask for audio (all 1s for now)
-                audio_length = audio_tensors["audio_1"].shape[-1]
-                result["audio_attention_mask"] = torch.ones(
-                    1, audio_length, dtype=torch.long
-                )
-
-        return result
-
     def _format_text(self, sample: Dict[str, Any]) -> str:
         """Format a single sample into text for training."""
-        # For multimodal audio data, create a simplified instruction-response format
+        # This is a template - customize based on your data format
         if "instruction" in sample and "response" in sample:
-            # Extract the core instruction without audio paths and metadata
-            instruction = sample["instruction"]
-            response = sample["response"]
-
-            # Clean up the instruction by removing audio file paths and excessive metadata
-            if "<|audio_start|>" in instruction:
-                # Extract just the core instruction
-                instruction = "Analyze the mixing balance issue in these audio inputs and identify the problem and solution."
-
-            # Simplify response to avoid very long text
-            if len(response) > 200:
-                # Extract key information
-                if "problem_info" in sample and isinstance(
-                    sample["problem_info"], dict
-                ):
-                    problem_info = sample["problem_info"]
-                    stem = problem_info.get("stem_name", "unknown")
-                    problem = problem_info.get("problem_type", "unknown")
-                    solution = problem_info.get("solution", "unknown")
-                    response = f"The {stem} has a {problem} issue. Solution: {solution}"
-
-            return f"### Instruction:\n{instruction}\n\n### Response:\n{response}"
+            # Instruction-following format
+            return f"### Instruction:\n{sample['instruction']}\n\n### Response:\n{sample['response']}"
         elif "input" in sample and "output" in sample:
             # Input-output format
-            return f"Input: {sample['input'][:200]}\nOutput: {sample['output'][:200]}"
+            return f"Input: {sample['input']}\nOutput: {sample['output']}"
         elif "text" in sample:
             # Plain text format
-            return sample["text"][:400]  # Limit text length
+            return sample["text"]
         else:
-            # Fallback - use only string fields, limited length
-            text_parts = []
-            for k, v in sample.items():
-                if isinstance(v, str) and k not in [
-                    "audio_1",
-                    "audio_2",
-                    "audio_3",
-                    "audio_4",
-                    "input",
-                ]:
-                    text_parts.append(f"{k}: {v[:100]}")
-            return " ".join(text_parts[:3])  # Limit to first 3 fields
-
-    def _load_audio_segments(self, sample: Dict[str, Any]) -> Dict[str, torch.Tensor]:
-        """Load audio segments from file paths in sample."""
-        audio_tensors = {}
-
-        # Look for audio file paths in the sample
-        audio_keys = ["audio_1", "audio_2", "audio_3", "audio_4"]
-
-        for i, audio_key in enumerate(audio_keys):
-            if audio_key in sample and sample[audio_key]:
-                audio_path = Path(sample[audio_key])
-                if audio_path.exists():
-                    try:
-                        # Load audio segment
-                        audio_data = self._load_audio_file(audio_path)
-                        if audio_data is not None:
-                            audio_tensors[f"audio_{i + 1}"] = audio_data
-                    except Exception as e:
-                        logger.warning(f"Failed to load audio {audio_path}: {e}")
-
-        return audio_tensors
-
-    def _load_audio_file(self, audio_path: Path) -> Optional[torch.Tensor]:
-        """Load a short segment from an audio file."""
-        try:
-            # Load only the first few seconds of audio
-            audio, sr = librosa.load(
-                audio_path,
-                sr=self.sample_rate,
-                duration=self.audio_segment_duration,
-                offset=0.0,  # Start from the beginning
+            # Fallback - use all available fields
+            return " ".join(
+                [f"{k}: {v}" for k, v in sample.items() if isinstance(v, str)]
             )
-
-            # Convert to tensor
-            audio_tensor = torch.tensor(audio, dtype=torch.float32)
-
-            # Pad or truncate to fixed length
-            target_length = int(self.sample_rate * self.audio_segment_duration)
-            if len(audio_tensor) < target_length:
-                # Pad with zeros
-                padding = target_length - len(audio_tensor)
-                audio_tensor = torch.nn.functional.pad(audio_tensor, (0, padding))
-            elif len(audio_tensor) > target_length:
-                # Truncate
-                audio_tensor = audio_tensor[:target_length]
-
-            return audio_tensor.unsqueeze(0)  # Add channel dimension
-
-        except Exception as e:
-            logger.error(f"Error loading audio file {audio_path}: {e}")
-            return None
 
     @classmethod
     def from_jsonl(
@@ -288,10 +192,6 @@ class DataProcessor:
             padding=self.config.processing.padding,
             truncation=self.config.processing.truncation,
             add_special_tokens=self.config.processing.add_special_tokens,
-            audio_segment_duration=self.config.processing.get(
-                "audio_segment_duration", 3.0
-            ),
-            sample_rate=self.config.processing.get("sample_rate", 16000),
         )
 
         logger.info(f"Loaded {split} dataset with {len(dataset)} samples")
@@ -330,7 +230,9 @@ class DataProcessor:
         lengths = []
         for i in range(len(dataset)):
             sample = dataset[i]
-            length = sample["input_ids"].sum().item()  # Count non-padding tokens
+            # Count non-padding tokens by checking attention mask
+            attention_mask = sample["attention_mask"]
+            length = attention_mask.sum().item()  # Count actual tokens (not padding)
             lengths.append(length)
 
         if lengths:
@@ -395,7 +297,8 @@ def load_huggingface_dataset(
     if tokenizer is None:
         from transformers import AutoTokenizer
 
-        tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+        # Use a more appropriate default tokenizer - Qwen2-Audio for audio tasks
+        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-Audio-7B-Instruct")
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
