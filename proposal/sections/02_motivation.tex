@@ -1,22 +1,13 @@
 \section{Motivation}
 
-\subsection{Industry Need}
-The music production industry faces increasing pressure to deliver high-quality mixes efficiently. Professional mixing engineers spend significant time on repetitive tasks that could potentially be automated, while amateur producers often lack the expertise to achieve professional-quality results.
+\subsection{Research Gap}
+A significant gap exists in the current automatic mixing research landscape. 
+The field is largely dominated by black-box, deep learning models that, while achieving impressive results, offer little to no explainability into their decision-making process. 
+This contrasts with other creative domains like 3D modeling and image editing, which have seen the rise of end-to-end agentic systems that facilitate user interaction and provide transparency.
 
-\subsection{Technical Challenges}
-Current automatic mixing systems suffer from several limitations:
-\begin{itemize}
-    \item \textbf{Lack of Context Awareness}: Most systems process tracks independently without considering the musical context or genre-specific requirements
-    \item \textbf{Limited Musical Understanding}: Existing approaches often focus on technical audio features without understanding musical structure and relationships
-    \item \textbf{Evaluation Difficulties}: There is no standardized way to evaluate mixing quality that correlates well with human perception
-    \item \textbf{Generalization Issues}: Systems trained on specific datasets often fail to generalize to different musical styles or recording conditions
-\end{itemize}
+Furthermore, while generative audio models have gained popularity, their output is often of limited value to professional mixing and mastering engineers, who require precise control over mixing parameters rather than a final, uneditable audio file.
+
+To bridge this gap, future research must move towards models with better audio and contextual understanding. Exploring techniques like audio-conditioned chain-of-thought reasoning, combined with state-of-the-art automatic mixing models, will be crucial. This direction will not only improve performance but also foster trust and adoption by professionals by providing explainable and controllable systems.
 
 \subsection{Research Impact}
-Successful development of advanced automatic mixing systems could:
-\begin{itemize}
-    \item Democratize access to professional-quality music production
-    \item Reduce production costs and time-to-market for music releases
-    \item Enable new creative workflows and collaborative approaches
-    \item Advance the field of computational audio processing
-\end{itemize}
+The development of explainable and interactive automatic mixing systems could have a profound impact on the music production industry. Digital Audio Workstations (DAWs) could integrate features where users can converse with an intelligent mixing agent to receive advice, ask specific questions, and collaboratively edit mixes. This paradigm shifts the focus from replacing engineers with end-to-end generative systems to empowering musicians and producers with powerful, intuitive tools. By fostering a more interactive and transparent mixing process, this research can enhance creativity and streamline workflows for audio professionals and hobbyists alike.

@@ -176,6 +176,7 @@ data/processed/
 data/external/
 data/interim/
 data/musdb18hq/
+data/the-mix-evaluation-dataset/
 
 # Output directories
 outputs/

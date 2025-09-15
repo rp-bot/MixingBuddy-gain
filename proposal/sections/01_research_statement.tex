@@ -1,21 +1,42 @@
-\section{Research Statement / Problem}
+\section{Research Statement}
 
-\subsection{Problem Definition}
-The field of automatic mixing in music production faces significant challenges in creating systems that can intelligently balance and enhance multi-track recordings without human intervention. Current approaches often rely on rule-based systems or simple machine learning models that fail to capture the complex, context-dependent decisions made by professional audio engineers.
+Current Audio-Language Models (ALMs) excel at descriptive audio tasks, but tasks like music mixing require comparative analysis and relational understanding that go beyond simple description.
+This research proposes a novel differential analysis framework that conditions ALMs on multi-track audio to provide more specific and actionable gain-balancing guidance.
+Instead of analyzing single mixes, our approach trains models to compare unbalanced and balanced multi-track sets, learning the causal relationships between specific gain adjustments and perceived mix improvements.
+An augmented MUSDB18 dataset with human consensus gain values is created.
+Their performance is evaluated with appropriate metrics, including automated LLM-as-a-Judge assessments and human preference studies.
+The primary research question investigates whether this differential approach improves the technical specificity and user-perceived helpfulness of AI-generated gain-balancing advice.
+This work focuses specifically on gain parameters within a single musical genre, providing a foundation for more sophisticated AI mixing assistants that can reason about the relational properties of multi-track audio.
+
 
 \subsection{Research Questions}
+
+\subsubsection{Primary Research Question}
+To what extent does a differential analysis framework, conditioned on multi-track audio, improve the technical specificity and user-perceived helpfulness of AI-generated gain-balancing advice compared to a traditional single-mix advisory model?
+
+\subsubsection{Secondary Research Questions}
+\begin{enumerate}
+    \item How effectively can an Audio-Language Model be fine-tuned on a synthetic dataset of 'problem' and 'solution' multi-track sets to learn the causal relationship between specific gain adjustments and perceived improvements in mix balance?
+    \item What is an effective architectural approach for representing and comparing two parallel sets of multi-track stems to enable an LLM to reason about their relative gain differences?
+    \item For the specific task of evaluating gain-balancing advice, what is the correlation between automated evaluation (i.e., LLM-as-a-Judge rankings) and subjective human preference judgments?
+\end{enumerate}
+
+\subsection{Scope and Limitations}
+
+\subsubsection{In Scope}
 \begin{itemize}
-    \item How can machine learning models be designed to understand the complex relationships between different audio tracks in a mix?
-    \item What features and representations are most effective for automatic mixing systems?
-    \item How can we evaluate the quality of automatic mixing systems in a way that correlates with human perception?
-    \item What are the limitations of current automatic mixing approaches, and how can they be addressed?
+    \item Single musical genre focus
+    \item Gain parameter only (no EQ, dynamics, or other mixing parameters)
+    \item Modified MUSDB18 dataset with human consensus gain values for all tracks
+    \item Novel differential analysis framework development
+    \item Comprehensive evaluation methodology
 \end{itemize}
 
-\subsection{Scope and Objectives}
-This research aims to develop novel approaches to automatic mixing that can:
+\subsubsection{Out of Scope}
 \begin{itemize}
-    \item Automatically balance levels, EQ, and dynamics across multiple audio tracks
-    \item Adapt to different musical genres and production styles
-    \item Provide interpretable results that can be fine-tuned by human engineers
-    \item Achieve quality comparable to professional human mixing
+    \item Differentiable parameter values (requires separate module conditioned by text embeddings)
+    \item Other mixing parameters (EQ, compression, reverb, etc.)
+    \item Multi-genre evaluation
+    \item Real-time mixing applications
+    \item multiple genres
 \end{itemize}
