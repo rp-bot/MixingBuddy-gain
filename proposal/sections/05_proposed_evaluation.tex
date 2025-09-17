@@ -6,6 +6,10 @@ We will evaluate the proposed differential, multi-track ALM across objective, au
 \subsection{Objective Differential-Mixing Accuracy}
 \paragraph{Primary Metric: Differential Gain Error} For each evaluated input, we compute mean absolute error (MAE) between the model-inferred gain adjustments and the consensus reference ranges (Section~\ref{sec:proposed_method}). We report per-stem MAE (dB), overall MAE, and calibration curves across difficulty levels (magnitude of imbalance, number of perturbed stems).
 
+\paragraph{Direction (Up/Down) Accuracy} We evaluate whether the \emph{sign} of the predicted differential gain (increase vs. decrease) matches the reference direction. We report direction accuracy and Matthews correlation (per-stem and overall). When references are intervals, direction is defined relative to the nearest point in the interval to the prediction.
+
+\paragraph{Magnitude Metrics} We evaluate the accuracy of gain magnitude predictions, including absolute error and systematic bias in the predicted gain amounts.
+
 \subsection{Automated LLM-as-a-Judge Assessments}
 We adapt the LLM-as-a-judge protocol to the differential setting. Given: (i) the four-audio input bundle (A vocal, A backing, B vocal, B backing), (ii) the model's explanation, and (iii) a few-shot rubric describing good balance, we prompt a strong external LLM to score: (a) correctness of the stated adjustment (direction and magnitude), (b) reasoning specificity to audio evidence, and (c) safety (no overreach beyond gain). 
 
