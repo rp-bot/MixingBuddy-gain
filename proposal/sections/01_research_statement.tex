@@ -1,13 +1,11 @@
 \section{Research Statement}
 
-Current Audio-Language Models (ALMs) excel at descriptive audio tasks, but tasks like music mixing require comparative analysis and relational understanding that go beyond simple description.
-This research proposes a novel differential analysis framework that conditions ALMs on multi-track audio to provide more specific and actionable gain-balancing guidance.
-Instead of analyzing single mixes, our approach trains models to compare unbalanced and balanced multi-track sets, learning the causal relationships between specific gain adjustments and perceived mix improvements.
-An augmented MUSDB18 dataset with human consensus gain values is created.
-Their performance is evaluated with appropriate metrics, including automated LLM-as-a-Judge assessments and human preference studies.
-The primary research question investigates whether this differential approach improves the technical specificity and user-perceived helpfulness of AI-generated gain-balancing advice.
-This work focuses specifically on gain parameters within a single musical genre, providing a foundation for more sophisticated AI mixing assistants that can reason about the relational properties of multi-track audio.
-
+Current Audio-Language Models (ALMs) excel at descriptive audio tasks, but tasks like music mixing require comparative analysis and relational understanding that go beyond simple description. 
+This research proposes a novel differential analysis framework that conditions ALMs on multi-track audio to provide more specific and actionable gain-balancing guidance. 
+Instead of analyzing single mixes, our approach trains models to compare unbalanced and balanced multi-track sets, learning the causal relationships between specific gain adjustments and perceived mix improvements. 
+To achieve this, the study will leverage multiple datasets: an augmented version of MUSDB18 with human consensus gain values, "The Mix Evaluation Dataset" which contains mixing decisions from human engineers, and its corresponding "MixParams" metadata dataset available on Hugging Face. 
+Performance will be evaluated with a comprehensive methodology, including automated LLM-as-a-Judge assessments and human preference studies. 
+The primary research question investigates whether this differential approach improves the technical specificity and user-perceived helpfulness of AI-generated gain-balancing advice, providing a foundation for more sophisticated AI mixing assistants that can reason about the relational properties of multi-track audio.
 
 \subsection{Research Questions}
 
@@ -22,21 +20,9 @@ To what extent does a differential analysis framework, conditioned on multi-trac
 \end{enumerate}
 
 \subsection{Scope and Limitations}
-
-\subsubsection{In Scope}
-\begin{itemize}
-    \item Single musical genre focus
-    \item Gain parameter only (no EQ, dynamics, or other mixing parameters)
-    \item Modified MUSDB18 dataset with human consensus gain values for all tracks
-    \item Novel differential analysis framework development
-    \item Comprehensive evaluation methodology
-\end{itemize}
-
-\subsubsection{Out of Scope}
-\begin{itemize}
-    \item Differentiable parameter values (requires separate module conditioned by text embeddings)
-    \item Other mixing parameters (EQ, compression, reverb, etc.)
-    \item Multi-genre evaluation
-    \item Real-time mixing applications
-    \item multiple genres
-\end{itemize}
+This research is specifically focused on the task of generating textual advice for gain parameter adjustments in multi-track audio. 
+The core of the study is the development of a novel differential analysis framework trained on the MUSDB18, "The Mix Evaluation Dataset," and "MixParams" datasets. 
+The model's output will be advisory text, not direct, continuous parameter predictions (e.g., -2.5dB). 
+The investigation deliberately excludes other mixing parameters such as equalization (EQ), dynamic range compression, and spatial effects to maintain a focused scope. 
+Furthermore, the proposed system is designed for offline analysis and is not intended for real-time, interactive applications. 
+The validity of this work relies on the assumption that the human-derived values in the chosen datasets represent a perceptually valid ground truth for a well-balanced mix and that the datasets are of sufficient quality for the task.

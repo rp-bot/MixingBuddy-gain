@@ -1,0 +1,123 @@
+% BLACK BOX SYSTEMS
+@article{Martinez-Ramirez_Liao_Fabbro_Uhlich_Nagashima_Mitsufuji_2022,
+	title        = {Automatic music mixing with deep learning and out-of-domain data},
+	author       = {Martínez-Ramírez, Marco A. and Liao, Wei-Hsiang and Fabbro, Giorgio and Uhlich, Stefan and Nagashima, Chihiro and Mitsufuji, Yuki},
+	year         = 2022,
+	month        = aug,
+	publisher    = {arXiv},
+	number       = {arXiv:2208.11428},
+	doi          = {10.48550/arXiv.2208.11428},
+	url          = {http://arxiv.org/abs/2208.11428},
+	note         = {arXiv:2208.11428 [eess]},
+	abstractnote = {Music mixing traditionally involves recording instruments in the form of clean, individual tracks and blending them into a final mixture using audio effects and expert knowledge (e.g., a mixing engineer). The automation of music production tasks has become an emerging field in recent years, where rule-based methods and machine learning approaches have been explored. Nevertheless, the lack of dry or clean instrument recordings limits the performance of such models, which is still far from professional human-made mixes. We explore whether we can use out-of-domain data such as wet or processed multitrack music recordings and repurpose it to train supervised deep learning models that can bridge the current gap in automatic mixing quality. To achieve this we propose a novel data preprocessing method that allows the models to perform automatic music mixing. We also redesigned a listening test method for evaluating music mixing systems. We validate our results through such subjective tests using highly experienced mixing engineers as participants.}
+}
+@article{Ramirez_Wang_Smaragdis_Bryan_2021,
+	title        = {Differentiable Signal Processing With Black-Box Audio Effects},
+	author       = {Ramírez, Marco A. Martínez and Wang, Oliver and Smaragdis, Paris and Bryan, Nicholas J.},
+	year         = 2021,
+	month        = may,
+	publisher    = {arXiv},
+	number       = {arXiv:2105.04752},
+	doi          = {10.48550/arXiv.2105.04752},
+	url          = {http://arxiv.org/abs/2105.04752},
+	note         = {arXiv:2105.04752 [eess]},
+	abstractnote = {We present a data-driven approach to automate audio signal processing by incorporating stateful third-party, audio effects as layers within a deep neural network. We then train a deep encoder to analyze input audio and control effect parameters to perform the desired signal manipulation, requiring only input-target paired audio data as supervision. To train our network with non-differentiable black-box effects layers, we use a fast, parallel stochastic gradient approximation scheme within a standard auto differentiation graph, yielding efficient end-to-end backpropagation. We demonstrate the power of our approach with three separate automatic audio production applications: tube amplifier emulation, automatic removal of breaths and pops from voice recordings, and automatic music mastering. We validate our results with a subjective listening test, showing our approach not only can enable new automatic audio effects tasks, but can yield results comparable to a specialized, state-of-the-art commercial solution for music mastering.}
+}
+@article{Steinmetz_Pons_Pascual_Serra_2020,
+	title        = {Automatic multitrack mixing with a differentiable mixing console of neural audio effects},
+	author       = {Steinmetz, Christian J. and Pons, Jordi and Pascual, Santiago and Serrà, Joan},
+	year         = 2020,
+	month        = oct,
+	publisher    = {arXiv},
+	number       = {arXiv:2010.10291},
+	doi          = {10.48550/arXiv.2010.10291},
+	url          = {http://arxiv.org/abs/2010.10291},
+	note         = {arXiv:2010.10291 [eess]},
+	abstractnote = {Applications of deep learning to automatic multitrack mixing are largely unexplored. This is partly due to the limited available data, coupled with the fact that such data is relatively unstructured and variable. To address these challenges, we propose a domain-inspired model with a strong inductive bias for the mixing task. We achieve this with the application of pre-trained sub-networks and weight sharing, as well as with a sum/difference stereo loss function. The proposed model can be trained with a limited number of examples, is permutation invariant with respect to the input ordering, and places no limit on the number of input sources. Furthermore, it produces human-readable mixing parameters, allowing users to manually adjust or refine the generated mix. Results from a perceptual evaluation involving audio engineers indicate that our approach generates mixes that outperform baseline approaches. To the best of our knowledge, this work demonstrates the first approach in learning multitrack mixing conventions from real-world data at the waveform level, without knowledge of the underlying mixing parameters.}
+}
+@article{Vanka_Steinmetz_Rolland_Reiss_Fazekas_2024,
+	title        = {Diff-MST: Differentiable Mixing Style Transfer},
+	author       = {Vanka, Soumya Sai and Steinmetz, Christian and Rolland, Jean-Baptiste and Reiss, Joshua and Fazekas, George},
+	year         = 2024,
+	month        = jul,
+	publisher    = {arXiv},
+	number       = {arXiv:2407.08889},
+	doi          = {10.48550/arXiv.2407.08889},
+	url          = {http://arxiv.org/abs/2407.08889},
+	note         = {arXiv:2407.08889 [eess]},
+	abstractnote = {Mixing style transfer automates the generation of a multitrack mix for a given set of tracks by inferring production attributes from a reference song. However, existing systems for mixing style transfer are limited in that they often operate only on a fixed number of tracks, introduce artifacts, and produce mixes in an end-to-end fashion, without grounding in traditional audio effects, prohibiting interpretability and controllability. To overcome these challenges, we introduce Diff-MST, a framework comprising a differentiable mixing console, a transformer controller, and an audio production style loss function. By inputting raw tracks and a reference song, our model estimates control parameters for audio effects within a differentiable mixing console, producing high-quality mixes and enabling post-hoc adjustments. Moreover, our architecture supports an arbitrary number of input tracks without source labelling, enabling real-world applications. We evaluate our model’s performance against robust baselines and showcase the effectiveness of our approach, architectural design, tailored audio production style loss, and innovative training methodology for the given task.}
+}
+
+% ================================================
+
+
+% LANGUAGE BRIDGE
+@article{Chu_OReilly_Barnett_Pardo_2025,
+	title        = {Text2FX: Harnessing CLAP Embeddings for Text-Guided Audio Effects},
+	author       = {Chu, Annie and O’Reilly, Patrick and Barnett, Julia and Pardo, Bryan},
+	year         = 2025,
+	month        = feb,
+	publisher    = {arXiv},
+	number       = {arXiv:2409.18847},
+	doi          = {10.48550/arXiv.2409.18847},
+	url          = {http://arxiv.org/abs/2409.18847},
+	note         = {arXiv:2409.18847 [eess]},
+	abstractnote = {This work introduces Text2FX, a method that leverages CLAP embeddings and differentiable digital signal processing to control audio effects, such as equalization and reverberation, using open-vocabulary natural language prompts (e.g., “make this sound in-your-face and bold”). Text2FX operates without retraining any models, relying instead on single-instance optimization within the existing embedding space, thus enabling a flexible, scalable approach to open-vocabulary sound transformations through interpretable and disentangled FX manipulation. We show that CLAP encodes valuable information for controlling audio effects and propose two optimization approaches using CLAP to map text to audio effect parameters. While we demonstrate with CLAP, this approach is applicable to any shared text-audio embedding space. Similarly, while we demonstrate with equalization and reverberation, any differentiable audio effect may be controlled. We conduct a listener study with diverse text prompts and source audio to evaluate the quality and alignment of these methods with human perception. Demos and code are available at anniejchu.github.io/text2fx.}
+}
+@article{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025,
+	title        = {Can Large Language Models Predict Audio Effects Parameters from Natural Language?},
+	author       = {Doh, Seungheon and Koo, Junghyun and Martínez-Ramírez, Marco A. and Liao, Wei-Hsiang and Nam, Juhan and Mitsufuji, Yuki},
+	year         = 2025,
+	month        = jul,
+	publisher    = {arXiv},
+	number       = {arXiv:2505.20770},
+	doi          = {10.48550/arXiv.2505.20770},
+	url          = {http://arxiv.org/abs/2505.20770},
+	note         = {arXiv:2505.20770 [cs]},
+	abstractnote = {In music production, manipulating audio effects (Fx) parameters through natural language has the potential to reduce technical barriers for non-experts. We present LLM2Fx, a framework leveraging Large Language Models (LLMs) to predict Fx parameters directly from textual descriptions without requiring task-specific training or fine-tuning. Our approach address the text-to-effect parameter prediction (Text2Fx) task by mapping natural language descriptions to the corresponding Fx parameters for equalization and reverberation. We demonstrate that LLMs can generate Fx parameters in a zero-shot manner that elucidates the relationship between timbre semantics and audio effects in music production. To enhance performance, we introduce three types of in-context examples: audio Digital Signal Processing (DSP) features, DSP function code, and few-shot examples. Our results demonstrate that LLM-based Fx parameter generation outperforms previous optimization approaches, offering competitive performance in translating natural language descriptions to appropriate Fx settings. Furthermore, LLMs can serve as text-driven interfaces for audio production, paving the way for more intuitive and accessible music production tools.}
+}
+@article{Lai_Hung_Zhu_Wang_Sheu_Juang_2022,
+	title        = {A Low-Cost Smart Digital Mixer System Based on Speech Recognition},
+	author       = {Lai, Shin-Chi and Hung, Ying-Hsiu and Zhu, Yi-Chang and Wang, Szu-Ting and Sheu, Ming-Hwa and Juang, Wen-Ho},
+	year         = 2022,
+	month        = feb,
+	journal      = {Electronics},
+	volume       = 11,
+	number       = 4,
+	pages        = 604,
+	doi          = {10.3390/electronics11040604},
+	issn         = {2079-9292},
+	rights       = {https://creativecommons.org/licenses/by/4.0/},
+	abstractnote = {When a band is performing at a public occasion, certain sound effects are expected to be added to enliven the atmosphere. To achieve this effect, microphones and instruments are all connected to an audio mixer, then the expected audio output will be played through the speakers. However, sound engineers always spend plenty of time tuning the mixer until the satisﬁed results are obtained. This paper presents a smart digital mixer system that integrates touch control, speech control, and commonly used functions on an Android mobile platform to improve the mobility of audio mixer while tuning. The proposed system adopts a digital signal processor (DSP) as the core of the hardware architecture. The application provides a UI interface on an Android mobile phone in order to achieve the functions of speech recognition and touch control. The control commands will be transmitted to DSP via Bluetooth 5.0, self-deﬁned Bluetooth packet format (SBPF), and data transfer controller (DTC). The main contribution of this work is to propose multiple functions of a mixer system with a convenient and interactive user interface. The experimental results show the average accuracy of all respondents reached 92.3%. Moreover, the proposed system has the advantage of having a low-cost hardware circuit design, and provides high ﬂexibility of setting for the audio mixer system according to the user’s preference.},
+	language     = {en}
+}
+@article{Pardo_Cartwright_Seetharaman_Kim_2019,
+	title        = {Learning to Build Natural Audio Production Interfaces},
+	author       = {Pardo, Bryan and Cartwright, Mark and Seetharaman, Prem and Kim, Bongjun},
+	year         = 2019,
+	month        = aug,
+	journal      = {Arts},
+	volume       = 8,
+	number       = 3,
+	pages        = 110,
+	doi          = {10.3390/arts8030110},
+	issn         = {2076-0752},
+	rights       = {https://creativecommons.org/licenses/by/4.0/},
+	abstractnote = {Improving audio production tools provides a great opportunity for meaningful enhancement of creative activities due to the disconnect between existing tools and the conceptual frameworks within which many people work. In our work, we focus on bridging the gap between the intentions of both amateur and professional musicians and the audio manipulation tools available through software. Rather than force nonintuitive interactions, or remove control altogether, we reframe the controls to work within the interaction paradigms identiﬁed by research done on how audio engineers and musicians communicate auditory concepts to each other: evaluative feedback, natural language, vocal imitation, and exploration. In this article, we provide an overview of our research on building audio production tools, such as mixers and equalizers, to support these kinds of interactions. We describe the learning algorithms, design approaches, and software that support these interaction paradigms in the context of music and audio production. We also discuss the strengths and weaknesses of the interaction approach we describe in comparison with existing control paradigms.},
+	language     = {en}
+}
+@article{Venkatesh_Moffat_Miranda_2022,
+	title        = {Word Embeddings for Automatic Equalization in Audio Mixing},
+	author       = {Venkatesh, Satvik and Moffat, David and Miranda, Eduardo Reck},
+	year         = 2022,
+	month        = nov,
+	journal      = {Journal of the Audio Engineering Society},
+	volume       = 70,
+	number       = 9,
+	pages        = {753–763},
+	doi          = {10.17743/jaes.2022.0047},
+	issn         = 15494950,
+	language     = {en}
+}
+
+% ================================================

@@ -1,40 +1,76 @@
-\section{Related Work / Context}
+\section{Related Work}
+\label{sec:related_work}
 
-\subsection{Traditional Audio Engineering}
-Professional mixing involves complex decision-making processes that balance technical and artistic considerations. Key aspects include:
+Addressing the gaps in current automatic mixing systems namely the lack of explainability, interactivity, and user control requires a conceptual shift away from fully autonomous ``black box'' solutions. The emerging field of ``Co-Creative AI'' provides a compelling framework for this shift, envisioning AI not as a replacement for human creativity, but as an intelligent partner that augments the artistic workflow \cite{Louie_Coenen_Huang_Terry_Cai_2020b, Tsiros_Palladini_2020}. This collaborative paradigm is particularly resonant in a field as nuanced and subjective as audio mixing, where artistic intent is paramount. Recent work has demonstrated the potential of co-creative systems in music production, showing positive user adoption and acceptance when AI tools provide appropriate levels of control and collaboration \cite{Bougueng_Tchemeube_Ens_Plut_Pasquier_Safi_Grabit_Rolland_2023, Vanka_Safi_Rolland_Fazekas_2023}. This section reviews the evolution of co-creative systems and the underlying technologies that make a language-driven, interactive mixing agent feasible.
+
+\subsection{Paradigms of Co-Creative AI in Audio}
+Within the landscape of co-creative systems for audio engineering, early paradigms focused on automating the mixing process.
+These automated mixers often functioned as \textbf{black box systems}, which take raw multitrack audio as input to produce a fully mixed output with minimal user intervention \cite{Steinmetz_Pons_Pascual_Serra_2020, Martinez-Ramirez_Liao_Fabbro_Uhlich_Nagashima_Mitsufuji_2022}.
+While some of these systems provide a degree of user control through high-level parameters, they fundamentally abstract the underlying process, which limits the fine-grained control required in professional workflows.
+In contrast, a more recent and promising paradigm is the \textbf{Language Bridge}, where natural language serves as the primary interface for interaction.
+This approach allows users to articulate creative intent in descriptive terms, and our research is situated within this paradigm.
+Recent work has begun exploring this direction across multiple dimensions: systems like MixAssist demonstrate the potential for audio-language models to provide contextual mixing advice through natural language dialogue \cite{Clemens_Marasović_2025}; Text2FX leverages CLAP embeddings to control audio effects through open-vocabulary natural language prompts \cite{Chu_OReilly_Barnett_Pardo_2025}; and LLM2Fx shows that Large Language Models can predict audio effect parameters directly from textual descriptions in a zero-shot manner \cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025}.
+Additionally, research has explored speech recognition for mixer control \cite{Lai_Hung_Zhu_Wang_Sheu_Juang_2022}, natural language interfaces for audio production tools \cite{Pardo_Cartwright_Seetharaman_Kim_2019}, and word embeddings for automatic equalization \cite{Venkatesh_Moffat_Miranda_2022}.
+
+\subsection{The Evolution of Language-Driven Models}
+The journey towards sophisticated language-driven models has been incremental, progressing through several key phases that have transformed how we interact with and control various modalities through natural language. 
+It began with \textbf{task-specific supervised models} for applications like audio tagging, which classified sounds into predefined categories \cite{kong2018attention}. 
+A subsequent shift towards \textbf{representation learning} aimed to create more general-purpose audio embeddings to capture richer semantic information \cite{choi2017content}. 
+The emergence of \textbf{contrastive dual-encoder models} like CLAP marked a significant advancement, learning audio concepts from natural language supervision and enabling zero-shot audio classification and retrieval \cite{Elizalde_Deshmukh_Ismail_Wang_2023, Koepke_Oncescu_Henriques_Akata_Albanie_2023}. 
+The rise of deep \textbf{generative models} like GANs and VAEs enabled audio synthesis and transformation, though precise control remained a challenge \cite{donahue2018wavegan, engel2019disentangled}. 
+More recently, \textbf{generative and diffusion-based multimodal models} have emerged, leveraging the power of diffusion models and large language models for text-to-audio generation \cite{Liu_Yuan_Liu_Mei_Kong_Tian_Wang_Wang_Wang_Plumbley_2024, Xue_Deng_Gao_Li_2024}. 
+Most significantly, the development of \textbf{Large Audio-Language Models (LALMs)} and instruction-following systems has been revolutionary, with models like AudioLM demonstrating language modeling approaches to audio generation \cite{Borsos_Marinier_Vincent_Kharitonov_Pietquin_Sharifi_Roblek_Teboul_Grangier_Tagliasacchi_etal_2023}. 
+The profound language understanding of these models, when combined with the ability to process audio, forms the technological cornerstone of the Language Bridge paradigm, making it possible to connect linguistic intent directly to audio manipulation \cite{zhao2023survey}.
+
+\subsection{Multimodal Large Language Models}
+The development of Multimodal Large Language Models (MM-LLMs) represents a significant advancement in AI capabilities, enabling models to process and understand multiple modalities simultaneously. Several architectural paradigms have emerged for creating these powerful systems:
+
+\textbf{Unified Multimodal Models} are trained from the ground up on vast datasets spanning multiple modalities, allowing for deep integration of information across different data types \cite{lu2022unified}. These models, such as Unified-IO, demonstrate the potential for truly unified understanding across vision, language, and audio domains.
+
+\textbf{Modality Interface Architectures} involve augmenting pre-trained, text-only LLMs with specialized encoders for other modalities. This approach allows LLMs to perceive and process new types of information without altering their core architecture. Notable examples include Qwen-Audio, which provides universal audio understanding capabilities across over 30 tasks \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023}, and SALMONN, which integrates speech and audio encoders with LLMs to achieve generic hearing abilities \cite{Tang_Yu_Sun_Chen_Tan_Li_Lu_Ma_Zhang_2024}.
+
+\textbf{Any-to-Any Multimodal Systems} represent the cutting edge, enabling models to both perceive and generate content across multiple modalities. NExT-GPT demonstrates this capability, connecting LLMs with multimodal adaptors and diffusion decoders to handle arbitrary combinations of text, image, video, and audio \cite{Wu_Fei_Qu_Ji_Chua_2024}. Similarly, Audiobox provides unified audio generation capabilities across speech, sound, and music through natural language prompts \cite{Vyas_Shi_Le_Tjandra_Wu_Guo_Zhang_Zhang_Adkins_Ngan_eta_2023}.
+
+\textbf{Instruction-Following Multimodal Models} focus on following complex instructions across modalities. Macaw-LLM seamlessly integrates visual, audio, and textual information for multi-turn dialogue scenarios \cite{Lyu_Wu_Wang_Huang_Liu_Du_Shi_Tu_2023}, while PandaGPT demonstrates emergent cross-modal behaviors through instruction-following capabilities \cite{Su_Lan_Li_Xu_Wang_Cai_2023}.
+
+\subsection{Fine-Tuning Methods for Audio Tasks}
+The application of fine-tuning to MM-LLMs has unlocked a wide range of capabilities across various audio domains. This section provides an overview of the state-of-the-art methods for general audio sounds, music, and speech.
+
+\subsubsection{General Audio Sounds}
+\paragraph{Audio Understanding}
+Models such as LTU \cite{Gong_Luo_Liu_Karlinsky_Glass_2024}, SALMONN \cite{Tang_Yu_Sun_Chen_Tan_Li_Lu_Ma_Zhang_2024}, Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023}, and UNIFIED-IO 2 \cite{Lu_Clark_Lee_Zhang_Khosla_Marten_Hoiem_Kembhavi_2024} leverage LLMs as their backbone for analyzing and interpreting diverse environmental sounds. Additionally, AudioGPT \cite{Huang_Li_Yang_Shi_Chang_Ye_Wu_Hong_Huang_Liu_etal_2023} and HuggingGPT \cite{shen2023hugginggpt} function as intelligent interfaces that coordinate various tools for audio understanding tasks. Furthermore, recent work has enhanced automated audio captioning by integrating pretrained models with LLMs \cite{Wu_Donahue_Watanabe_Bryan_2024}.
+
+\paragraph{Audio Generation}
+Notable models in audio generation include TANGO \cite{Ghosal_Majumder_Mehrish_Poria_2023}, Make-an-Audio 2 \cite{Huang_Ren_Huang_Yang_Ye_Zhang_Liu_Yin_Ma_Zhao_2023}, WavJourney \cite{Liu_Zhu_Liu_Yuan_Huang_Cui_Liang_Cao_Kong_Plumbley_etal_2025}, AudioLM \cite{Borsos_Marinier_Vincent_Kharitonov_Pietquin_Sharifi_Roblek_Teboul_Grangier_Tagliasacchi_etal_2023}, Audiobox \cite{Vyas_Shi_Le_Tjandra_Wu_Guo_Zhang_Zhang_Adkins_Ngan_eta_2023}, and UniAudio \cite{Yang_Tian_Tan_Huang_Liu_Chang_Shi_Zhao_Bian_Zhao_etal_2024}. These approaches utilize a variety of techniques, such as text embedders (e.g., FLAN-T5 in TANGO), latent diffusion models, LLM agents for integrating audio models (WavJourney), discrete audio tokenization (AudioLM), LLMs for data construction and flow-matching (Audiobox), and unified sequence tokenization for various audio types (UniAudio).
+
+\subsubsection{Music}
+\paragraph{Music Understanding}
+In the music domain, models like Music Understanding LLaMA (MU-LLaMA) \cite{Liu_Hussain_Sun_Shan_2024}, LLARK \cite{Gardner_Durand_Stoller_Bittner_2024}, MusicAgent \cite{Yu_Song_Lu_He_Tan_Ye_Zhang_Bian_2023}, LyricWhiz \cite{Zhuo_Yuan_Pan_Ma_LI_Zhang_Liu_Dannenberg_Fu_Lin_etal_2024}, and ChatMusician \cite{Yuan_Lin_Wang_Tian_Wu_Shen_Zhang_Wu_Liu_Zhou_etal_2024} are employed to analyze detailed music features, leverage refined annotations, automate tasks, and improve lyric transcription.
+
+\paragraph{Music Generation}
+Music generation methods include MusicLM \cite{Agostinelli_Denk_Borsos_Engel_Verzetti_Caillon_Huang_Jansen_Roberts_Tagliasacchi_etal_2023}, Jukebox \cite{Dhariwal_Jun_Payne_Kim_Radford_Sutskever_2020}, MusicGen \cite{Copet_Kreuk_Gat_Remez_Kant_Synnaeve_Adi_Défossez}, Music ControlNet \cite{Wu_Donahue_Watanabe_Bryan_2024}, M2UGen \cite{Liu_Hussain_Wu_Sun_Shan_2024}, ChatMusician \cite{Yuan_Lin_Wang_Tian_Wu_Shen_Zhang_Wu_Liu_Zhou_etal_2024}, and SongComposer \cite{Ding_Liu_Dong_Zhang_Qian_Huang_He_Lin_Wang_2025}. These often use Transformer architectures for conditional music generation, compress raw audio into discrete codes (Jukebox), incorporate LLMs as text embedders (MusicGen, Music ControlNet), combine LLMs with other pretrained models (M2UGen), or intrinsically generate symbolic music (ChatMusician, SongComposer).
+
+\paragraph{Music Editing}
+Loop Copilot \cite{Zhang_Maezawa_Xia_Yamamoto_Dixon_2024} combines LLMs with specialized AI music models to facilitate conversational, collaborative music loop creation and editing.
+
+\subsubsection{Speech}
+\paragraph{Speech Understanding}
+Key contributions in speech understanding come from SpeechGPT \cite{Zhang_Li_Zhang_Zhan_Wang_Zhou_Qiu_2023}, AudioPaLM \cite{Rubenstein_Asawaroengchai_Nguyen_Bapna_Borsos_Quitry_Chen_Badawy_Han_Kharitonov_etal_2023}, Speech-LLaMA \cite{Wu_Gaur_Chen_Zhou_Zhu_Wang_Li_Liu_Ren_Liu_etal_2023}, and recent works that utilize LLMs as structural backbones to process spoken language, support multimodal content, transfer inter-modal knowledge, and improve Automatic Speech Recognition (ASR) accuracy through in-context learning or specialized connector structures \cite{Wang_Yang_Wu_Zhang_2024, Yu_Tang_Sun_Chen_Tan_Li_Lu_Ma_Zhang_2024}.
+
+\paragraph{Speech Generation}
+VALL-E \cite{Wang_Chen_Wu_Zhang_Zhou_Liu_Chen_Liu_Wang_Li_etal_2023} uses a neural codec language model to reframe text-to-speech (TTS) as a conditional language modeling task. Other approaches integrate LLaMA/OPT with VALL-E \cite{Hao_Zhou_Liu_Li_Hu_Wang_Wei_2025}, and LauraGPT \cite{Du_Wang_Chen_Chu_Gao_Li_Hu_Zhou_Xu_Ma_etal_2024} is a unified GPT model for speech recognition, translation, and TTS. Additionally, some research investigates word surprisal to improve speech synthesis prosody \cite{Kakouros_imko_Vainio_Suni_2023}.
+
+\subsection{How LLMs are Utilized in Audio Tasks}
+The integration of LLMs in audio tasks can be categorized into several key approaches:
+
 \begin{itemize}
-    \item Level balancing and panning
-    \item Equalization (EQ) for frequency shaping
-    \item Dynamic processing (compression, limiting)
-    \item Spatial effects (reverb, delay)
-    \item Harmonic enhancement and saturation
+    \item \textbf{LLMs as Backbone:} Pre-trained LLMs (e.g., LLaMA) are used as the central architecture, either with modality-specific encoders/decoders (cascade approach) or by tokenizing raw audio into discrete tokens for direct LLM input (unified approach).
+    \item \textbf{LLMs as Conditioner:} LLMs encode text prompts into embeddings that condition the audio generation process.
+    \item \textbf{LLMs as Labeller:} LLMs are employed to convert class labels from large audio datasets into full-sentence audio descriptions or captions, often utilizing self-instruction techniques.
+    \item \textbf{LLMs as Agent:} LLMs act as controllers, interfacing with and orchestrating various external tools to accomplish diverse audio tasks.
+    \item \textbf{LLMs Inspired Backbone:} This approach discretizes audio into tokens for next-token prediction, aiming for LLM-like emergent capabilities in audio.
 \end{itemize}
 
-\subsection{Existing Automatic Mixing Systems}
-\subsubsection{Rule-Based Approaches}
-Early automatic mixing systems relied on predefined rules and heuristics \cite{example1}. These systems were limited by their inability to adapt to different musical contexts.
+Furthermore, tool-augmented multimodal agents like ControlLLM \cite{Liu_Lai_Gao_Cui_Li_Zhu_Lu_Chen_Qiao_Dai_etal_2025}, ModelScope-Agent \cite{Li_Chen_Yan_Shen_Xu_Wu_Zhang_Zhou_Chen_Cheng_etal_2023}, and HuggingGPT \cite{shen2023hugginggpt} can generate speech and music by invoking specialized audio tools. NExT-GPT also provides a framework that supports mixed inputs and outputs including audio, with diffusion models attached to the LLM \cite{Wu_Fei_Qu_Ji_Chua_2024}.
 
-\subsubsection{Machine Learning Approaches}
-Recent work has explored various machine learning techniques:
-\begin{itemize}
-    \item \textbf{Neural Networks}: Deep learning approaches for parameter prediction \cite{example2}
-    \item \textbf{Reinforcement Learning}: Systems that learn mixing strategies through trial and error \cite{example3}
-    \item \textbf{Generative Models}: Approaches that generate complete mixes from raw tracks \cite{example4}
-\end{itemize}
-
-\subsection{Evaluation Methods}
-Current evaluation approaches include:
-\begin{itemize}
-    \item Objective metrics (RMS levels, frequency response, dynamic range)
-    \item Subjective listening tests with human evaluators
-    \item Comparison with reference mixes
-    \item Perceptual models of audio quality
-\end{itemize}
-
-\subsection{Gaps in Current Research}
-\begin{itemize}
-    \item Limited understanding of musical context in mixing decisions
-    \item Lack of standardized evaluation frameworks
-    \item Insufficient attention to genre-specific mixing requirements
-    \item Limited work on interpretable and controllable systems
-\end{itemize}
+Our research falls within the domain of fine-tuning Multimodal LLMs, specifically investigating how these models can be adapted to serve as intuitive and effective co-creative partners in the complex task of audio mixing. We aim to leverage a modality interface architecture, enabling a powerful LLM to understand and act upon instructions related to multitrack audio.

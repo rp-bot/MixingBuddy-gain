@@ -20,7 +20,7 @@ $(OUTDIR):
 all: $(MAIN).pdf
 
 # Compile the document
-$(MAIN).pdf: $(MAIN).tex sections/*.tex references.bib | $(OUTDIR)
+$(MAIN).pdf: $(MAIN).tex sections/*.tex references/*.bib | $(OUTDIR)
 	$(LATEX) -output-directory=$(OUTDIR) $(MAIN).tex
 	$(BIBTEX) $(OUTDIR)/$(MAIN)
 	$(LATEX) -output-directory=$(OUTDIR) $(MAIN).tex

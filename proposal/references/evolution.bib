@@ -1,0 +1,111 @@
+@inproceedings{kong2018attention,
+  title={Attention-based deep multiple instance learning for weakly supervised audio tagging},
+  author={Kong, Qiuqiang and Xu, Yong and Plumbley, Mark D},
+  booktitle={2018 26th European Signal Processing Conference (EUSIPCO)},
+  pages={111--115},
+  year={2018},
+  organization={IEEE}
+}
+
+@inproceedings{choi2017content,
+  title={Content-based music similarity with deep representation learning},
+  author={Choi, Keunwoo and Lee, Jongpil and Nam, Juhan},
+  booktitle={Proceedings of the 18th International Society for Music Information Retrieval Conference (ISMIR 2017)},
+  year={2017}
+}
+
+@inproceedings{donahue2018wavegan,
+  title={Wavegan: A gan for raw audio synthesis},
+  author={Donahue, Chris and McAuley, Julian and Puckette, Miller},
+  booktitle={International Conference on Learning Representations},
+  year={2018}
+}
+
+@article{engel2019disentangled,
+  title={Disentangled representations of musical timbre with gans and vaes},
+  author={Engel, Jesse and Roberts, Adam and Dieleman, Sander and Askew, Douglas and Oore, Sage and Eck, Douglas},
+  journal={arXiv preprint arXiv:1911.08323},
+  year={2019}
+}
+
+@article{Borsos_Marinier_Vincent_Kharitonov_Pietquin_Sharifi_Roblek_Teboul_Grangier_Tagliasacchi_etal_2023,
+	title        = {AudioLM: A Language Modeling Approach to Audio Generation},
+	author       = {Borsos, Zalán and Marinier, Raphaël and Vincent, Damien and Kharitonov, Eugene and Pietquin, Olivier and Sharifi, Matt and Roblek, Dominik and Teboul, Olivier and Grangier, David and Tagliasacchi, Marco and Zeghidour, Neil},
+	year         = 2023,
+	journal      = {IEEE/ACM Transactions on Audio, Speech, and Language Processing},
+	volume       = 31,
+	pages        = {2523–2533},
+	doi          = {10.1109/TASLP.2023.3288409},
+	issn         = {2329-9304},
+	abstractnote = {We introduce AudioLM, a framework for high-quality audio generation with long-term consistency. AudioLM maps the input audio to a sequence of discrete tokens and casts audio generation as a language modeling task in this representation space. We show how existing audio tokenizers provide different trade-offs between reconstruction quality and long-term structure, and we propose a hybrid tokenization scheme to achieve both objectives. Namely, we leverage the discretized activations of a masked language model pre-trained on audio to capture long-term structure and the discrete codes produced by a neural audio codec to achieve high-quality synthesis. By training on large corpora of raw audio waveforms, AudioLM learns to generate natural and coherent continuations given short prompts. When trained on speech, and without any transcript or annotation, AudioLM generates syntactically and semantically plausible speech continuations while also maintaining speaker identity and prosody for unseen speakers. Furthermore, we demonstrate how our approach extends beyond speech by generating coherent piano music continuations, despite being trained without any symbolic representation of music.}
+}
+@inproceedings{Elizalde_Deshmukh_Ismail_Wang_2023,
+	title        = {CLAP Learning Audio Concepts from Natural Language Supervision},
+	author       = {Elizalde, Benjamin and Deshmukh, Soham and Ismail, Mahmoud Al and Wang, Huaming},
+	year         = 2023,
+	month        = jun,
+	booktitle    = {ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+	pages        = {1–5},
+	doi          = {10.1109/ICASSP49357.2023.10095889},
+	issn         = {2379-190X},
+	url          = {https://ieeexplore.ieee.org/document/10095889},
+	abstractnote = {Mainstream machine listening models are trained to learn audio concepts under the paradigm of one class label to many recordings focusing on one task. Learning under such restricted supervision limits the flexibility of models because they require labeled audio for training and can only predict the predefined categories. Instead, we propose to learn audio concepts from natural language supervision. We call our approach Contrastive Language-Audio Pretraining (CLAP), which connects language and audio by using two encoders and a contrastive learning objective, bringing audio and text descriptions into a joint multimodal space. We trained CLAP with 128k audio and text pairs and evaluated it on 16 downstream tasks across 7 domains, such as classification of sound events, scenes, music, and speech. CLAP establishes state-of-the-art (SoTA) in Zero-Shot performance. Also, we evaluated CLAP’s audio encoder in a supervised learning setup and achieved SoTA in 5 tasks. The Zero-Shot capability removes the need of training with class labeled audio, enables flexible class prediction at inference time, and generalizes well in multiple downstream tasks. Code is available at: https://github.com/microsoft/CLAP.}
+}
+@article{Koepke_Oncescu_Henriques_Akata_Albanie_2023,
+	title        = {Audio Retrieval With Natural Language Queries: A Benchmark Study},
+	author       = {Koepke, A. Sophia and Oncescu, Andreea-Maria and Henriques, João F. and Akata, Zeynep and Albanie, Samuel},
+	year         = 2023,
+	journal      = {IEEE Transactions on Multimedia},
+	volume       = 25,
+	pages        = {2675–2685},
+	doi          = {10.1109/TMM.2022.3149712},
+	issn         = {1941-0077},
+	abstractnote = {The objectives of this work are cross-modal text-audio and audio-text retrieval, in which the goal is to retrieve the audio content from a pool of candidates that best matches a given written description and vice versa. Text-audio retrieval enables users to search large databases through an intuitive interface: they simply issue free-form natural language descriptions of the sound they would like to hear. To study the tasks of text-audio and audio-text retrieval, which have received limited attention in the existing literature, we introduce three challenging new benchmarks. We first construct text-audio and audio-text retrieval benchmarks from the AudioCaps and Clotho audio captioning datasets. Additionally, we introduce the SoundDescs benchmark, which consists of paired audio and natural language descriptions for a diverse collection of sounds that are complementary to those found in AudioCaps and Clotho. We employ these three benchmarks to establish baselines for cross-modal text-audio and audio-text retrieval, where we demonstrate the benefits of pre-training on diverse audio tasks. We hope that our benchmarks will inspire further research into audio retrieval with free-form text queries.}
+}
+@article{Liu_Yuan_Liu_Mei_Kong_Tian_Wang_Wang_Wang_Plumbley_2024,
+	title        = {AudioLDM 2: Learning Holistic Audio Generation With Self-Supervised Pretraining},
+	author       = {Liu, Haohe and Yuan, Yi and Liu, Xubo and Mei, Xinhao and Kong, Qiuqiang and Tian, Qiao and Wang, Yuping and Wang, Wenwu and Wang, Yuxuan and Plumbley, Mark D.},
+	year         = 2024,
+	journal      = {IEEE/ACM Transactions on Audio, Speech, and Language Processing},
+	volume       = 32,
+	pages        = {2871–2883},
+	doi          = {10.1109/TASLP.2024.3399607},
+	issn         = {2329-9304},
+	abstractnote = {Although audio generation shares commonalities across different types of audio, such as speech, music, and sound effects, designing models for each type requires careful consideration of specific objectives and biases that can significantly differ from those of other types. To bring us closer to a unified perspective of audio generation, this paper proposes a holistic framework that utilizes the same learning method for speech, music, and sound effect generation. Our framework utilizes a general representation of audio, called “language of audio” (LOA). Any audio can be translated into LOA based on AudioMAE, a self-supervised pre-trained representation learning model. In the generation process, we translate other modalities into LOA by using a GPT-2 model, and we perform self-supervised audio generation learning with a latent diffusion model conditioned on the LOA of audio in our training set. The proposed framework naturally brings advantages such as reusable self-supervised pretrained latent diffusion models. Experiments on the major benchmarks of text-to-audio, text-to-music, and text-to-speech with three AudioLDM 2 variants demonstrate competitive performance of the AudioLDM 2 framework against previous approaches.}
+}
+@inproceedings{Radford_Kim_Xu_Brockman_Mcleavey_Sutskever_2023,
+	title        = {Robust Speech Recognition via Large-Scale Weak Supervision},
+	author       = {Radford, Alec and Kim, Jong Wook and Xu, Tao and Brockman, Greg and Mcleavey, Christine and Sutskever, Ilya},
+	year         = 2023,
+	month        = jul,
+	booktitle    = {Proceedings of the 40th International Conference on Machine Learning},
+	publisher    = {PMLR},
+	pages        = {28492–28518},
+	issn         = {2640-3498},
+	url          = {https://proceedings.mlr.press/v202/radford23a.html},
+	abstractnote = {We study the capabilities of speech processing systems trained simply to predict large amounts of transcripts of audio on the internet. When scaled to 680,000 hours of multilingual and multitask supervision, the resulting models generalize well to standard benchmarks and are often competitive with prior fully supervised results without the need for any dataset specific fine-tuning. When compared to humans, the models approach their accuracy and robustness. We are releasing models and inference code to serve as a foundation for further work on robust speech processing.},
+	language     = {en}
+}
+@inproceedings{Wu_Nieto_Bello_Salamon_2023,
+	title        = {Audio-Text Models Do Not Yet Leverage Natural Language},
+	author       = {Wu, Ho-Hsiang and Nieto, Oriol and Bello, Juan Pablo and Salamon, Justin},
+	year         = 2023,
+	month        = jun,
+	booktitle    = {ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+	pages        = {1–5},
+	doi          = {10.1109/ICASSP49357.2023.10097117},
+	issn         = {2379-190X},
+	url          = {https://ieeexplore.ieee.org/document/10097117},
+	abstractnote = {Multi-modal contrastive learning techniques in the audio-text domain have quickly become a highly active area of research. Most works are evaluated with standard audio retrieval and classification benchmarks assuming that (i) these models are capable of leveraging the rich information contained in natural language, and (ii) current benchmarks are able to capture the nuances of such information. In this work, we show that state-of-the-art audio-text models do not yet really understand natural language, especially contextual concepts such as sequential or concurrent ordering of sound events. Our results suggest that existing benchmarks are not sufficient to assess these models’ capabilities to match complex contexts from the audio and text modalities. We propose a Transformer-based architecture and show that, unlike prior work, it is capable of modeling the sequential relationship between sound events in the text and audio, given appropriate benchmark data. We advocate for the collection or generation of additional, diverse, data to allow future research to fully leverage natural language for audio-text modeling.}
+}
+@article{Xue_Deng_Gao_Li_2024,
+	title        = {Auffusion: Leveraging the Power of Diffusion and Large Language Models for Text-to-Audio Generation},
+	author       = {Xue, Jinlong and Deng, Yayue and Gao, Yingming and Li, Ya},
+	year         = 2024,
+	journal      = {IEEE/ACM Transactions on Audio, Speech, and Language Processing},
+	volume       = 32,
+	pages        = {4700–4712},
+	doi          = {10.1109/TASLP.2024.3485485},
+	issn         = {2329-9304},
+	abstractnote = {Recent advancements in diffusion models and large language models (LLMs) have significantly propelled the field of generation tasks. Text-to-Audio (TTA), a burgeoning generation application designed to generate audio from natural language prompts, is attracting increasing attention. However, existing TTA studies often struggle with generation quality and text-audio alignment, especially for complex textual inputs. Drawing inspiration from state-of-the-art Text-to-Image (T2I) diffusion models, we introduce Auffusion, a TTA system adapting T2I model frameworks to TTA task, by effectively leveraging their inherent generative strengths and precise cross-modal alignment. Our objective and subjective evaluations demonstrate that Auffusion surpasses previous TTA approaches using limited data and computational resources. Furthermore, the text encoder serves as a critical bridge between text and audio, since it acts as an instruction for the diffusion model to generate coherent content. Previous studies in T2I recognize the significant impact of encoder choice on cross-modal alignment, like fine-grained details and object bindings, while similar evaluation is lacking in prior TTA works. Through comprehensive ablation studies and innovative cross-attention map visualizations, we provide insightful assessments, being the first to reveal the internal mechanisms in the TTA field and intuitively explain how different text encoders influence the diffusion process. Our findings reveal Auffusion’s superior capability in generating audios that accurately match textual descriptions, which is further demonstrated in several related tasks, such as audio style transfer, inpainting, and other manipulations.}
+}
