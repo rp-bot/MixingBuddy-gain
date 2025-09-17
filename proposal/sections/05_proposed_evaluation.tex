@@ -1,45 +1,33 @@
 \section{Proposed Evaluation}
+\label{sec:proposed_evaluation}
 
-\subsection{Evaluation Framework}
-A comprehensive evaluation strategy will be developed to assess both technical performance and perceptual quality of the automatic mixing system.
+We will evaluate the proposed differential, multi-track ALM across objective, automated, and human-centered protocols, closely following and extending the evaluation strategies used by MixAssist \cite{Clemens_Marasović_2025}.
 
-\subsection{Objective Metrics}
-\begin{itemize}
-    \item \textbf{Technical Accuracy}: Comparison of predicted parameters with ground truth values
-    \item \textbf{Spectral Analysis}: Frequency response, dynamic range, and harmonic content
-    \item \textbf{Level Balancing}: RMS and peak level distributions across tracks
-    \item \textbf{Spatial Characteristics}: Stereo width, panning accuracy, and spatial coherence
-\end{itemize}
+\subsection{Objective Differential-Mixing Accuracy}
+\paragraph{Primary Metric: Differential Gain Error} For each evaluated input, we compute mean absolute error (MAE) between the model-inferred gain adjustments and the consensus reference ranges (Section~\ref{sec:proposed_method}). We report per-stem MAE (dB), overall MAE, and calibration curves across difficulty levels (magnitude of imbalance, number of perturbed stems).
 
-\subsection{Subjective Evaluation}
-\begin{itemize}
-    \item \textbf{Listening Tests}: A/B comparisons with professional mixes
-    \item \textbf{Expert Evaluation}: Assessment by professional audio engineers
-    \item \textbf{Genre-Specific Tests}: Evaluation across different musical styles
-    \item \textbf{Long-term Listening}: Assessment of mix fatigue and musicality
-\end{itemize}
+\subsection{Automated LLM-as-a-Judge Assessments}
+We adapt the LLM-as-a-judge protocol to the differential setting. Given: (i) the four-audio input bundle (A vocal, A backing, B vocal, B backing), (ii) the model's explanation, and (iii) a few-shot rubric describing good balance, we prompt a strong external LLM to score: (a) correctness of the stated adjustment (direction and magnitude), (b) reasoning specificity to audio evidence, and (c) safety (no overreach beyond gain). 
 
-\subsection{Comparative Analysis}
-The system will be compared against:
-\begin{itemize}
-    \item Current state-of-the-art automatic mixing systems
-    \item Rule-based mixing approaches
-    \item Human-engineered mixes (both amateur and professional)
-    \item Baseline systems (e.g., simple level balancing)
-\end{itemize}
+\subsection{Human Evaluation: Input-Output Assessment}
+Music producers will evaluate the fine-tuned assistant's performance by reviewing input-output pairs. Participants will be presented with the four-audio input bundle (Version A vocal, Version A backing, Version B vocal, Version B backing) along with the model's generated explanation. They will complete a survey assessing the correctness of the stated adjustment, reasoning specificity to audio evidence, conversational naturalness, perceived creative contribution, and novelty of ideas, along with open-ended feedback.
 
-\subsection{Evaluation Datasets}
-\begin{itemize}
-    \item \textbf{Professional Mixes}: High-quality reference mixes from various genres
-    \item \textbf{Amateur Productions}: User-generated content for generalization testing
-    \item \textbf{Synthetic Data}: Generated mixes for controlled evaluation scenarios
-    \item \textbf{Cross-Genre Data}: Diverse musical styles for robustness testing
-\end{itemize}
+\subsection{Manual Analysis of Audio Understanding Guidance}
+We manually code a stratified sample of model outputs for: (i) reference to concrete audio cues (masking, spectral regions, temporal context), (ii) comparative reasoning (A vs. B alignment), and (iii) adherence to the differential task boundary. Two annotators label with Cohen's \(\kappa\) for agreement.
 
-\subsection{Statistical Analysis}
-\begin{itemize}
-    \item Significance testing for subjective evaluations
-    \item Correlation analysis between objective and subjective metrics
-    \item Error analysis and failure case identification
-    \item Performance analysis across different musical contexts
-\end{itemize}
+\subsection{Automated Semantic Evaluation Metrics}
+For comparability with prior work, we compute BLEU, METEOR, ROUGE-L, and BERTScore between model explanations and reference annotations. Given multiple consensus references, we report max-over-refs and average-over-refs variants.
+
+% \subsection{Ablations and Baselines}
+% \begin{itemize}
+%     \item \textbf{Single-Input vs. Differential:} Replace the four-input bundle with single Version~A only; measure performance drop.
+%     \item \textbf{Text-Only Baseline:} Remove audio and provide only the task prompt; gauges label leakage and prompt priors.
+%     \item \textbf{LoRA vs. QLoRA:} Compare PEFT variants in accuracy and efficiency (VRAM, throughput), keeping training steps fixed.
+%     \item \textbf{Stem Subset Granularity:} Vocal-only vs. multi-stem settings; evaluate robustness to confounders.
+%     \item \textbf{Instruction Style:} Terse vs. verbose prompts; assess sensitivity to prompt format.
+% \end{itemize}
+
+
+% \subsection{Statistical Analysis}
+% We report bootstrap 95\% CIs for all metrics, perform paired tests where appropriate, and control for multiple comparisons. We release evaluation scripts and prompts to ensure reproducibility.
+

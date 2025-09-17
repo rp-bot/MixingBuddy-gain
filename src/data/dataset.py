@@ -73,16 +73,18 @@ class AutomaticMixingDataset(Dataset):
 
         # Debug: Log tokenization results
         input_ids = encoding["input_ids"].squeeze()
+        attention_mask = encoding["attention_mask"].squeeze()
         logger.debug(f"Sample {idx} tokenized length: {len(input_ids)} tokens")
         logger.debug(f"Sample {idx} input_ids shape: {input_ids.shape}")
 
-        # For causal LM, labels are the same as input_ids
-        encoding["labels"] = encoding["input_ids"].clone()
+        # For causal LM, labels start as input_ids, then mask padding positions
+        labels = input_ids.clone()
+        labels = labels.masked_fill(attention_mask == 0, -100)
 
         return {
             "input_ids": input_ids,
-            "attention_mask": encoding["attention_mask"].squeeze(),
-            "labels": encoding["labels"].squeeze(),
+            "attention_mask": attention_mask,
+            "labels": labels,
         }
 
     def _format_text(self, sample: Dict[str, Any]) -> str:

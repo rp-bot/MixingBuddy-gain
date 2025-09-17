@@ -472,3 +472,35 @@
 	note         = {arXiv:2305.18474 [cs]},
 	abstractnote = {Large diffusion models have been successful in text-to-audio (T2A) synthesis tasks, but they often suffer from common issues such as semantic misalignment and poor temporal consistency due to limited natural language understanding and data scarcity. Additionally, 2D spatial structures widely used in T2A works lead to unsatisfactory audio quality when generating variable-length audio samples since they do not adequately prioritize temporal information. To address these challenges, we propose Make-an-Audio 2, a latent diffusion-based T2A method that builds on the success of Make-an-Audio. Our approach includes several techniques to improve semantic alignment and temporal consistency: Firstly, we use pre-trained large language models (LLMs) to parse the text into structured <event & order> pairs for better temporal information capture. We also introduce another structured-text encoder to aid in learning semantic alignment during the diffusion denoising process. To improve the performance of variable length generation and enhance the temporal information extraction, we design a feed-forward Transformer-based diffusion denoiser. Finally, we use LLMs to augment and transform a large amount of audio-label data into audio-text datasets to alleviate the problem of scarcity of temporal data. Extensive experiments show that our method outperforms baseline models in both objective and subjective metrics, and achieves significant gains in temporal information understanding, semantic consistency, and sound quality.}
 }
+@article{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021,
+	title        = {LoRA: Low-Rank Adaptation of Large Language Models},
+	author       = {Hu, Edward J. and Shen, Yelong and Wallis, Phillip and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Shean and Wang, Lu and Chen, Weizhu},
+	year         = 2021,
+	month        = oct,
+	publisher    = {arXiv},
+	number       = {arXiv:2106.09685},
+	doi          = {10.48550/arXiv.2106.09685},
+	url          = {http://arxiv.org/abs/2106.09685},
+	note         = {arXiv:2106.09685 [cs]},
+	abstractnote = {An important paradigm of natural language processing consists of large-scale pre-training on general domain data and adaptation to particular tasks or domains. As we pre-train larger models, full fine-tuning, which retrains all model parameters, becomes less feasible. Using GPT-3 175B as an example -- deploying independent instances of fine-tuned models, each with 175B parameters, is prohibitively expensive. We propose Low-Rank Adaptation, or LoRA, which freezes the pre-trained model weights and injects trainable rank decomposition matrices into each layer of the Transformer architecture, greatly reducing the number of trainable parameters for downstream tasks. Compared to GPT-3 175B fine-tuned with Adam, LoRA can reduce the number of trainable parameters by 10,000 times and the GPU memory requirement by 3 times. LoRA performs on-par or better than fine-tuning in model quality on RoBERTa, DeBERTa, GPT-2, and GPT-3, despite having fewer trainable parameters, a higher training throughput, and, unlike adapters, no additional inference latency. We also provide an empirical investigation into rank-deficiency in language model adaptation, which sheds light on the efficacy of LoRA. We release a package that facilitates the integration of LoRA with PyTorch models and provide our implementations and model checkpoints for RoBERTa, DeBERTa, and GPT-2 at https://github.com/microsoft/LoRA.}
+}
+@article{Sinha_Migozzi_Rey_Zhang_2025,
+	title        = {Enhancing Audio-Language Models through Self-Supervised Post-Training with Text-Audio Pairs},
+	author       = {Sinha, Anshuman and Migozzi, Camille and Rey, Aubin and Zhang, Chao},
+	year         = 2025,
+	month        = apr,
+	publisher    = {arXiv},
+	number       = {arXiv:2408.09269},
+	doi          = {10.48550/arXiv.2408.09269},
+	url          = {http://arxiv.org/abs/2408.09269},
+	note         = {arXiv:2408.09269 [cs]},
+	abstractnote = {Research on multi-modal contrastive learning strategies for audio and text has rapidly gained interest. Contrastively trained Audio-Language Models (ALMs), such as CLAP, which establish a unified representation across audio and language modalities, have enhanced the efficacy in various subsequent tasks by providing good text aligned audio encoders and vice versa. These improvements are evident in areas like zero-shot audio classification and audio retrieval, among others. However, the ability of these models to understand natural language and temporal relations is still a largely unexplored and open field for research. In this paper, we propose to equip the multi-modal ALMs with temporal understanding without loosing their inherent prior capabilities of audio-language tasks with a temporal instillation method TeminAL. We implement a two-stage training scheme TeminAL A $&$ B, where the model first learns to differentiate between multiple sounds in TeminAL A, followed by a phase that instills a sense of time, thereby enhancing its temporal understanding in TeminAL B. This approach results in an average performance gain of $5.28%$ in temporal understanding on the ESC-50 dataset, while the model remains competitive in zero-shot retrieval and classification tasks on the AudioCap/Clotho datasets. We also note the lack of proper evaluation techniques for contrastive ALMs and propose a strategy for evaluating ALMs in zero-shot settings. The general-purpose zero-shot model evaluation strategy ZSTE, is used to evaluate various prior models. ZSTE demonstrates a general strategy to evaluate all ZS contrastive models. The model trained with TeminAL successfully outperforms current models on most downstream tasks.}
+}
+@article{Dettmers_2023_QLoRA,
+	title        = {QLoRA: Efficient Finetuning of Quantized LLMs},
+	author       = {Dettmers, Tim and Pagnoni, Artidoro and Holtzman, Ari and Zettlemoyer, Luke},
+	year         = 2023,
+	journal      = {arXiv preprint arXiv:2305.14314},
+	note         = {arXiv:2305.14314},
+	url          = {https://arxiv.org/abs/2305.14314}
+}

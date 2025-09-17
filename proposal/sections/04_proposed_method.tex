@@ -1,54 +1,33 @@
 \section{Proposed Method}
+\label{sec:proposed_method}
 
-\subsection{Overall Architecture}
-The proposed system will employ a multi-stage approach combining:
+This research introduces and validates a novel differential, multi-track framework for fine-tuning an Audio-Language Model (ALM) as a specialized music mixing assistant. Our approach is designed to address the limitations of current general-purpose ALMs, which often struggle with the evaluative and relational reasoning required for professional audio mixing---a gap identified in the user studies of MixAssist \cite{Clemens_Marasović_2025}. The proposed method shifts the learning paradigm from single-input audio description to a more nuanced, multi-input comparative analysis. The methodology is executed in three distinct phases: synthetic dataset creation, differential input formulation, and parameter-efficient fine-tuning.
+
+\subsection{Synthetic Dataset for Differential Mixing Instruction}
+The foundation of this work is the creation of a new, synthetic dataset designed specifically to teach the relational reasoning of gain balancing.
+
+\paragraph{Source Audio} We will utilize high-quality, professionally produced multi-track stems from the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019} and The Mix Evaluation Dataset \cite{Man_Reiss_2017}. The use of existing, permissively licensed multi-tracks follows the ethical data sourcing practices established in prior work such as MixAssist \cite{Clemens_Marasović_2025}.
+
+\paragraph{Mix Consensus and Reference Generation} While the professionally mixed stems from our source datasets serve as high-quality starting points, a single mix represents only one valid artistic interpretation. To create a more robust and perceptually grounded reference, we will introduce a mix consensus stage. We will recruit a cohort of pro-amateur mixing engineers and task them with balancing the stems for each song. By collecting multiple balanced versions from different engineers, we can analyze the resulting gain structures to establish a consensus range for what constitutes a ``good'' balance. This process will yield a new reference mix for our ``Balanced Set (Version B)'' for each song, either by averaging the gain parameters or through expert selection. This approach provides a more ecologically valid and potentially more accurate ground truth than relying on a single pre-existing mix, mitigating the inherent subjectivity of the mixing process.
+
+\paragraph{Data Generation} For each song in the source datasets, we will programmatically generate a pair of track sets:
 \begin{itemize}
-    \item \textbf{Musical Analysis}: Understanding of song structure, genre, and musical relationships
-    \item \textbf{Context-Aware Processing}: Track-level analysis considering the full mix context
-    \item \textbf{Adaptive Parameter Prediction}: Machine learning models for mixing parameter estimation
-    \item \textbf{Iterative Refinement}: Feedback mechanisms for continuous improvement
+    \item \textbf{Unbalanced Set (Version A):} A flawed version created by systematically altering the gain of one or more stems (e.g., increasing vocal gain by 4dB, decreasing drum gain by 3dB).
+    \item \textbf{Balanced Set (Version B):} The original stems, representing the professionally mixed and balanced reference.
 \end{itemize}
 
-\subsection{Key Components}
+\paragraph{Text Annotation} Each pair of unbalanced and balanced sets will be accompanied by a templated text explanation that precisely describes the gain adjustment required to correct the flaw in Version A. For example: ``The vocal stem in Version A is 4dB louder than in the balanced Version B. To match the professional mix, the vocal gain should be decreased.'' This synthetic data generation strategy provides a scalable and effective approach for creating large-scale, high-quality instruction-following datasets, a technique that has proven successful in state-of-the-art ALM research.
 
-\subsubsection{Musical Context Analysis}
-\begin{itemize}
-    \item Genre classification and style analysis
-    \item Song structure detection (verse, chorus, bridge)
-    \item Instrument role identification and importance ranking
-    \item Harmonic and rhythmic analysis
-\end{itemize}
+\subsection{Model Architecture and Differential Input Formulation}
+To process the comparative audio data, we will employ a state-of-the-art, pre-trained ALM capable of handling multiple audio inputs simultaneously.
 
-\subsubsection{Multi-Track Feature Extraction}
-\begin{itemize}
-    \item Spectral features (MFCCs, spectral centroid, rolloff)
-    \item Temporal features (RMS, peak levels, attack/decay)
-    \item Perceptual features (loudness, brightness, roughness)
-    \item Cross-track correlation and masking analysis
-\end{itemize}
+\paragraph{Base Model} We will use Qwen-Audio as the foundational model \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023}. Its architecture has demonstrated the ability to process multiple audio streams within a single context, making it exceptionally well-suited for the differential comparison task central to our methodology.
 
-\subsubsection{Neural Network Architecture}
-The proposed model will use:
-\begin{itemize}
-    \item \textbf{Encoder-Decoder Structure}: For understanding track relationships
-    \item \textbf{Attention Mechanisms}: To focus on relevant track interactions
-    \item \textbf{Multi-Task Learning}: Simultaneous prediction of multiple mixing parameters
-    \item \textbf{Transfer Learning}: Leveraging pre-trained models for musical understanding
-\end{itemize}
+\paragraph{Input Structure} To maintain a focused and computationally manageable task, the model will be presented with a targeted subset of stems for comparison. For example, to diagnose a vocal balance issue, the input will consist of four audio files: the vocal stem from the unbalanced set (Version A), a summed backing track mix from Version A, the corresponding vocal stem from the balanced set (Version B), and the backing track mix from Version B. These audio files will be accompanied by a text prompt that instructs the model to explain the differential gain adjustment required to transform Version A into Version B.
 
-\subsection{Training Strategy}
-\begin{itemize}
-    \item \textbf{Dataset}: Large-scale collection of professionally mixed tracks with parameter annotations
-    \item \textbf{Data Augmentation}: Synthetic variations of existing mixes
-    \item \textbf{Curriculum Learning}: Progressive training from simple to complex mixing scenarios
-    \item \textbf{Multi-Objective Optimization}: Balancing technical quality with musical appropriateness
-\end{itemize}
+\subsection{Parameter-Efficient Fine-Tuning}
+To adapt the pre-trained ALM to our specialized mixing task, we will employ a parameter-efficient fine-tuning (PEFT) methodology.
 
-\subsection{Feasibility Considerations}
-The proposed approach is feasible because:
-\begin{itemize}
-    \item Existing datasets of mixed tracks are available for training
-    \item Modern deep learning frameworks can handle the computational requirements
-    \item The modular design allows for incremental development and testing
-    \item Industry partnerships can provide access to professional mixing data
-\end{itemize}
+\paragraph{Methodology} We will use Low-Rank Adaptation (LoRA) to fine-tune the LLM component of the Qwen-Audio model \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021}. LoRA is a standard, computationally efficient method that has been proven highly effective for adapting large models to downstream tasks across numerous studies. By inserting small, trainable low-rank matrices into the model's architecture, LoRA allows for significant task-specific adaptation while keeping the vast majority of the base model's parameters frozen. This approach dramatically reduces the computational resources required for training and mitigates the risk of catastrophic forgetting.
+
+\paragraph{QLoRA Variant} In resource-constrained settings, we will employ QLoRA, which performs LoRA fine-tuning on a 4-bit quantized copy of the base model using the NF4 quantization scheme and double quantization, together with paged optimizers to minimize memory overhead \cite{Dettmers_2023_QLoRA}. QLoRA preserves model quality while fitting fine-tuning of large backbones on a single high-memory GPU, enabling broader experimentation (e.g., ablations across stem subsets, prompt formats, and comparison granularities) without sacrificing performance.
