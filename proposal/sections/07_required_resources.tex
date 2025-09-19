@@ -2,48 +2,50 @@
 
 \subsection{Computational Resources}
 \begin{itemize}
-    \item \textbf{High-Performance Computing}: Access to GPU clusters for training large neural networks
-    \item \textbf{Storage}: Large-scale storage for audio datasets (estimated 10+ TB)
-    \item \textbf{Processing Power}: Multi-core workstations for real-time processing and development
-    \item \textbf{Cloud Computing}: Access to cloud platforms for scalable training and evaluation
+    \item \textbf{Local GPU Infrastructure}: High-memory GPUs (24GB+ VRAM) for fine-tuning Qwen2-Audio-7B model with LoRA/QLoRA
+    \item \textbf{Storage}: Large-scale local storage for MUSDB18 dataset and generated training data estimated to be max 100GB.
+    \item \textbf{HPC Access}: Access to PACE for larger-scale training when needed
 \end{itemize}
 
 \subsection{Software and Tools}
 \begin{itemize}
-    \item \textbf{Deep Learning Frameworks}: PyTorch, TensorFlow, or similar for model development
-    \item \textbf{Audio Processing Libraries}: LibROSA, Essentia, or similar for audio analysis
-    \item \textbf{Digital Audio Workstations}: Professional DAWs for reference and testing
-    \item \textbf{Evaluation Tools}: Custom software for objective and subjective evaluation
+    \item \textbf{Deep Learning Stack}: PyTorch 2.0+, Transformers 4.30+, PEFT for LoRA implementation
+    \item \textbf{Audio Processing}: LibROSA, SoundFile for audio analysis and preprocessing
+    \item \textbf{Model Infrastructure}: Qwen2-Audio-7B-Instruct as base model, BitsAndBytes for quantization
+    \item \textbf{Experiment Tracking}: Weights \& Biases and MLflow for experiment management
+    \item \textbf{Containerization}: Docker and Docker Compose for reproducible environments
+    \item \textbf{Configuration Management}: Hydra for configuration management and experiment organization
 \end{itemize}
 
 \subsection{Datasets and Data}
 \begin{itemize}
-    \item \textbf{Professional Mixes}: Access to high-quality mixed tracks with parameter annotations
-    \item \textbf{Multi-Track Recordings}: Raw tracks for training and testing
-    \item \textbf{Metadata}: Genre labels, mixing notes, and production information
-    \item \textbf{Reference Standards}: Industry-standard reference tracks for evaluation
+    \item \textbf{MUSDB18 Dataset}: High-quality multi-track stems for training and evaluation
+    \item \textbf{Generated Training Data}: Training instances consisting of prompts, audio tracks (with designated anchor), and textual advice responses created from MUSDB18
+    \item \textbf{Evaluation Data}: Subset of MUSDB18 for human evaluation studies
+    \item \textbf{Reference Mixes}: Professionally mixed versions from MUSDB18 as ground truth
 \end{itemize}
 
 \subsection{Human Resources}
 \begin{itemize}
-    \item \textbf{Audio Engineers}: Professional mixing engineers for consultation and evaluation
-    \item \textbf{Musicians}: Artists for providing diverse musical content
+    \item \textbf{Audio Engineers}: Professional mixing engineers for subjective evaluation and feedback
     \item \textbf{Research Collaborators}: Experts in machine learning, audio processing, and music cognition
-    \item \textbf{User Testers}: Both professional and amateur users for system evaluation
+    \item \textbf{User Study Participants}: Audio professionals for evaluation studies and qualitative feedback
+    \item \textbf{Technical Support}: DevOps and MLOps expertise for infrastructure management
 \end{itemize}
 
-\subsection{Equipment and Facilities}
+\subsection{Infrastructure and Development Environment}
 \begin{itemize}
-    \item \textbf{Recording Studio}: Access to professional recording facilities
-    \item \textbf{Monitoring Systems}: High-quality audio monitoring for evaluation
-    \item \textbf{Acoustic Treatment}: Proper acoustic environment for listening tests
-    \item \textbf{Research Lab}: Dedicated space for development and testing
+    \item \textbf{Development Environment}: Docker-based development setup with Jupyter Lab integration
+    \item \textbf{Version Control}: Git-based version control with DVC for data versioning
+    \item \textbf{Monitoring}: Prometheus and Grafana for system monitoring during training
+    \item \textbf{CI/CD Pipeline}: Automated testing and deployment pipelines for model validation
 \end{itemize}
 
 \subsection{Budget Considerations}
 \begin{itemize}
-    \item \textbf{Computing Costs}: GPU rental and cloud computing expenses
-    \item \textbf{Data Licensing}: Costs for accessing commercial music datasets
-    \item \textbf{Equipment}: Audio equipment and software licenses
-    \item \textbf{Personnel}: Compensation for expert consultants and testers
+    \item \textbf{Hardware}: Local GPU hardware for model training and evaluation
+    \item \textbf{Storage}: Local storage for datasets, checkpoints, and experiment artifacts
+    \item \textbf{Software Licenses}: Professional audio software for reference and validation
+    \item \textbf{Personnel}: Compensation for expert consultants and evaluation study participants
+    \item \textbf{HPC Access}: PACE cluster usage fees for larger-scale experiments
 \end{itemize}

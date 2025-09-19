@@ -1,33 +1,42 @@
 \section{Proposed Method}
 \label{sec:proposed_method}
 
-This research introduces and validates a novel differential, multi-track framework for fine-tuning an Audio-Language Model (ALM) as a specialized music mixing assistant. Our approach is designed to address the limitations of current general-purpose ALMs, which often struggle with the evaluative and relational reasoning required for professional audio mixing---a gap identified in the user studies of MixAssist \cite{Clemens_Marasović_2025}. The proposed method shifts the learning paradigm from single-input audio description to a more nuanced, multi-input comparative analysis. The methodology is executed in three distinct phases: synthetic dataset creation, differential input formulation, and parameter-efficient fine-tuning.
+This research introduces and validates a novel, anchor-conditioned framework for fine-tuning an Audio-Language Model (ALM) as a specialized music mixing assistant. 
+This approach is designed to emulate the cognitive workflow of human engineers, who often establish a mix foundation by balancing key elements against a stable anchor track (e.g., drums or vocals). 
+By conditioning the model on an explicit anchor, we guide it to learn the relational and context-dependent principles of gain balancing. 
+The methodology is executed in three distinct phases: anchor-based dataset creation, a multi-stem input formulation, and parameter-efficient fine-tuning.
 
-\subsection{Synthetic Dataset for Differential Mixing Instruction}
-The foundation of this work is the creation of a new, synthetic dataset designed specifically to teach the relational reasoning of gain balancing.
+\subsection{Anchor-Based Dataset for Relational Mixing Instruction}
+The foundation of this work is the creation of a new, structured dataset designed specifically to teach the relational reasoning of gain balancing relative to a musical anchor.
 
-\paragraph{Source Audio} We will utilize high-quality, professionally produced multi-track stems from the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019} and The Mix Evaluation Dataset \cite{Man_Reiss_2017}. The use of existing, permissively licensed multi-tracks follows the ethical data sourcing practices established in prior work such as MixAssist \cite{Clemens_Marasović_2025}.
+\paragraph{Source Audio} We will utilize the high-quality, professionally produced multi-track stems from the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019}. 
+The use of this existing, permissively licensed multi-track dataset follows established ethical data sourcing practices.
 
-\paragraph{Mix Consensus and Reference Generation} While the professionally mixed stems from our source datasets serve as high-quality starting points, a single mix represents only one valid artistic interpretation. To create a more robust and perceptually grounded reference, we will introduce a mix consensus stage. We will recruit a cohort of pro-amateur mixing engineers and task them with balancing the stems for each song. By collecting multiple balanced versions from different engineers, we can analyze the resulting gain structures to establish a consensus range for what constitutes a ``good'' balance. This process will yield a new reference mix for our ``Balanced Set (Version B)'' for each song, either by averaging the gain parameters or through expert selection. This approach provides a more ecologically valid and potentially more accurate ground truth than relying on a single pre-existing mix, mitigating the inherent subjectivity of the mixing process.
+\paragraph{Data Generation and Annotation} For each song in the MUSDB18 dataset, we will programmatically generate training instances. 
+A single instance will consist of a designated anchor track (e.g., the drum stem), a target track (e.g., the vocal stem), and a corresponding text annotation. 
+The annotation will be a templated textual instruction describing the ideal gain relationship between the target and the anchor, derived from the professionally mixed reference. 
+For example: ``Relative to the drums, the vocal stem is well-balanced. It sits clearly on top of the mix without overpowering the rhythm section.'' 
+To create varied training examples, we will also generate versions where the target track is intentionally made too loud or too soft, with corresponding instructional text, e.g., ``Relative to the drums, the vocal stem is too loud. To achieve a better balance, its gain should be decreased.'' 
+This strategy provides a scalable method for creating a large, high-quality instruction-following dataset that teaches the model to assess and advise on gain relationships from a musically grounded perspective.
 
-\paragraph{Data Generation} For each song in the source datasets, we will programmatically generate a pair of track sets:
-\begin{itemize}
-    \item \textbf{Unbalanced Set (Version A):} A flawed version created by systematically altering the gain of one or more stems (e.g., increasing vocal gain by 4dB, decreasing drum gain by 3dB).
-    \item \textbf{Balanced Set (Version B):} The original stems, representing the professionally mixed and balanced reference.
-\end{itemize}
+\subsection{Model Architecture and Anchor-Conditioned Input Formulation}
+To process the relational audio data, we will employ a state-of-the-art, pre-trained ALM capable of handling multiple audio inputs.
 
-\paragraph{Text Annotation} Each pair of unbalanced and balanced sets will be accompanied by a templated text explanation that precisely describes the gain adjustment required to correct the flaw in Version A. For example: ``The vocal stem in Version A is 4dB louder than in the balanced Version B. To match the professional mix, the vocal gain should be decreased.'' This synthetic data generation strategy provides a scalable and effective approach for creating large-scale, high-quality instruction-following datasets, a technique that has proven successful in state-of-the-art ALM research.
+\paragraph{Base Model} We will use Qwen-Audio as the foundational model \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023}. 
+Its architecture has demonstrated the ability to process multiple audio streams within a single context, making it exceptionally well-suited for the anchor-based comparison task central to our methodology.
 
-\subsection{Model Architecture and Differential Input Formulation}
-To process the comparative audio data, we will employ a state-of-the-art, pre-trained ALM capable of handling multiple audio inputs simultaneously.
-
-\paragraph{Base Model} We will use Qwen-Audio as the foundational model \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023}. Its architecture has demonstrated the ability to process multiple audio streams within a single context, making it exceptionally well-suited for the differential comparison task central to our methodology.
-
-\paragraph{Input Structure} To maintain a focused and computationally manageable task, the model will be presented with a targeted subset of stems for comparison. For example, to diagnose a vocal balance issue, the input will consist of four audio files: the vocal stem from the unbalanced set (Version A), a summed backing track mix from Version A, the corresponding vocal stem from the balanced set (Version B), and the backing track mix from Version B. These audio files will be accompanied by a text prompt that instructs the model to explain the differential gain adjustment required to transform Version A into Version B.
+\paragraph{Input Structure} The model will be presented with a targeted set of stems for comparison. 
+A typical input will consist of two audio files: the anchor stem (e.g., drums) and a target stem (e.g., vocals). 
+These audio files will be accompanied by a text prompt that instructs the model to provide gain-balancing advice for the target stem relative to the anchor stem. 
+This focused input structure allows the model to learn the specific gain relationships between pairs of instruments, mirroring a fundamental aspect of the mixing process.
 
 \subsection{Parameter-Efficient Fine-Tuning}
 To adapt the pre-trained ALM to our specialized mixing task, we will employ a parameter-efficient fine-tuning (PEFT) methodology.
 
-\paragraph{Methodology} We will use Low-Rank Adaptation (LoRA) to fine-tune the LLM component of the Qwen-Audio model \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021}. LoRA is a standard, computationally efficient method that has been proven highly effective for adapting large models to downstream tasks across numerous studies. By inserting small, trainable low-rank matrices into the model's architecture, LoRA allows for significant task-specific adaptation while keeping the vast majority of the base model's parameters frozen. This approach dramatically reduces the computational resources required for training and mitigates the risk of catastrophic forgetting.
+\paragraph{Methodology} We will use Low-Rank Adaptation (LoRA) to fine-tune the LLM component of the Qwen-Audio model \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021}. 
+LoRA is a standard, computationally efficient method that has been proven highly effective for adapting large models to downstream tasks. 
+By inserting small, trainable low-rank matrices into the model's architecture, LoRA allows for significant task-specific adaptation while keeping the vast majority of the base model's parameters frozen. 
+This approach dramatically reduces the computational resources required for training and mitigates the risk of catastrophic forgetting.
 
-\paragraph{QLoRA Variant} In resource-constrained settings, we will employ QLoRA, which performs LoRA fine-tuning on a 4-bit quantized copy of the base model using the NF4 quantization scheme and double quantization, together with paged optimizers to minimize memory overhead \cite{Dettmers_2023_QLoRA}. QLoRA preserves model quality while fitting fine-tuning of large backbones on a single high-memory GPU, enabling broader experimentation (e.g., ablations across stem subsets, prompt formats, and comparison granularities) without sacrificing performance.
+\paragraph{QLoRA Variant} In resource-constrained settings, we will employ QLoRA, which performs LoRA fine-tuning on a 4-bit quantized copy of the base model \cite{Dettmers_2023_QLoRA}. 
+QLoRA preserves model quality while enabling the fine-tuning of large models on a single high-memory GPU, facilitating broader experimentation (e.g., ablations across different anchor-target pairings, prompt formats, and genre contexts) without sacrificing performance.

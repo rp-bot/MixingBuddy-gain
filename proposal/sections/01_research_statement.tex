@@ -1,28 +1,27 @@
 \section{Research Statement}
 
-Current Audio-Language Models (ALMs) excel at descriptive audio tasks, but tasks like music mixing require comparative analysis and relational understanding that go beyond simple description. 
-This research proposes a novel differential analysis framework that conditions ALMs on multi-track audio to provide more specific and actionable gain-balancing guidance. 
-Instead of analyzing single mixes, our approach trains models to compare unbalanced and balanced multi-track sets, learning the causal relationships between specific gain adjustments and perceived mix improvements. 
-To achieve this, the study will leverage multiple datasets: an augmented version of MUSDB18 with human consensus gain values, "The Mix Evaluation Dataset" which contains mixing decisions from human engineers, and its corresponding "MixParams" metadata dataset available on Hugging Face. 
-Performance will be evaluated with a comprehensive methodology, including automated LLM-as-a-Judge assessments and human preference studies. 
-The primary research question investigates whether this differential approach improves the technical specificity and user-perceived helpfulness of AI-generated gain-balancing advice, providing a foundation for more sophisticated AI mixing assistants that can reason about the relational properties of multi-track audio.
+Current Audio-Language Models (ALMs) show promise for descriptive audio tasks, but effective music mixing requires a relational understanding of multi-track audio that goes beyond simple analysis. 
+This research investigates a novel framework where an ALM is conditioned on a designated anchor track (e.g., drums) to learn the relative levels of other stems and generate actionable gain-balancing advice. 
+To achieve this, the study will leverage the MUSDB18 dataset to train and evaluate the model. 
+The evaluation will be comprehensive, combining automated metrics with qualitative assessments from professional audio engineers to gauge the musicality, effectiveness, and real-world usefulness of the generated advice.
 
 \subsection{Research Questions}
 
 \subsubsection{Primary Research Question}
-To what extent does a differential analysis framework, conditioned on multi-track audio, improve the technical specificity and user-perceived helpfulness of AI-generated gain-balancing advice compared to a traditional single-mix advisory model?
+To what extent can an Audio Language Model, conditioned on an anchor track (e.g., drums), learn about relative levels of multi-track audio to generate effective gain-balancing advice for music mixing?
 
 \subsubsection{Secondary Research Questions}
 \begin{enumerate}
-    \item How effectively can an Audio-Language Model be fine-tuned on a synthetic dataset of 'problem' and 'solution' multi-track sets to learn the causal relationship between specific gain adjustments and perceived improvements in mix balance?
-    \item What is an effective architectural approach for representing and comparing two parallel sets of multi-track stems to enable an LLM to reason about their relative gain differences?
-    \item For the specific task of evaluating gain-balancing advice, what is the correlation between automated evaluation (i.e., LLM-as-a-Judge rankings) and subjective human preference judgments?
+    \item \textbf{Architecture} What is an effective model architecture for representing multi-track stems and a designated anchor track, enabling an Audio Language Model to learn and reason about their relative levels for music mixing?
+    \item \textbf{Learned Conventions} Beyond balancing the immediate tracks, does the model's generated advice demonstrate an understanding of established mixing conventions and genre-specific expectations (e.g., the typical vocal-to-instrument balance in pop versus jazz)?
+    \item \textbf{Evaluation \& Usefulness} How do audio engineers and producers rate the effectiveness, musicality, and actionability of the generated gain-balancing advice, and what qualitative feedback do they provide on its integration into their workflow?
+    \item \textbf{Metric Correlation} For the specific task of evaluating mixing advice, what is the correlation between subjective human preference judgments and automated evaluation metrics (e.g., LLM-as-a-Judge, BERTscore)?
 \end{enumerate}
 
 \subsection{Scope and Limitations}
-This research is specifically focused on the task of generating textual advice for gain parameter adjustments in multi-track audio. 
-The core of the study is the development of a novel differential analysis framework trained on the MUSDB18, "The Mix Evaluation Dataset," and "MixParams" datasets. 
-The model's output will be advisory text, not direct, continuous parameter predictions (e.g., -2.5dB). 
+This research is specifically focused on generating textual advice for gain parameter adjustments in multi-track audio by conditioning an ALM on an anchor track. 
+The model's output will be advisory text that may include gain predictions, but evaluation will focus on the overall quality and usefulness of the advice rather than the accuracy of specific numerical predictions. 
 The investigation deliberately excludes other mixing parameters such as equalization (EQ), dynamic range compression, and spatial effects to maintain a focused scope. 
+The study will primarily use the MUSDB18 dataset for training and evaluation. 
 Furthermore, the proposed system is designed for offline analysis and is not intended for real-time, interactive applications. 
-The validity of this work relies on the assumption that the human-derived values in the chosen datasets represent a perceptually valid ground truth for a well-balanced mix and that the datasets are of sufficient quality for the task.
+The validity of this work relies on the assumption that the professionally mixed versions of the tracks in the MUSDB18 dataset represent a perceptually valid ground truth for a well-balanced mix and that the dataset is of sufficient quality and diversity for the task.

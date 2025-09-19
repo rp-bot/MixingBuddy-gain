@@ -1,41 +1,30 @@
 \section{Novelty of Proposed Work}
 
+This research introduces a novel conceptual framework for generating gain-balancing advice by conditioning an Audio-Language Model (ALM) on an anchor track, representing a significant departure from current "black-box" or single-mix analysis approaches. The novelty of this work is articulated across three core areas: problem formulation, methodological innovation, and evaluation methodology.
+
 \subsection{Advancements in Problem Formulation}
 \begin{itemize}
-    \item \textbf{Musical Context Integration}: First systematic approach to incorporating musical understanding into automatic mixing
-    \item \textbf{Multi-Scale Analysis}: Novel framework for analyzing both individual tracks and full mix context simultaneously
-    \item \textbf{Genre-Adaptive Processing}: Adaptive system that adjusts mixing strategies based on musical genre and style
+    \item \textbf{Anchor-Conditioned Relational Reasoning:} To our knowledge, this is the first work to explicitly model the common human workflow of mixing relative to an anchor element. This shifts the task from absolute audio analysis to relational reasoning, better aligning the AI's "understanding" with the cognitive process of audio engineers.
+    \item \textbf{Learning Implicit Mixing Conventions:} By framing the problem around anchor-target relationships, our approach is designed to implicitly learn established, genre-specific mixing conventions (e.g., the typical balance between kick drum and bass, or vocals and rhythm section), moving beyond simple gain prediction to a more musically aware form of guidance.
 \end{itemize}
 
 \subsection{Methodological Innovations}
 \begin{itemize}
-    \item \textbf{Attention-Based Architecture}: Novel use of attention mechanisms for track relationship modeling
-    \item \textbf{Multi-Task Learning Framework}: Simultaneous optimization of multiple mixing parameters with shared representations
-    \item \textbf{Iterative Refinement}: Feedback mechanisms that allow the system to improve its output over multiple iterations
-    \item \textbf{Interpretable AI}: Development of explainable mixing decisions for human understanding and control
-\end{itemize}
-
-\subsection{System Architecture Contributions}
-\begin{itemize}
-    \item \textbf{Modular Design}: Flexible architecture that allows for component-wise evaluation and improvement
-    \item \textbf{Real-Time Capability}: Efficient processing pipeline suitable for interactive applications
-    \item \textbf{Scalability}: System design that can handle varying numbers of tracks and complexity levels
-    \item \textbf{Integration Framework}: Seamless integration with existing digital audio workstations (DAWs)
+    \item \textbf{Anchor-Target Architectural Representation:} We propose and will investigate novel architectural approaches for representing the relationship between a designated anchor track and other stems within a multi-modal, multi-audio input ALM. This addresses a key architectural challenge in enabling models to reason about the relative properties of different audio streams.
+    \item \textbf{Structured, Anchor-Based Instruction Dataset:} We introduce a new methodology for creating a structured, instruction-following dataset based on anchor-target pairs. This provides a scalable and targeted way to teach relational audio concepts to an ALM.
 \end{itemize}
 
 \subsection{Evaluation Methodology Advances}
 \begin{itemize}
-    \item \textbf{Comprehensive Evaluation Framework}: Novel combination of objective and subjective evaluation methods
-    \item \textbf{Genre-Specific Metrics}: Development of evaluation criteria tailored to different musical styles
-    \item \textbf{Longitudinal Studies}: Long-term evaluation of mixing quality and user satisfaction
-    \item \textbf{Cross-Cultural Validation}: Evaluation across different musical traditions and cultural contexts
+    \item \textbf{Focus on Usefulness and Actionability:} Our evaluation protocol is uniquely centered on assessing the practical usefulness, musicality, and actionability of the generated advice through formal studies with professional audio engineers. This moves beyond traditional objective metrics to measure real-world value.
+    \item \textbf{Systematic Correlation of Human and Automated Metrics:} This research will provide one of the first systematic analyses of the correlation between subjective human judgments of mixing advice and a suite of automated metrics (including LLM-as-a-Judge and semantic similarity scores). This will yield valuable insights into the validity of current automated evaluation techniques for this specific creative task.
 \end{itemize}
 
 \subsection{Impact on State-of-the-Art}
-This work advances the field by:
+This work advances the state-of-the-art by:
 \begin{itemize}
-    \item Moving beyond simple parameter prediction to musical understanding
-    \item Establishing new benchmarks for automatic mixing evaluation
-    \item Creating reusable components for future research in computational audio
-    \item Bridging the gap between technical audio processing and musical artistry
+    \item Proposing a new, cognitively aligned paradigm for human-AI collaboration in music mixing.
+    \item Establishing a novel methodology for teaching relational audio concepts to ALMs.
+    \item Providing a critical analysis of the alignment between human perception and automated metrics in a creative audio domain.
+    \item Bridging the gap between the technical capabilities of ALMs and the practical needs of audio professionals.
 \end{itemize}

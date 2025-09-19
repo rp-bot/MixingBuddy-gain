@@ -1,13 +1,14 @@
 \section{Motivation}
 
 \subsection{Research Gap}
-A significant gap exists in the current automatic mixing research landscape. 
-The field is largely dominated by black-box, deep learning models that, while achieving impressive results, offer little to no explainability into their decision-making process. 
-This contrasts with other creative domains like 3D modeling and image editing, which have seen the rise of end-to-end agentic systems that facilitate user interaction and provide transparency.
-
-Furthermore, while generative audio models have gained popularity, their output is often of limited value to professional mixing and mastering engineers, who require precise control over mixing parameters rather than a final, uneditable audio file.
-
-To bridge this gap, future research must move towards models with better audio and contextual understanding. Exploring techniques like audio-conditioned chain-of-thought reasoning, combined with state-of-the-art automatic mixing models, will be crucial. This direction will not only improve performance but also foster trust and adoption by professionals by providing explainable and controllable systems.
+Current models often operate as ``black boxes,'' analyzing audio in isolation and generating mixed outputs without a clear, musically relevant context. 
+This limits their usefulness for audio engineers, who need explainable, actionable guidance rather than final results. 
+Engineers want to understand the reasoning behind mixing decisions and maintain control over the creative process.
+No existing systems provide anchor-based mixing advice, leaving a gap in the ability to learn and reason about the nuanced, context-dependent gain relationships that are fundamental to professional mixing.
 
 \subsection{Research Impact}
-The development of explainable and interactive automatic mixing systems could have a profound impact on the music production industry. Digital Audio Workstations (DAWs) could integrate features where users can converse with an intelligent mixing agent to receive advice, ask specific questions, and collaboratively edit mixes. This paradigm shifts the focus from replacing engineers with end-to-end generative systems to empowering musicians and producers with powerful, intuitive tools. By fostering a more interactive and transparent mixing process, this research can enhance creativity and streamline workflows for audio professionals and hobbyists alike.
+This research aims to bridge this gap by introducing an anchor-conditioned framework for training ALMs. 
+By teaching the model to reason about mix balance relative to a stable reference point, we can better align its ``understanding'' of multi-track audio with the cognitive workflows of human engineers. 
+This approach enables effective human-AI collaboration, where an engineer could provide multi-track stems and receive contextually relevant, actionable advice. 
+This paradigm shifts the focus from purely automated, black-box solutions to co-creative systems that empower musicians and producers with tools that understand and adapt to their creative process, fostering a more interactive and transparent mixing workflow. 
+This research aims to build a foundation for AI mixing assistants that can seamlessly integrate into professional workflows.
