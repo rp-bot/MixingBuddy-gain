@@ -1,42 +1,35 @@
-\section{Proposed Method}
+\section*{Proposed Method}
 \label{sec:proposed_method}
 
-This research introduces and validates a novel, anchor-conditioned framework for fine-tuning an Audio-Language Model (ALM) as a specialized music mixing assistant. 
-This approach is designed to emulate the cognitive workflow of human engineers, who often establish a mix foundation by balancing key elements against a stable anchor track (e.g., drums or vocals). 
-By conditioning the model on an explicit anchor, we guide it to learn the relational and context-dependent principles of gain balancing. 
-The methodology is executed in three distinct phases: anchor-based dataset creation, a multi-stem input formulation, and parameter-efficient fine-tuning.
+This research introduces a novel framework for fine-tuning an Audio-Language Model (ALM) to generate gain-balancing advice for music mixing. 
+The approach conditions the model on a designated anchor track to learn relational understanding of multi-track audio levels, emulating how human engineers establish mix foundations.
 
-\subsection{Anchor-Based Dataset for Relational Mixing Instruction}
-The foundation of this work is the creation of a new, structured dataset designed specifically to teach the relational reasoning of gain balancing relative to a musical anchor.
+\subsection*{Data Preprocessing and Dataset Creation}
+We will utilize the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019} to create a structured training dataset in JSONL format.
 
-\paragraph{Source Audio} We will utilize the high-quality, professionally produced multi-track stems from the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019}. 
-The use of this existing, permissively licensed multi-track dataset follows established ethical data sourcing practices.
+Each training instance will contain a prompt with text instruction for gain-balancing advice, audio data with anchor track and other track stems, and a response with generated mixing advice describing gain relationships.
+We will generate training examples through both programmatic annotation. 
+For each anchor track and other tracks combination, we will create annotations describing the ideal gain relationship (e.g., ``Relative to the drums, the vocal stem is well-balanced and sits clearly on top of the mix'') and corrective advice for imbalanced cases (e.g., ``The vocal stem is too loud relative to the drums; decrease its gain for better balance''). 
+We will evaluate different anchor selection strategies and their impact on model performance across various musical contexts and genres.
 
-\paragraph{Data Generation and Annotation} For each song in the MUSDB18 dataset, we will programmatically generate training instances. 
-A single instance will consist of a designated anchor track (e.g., the drum stem), a target track (e.g., the vocal stem), and a corresponding text annotation. 
-The annotation will be a templated textual instruction describing the ideal gain relationship between the target and the anchor, derived from the professionally mixed reference. 
-For example: ``Relative to the drums, the vocal stem is well-balanced. It sits clearly on top of the mix without overpowering the rhythm section.'' 
-To create varied training examples, we will also generate versions where the target track is intentionally made too loud or too soft, with corresponding instructional text, e.g., ``Relative to the drums, the vocal stem is too loud. To achieve a better balance, its gain should be decreased.'' 
-This strategy provides a scalable method for creating a large, high-quality instruction-following dataset that teaches the model to assess and advise on gain relationships from a musically grounded perspective.
+\subsection*{Model Architecture and Training Strategy}
+We will employ Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the primary base model, while also exploring other pre-trained Audio-Language Models for fine-tuning using parameter-efficient methods.
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/arch.pdf}
+    \caption{Proposed architecture of Audio-Language Model fine-tuning for music mixing advice generation.}
+    \label{fig:architecture}
+\end{figure*}
+The model will process anchor track and other track stems with text prompts instructing it to provide gain-balancing advice. 
+We will focus on a single anchor track approach and experiment with the number of flawed tracks in the mix: scenarios with no flawed tracks (balanced mix), one flawed track requiring adjustment, and multiple flawed tracks (2 or more) requiring simultaneous correction.
+We will use Low-Rank Adaptation (LoRA) \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} and QLoRA \cite{Dettmers_2023_QLoRA} for parameter-efficient fine-tuning. 
+We will conduct studies to determine which model components to adapt.
 
-\subsection{Model Architecture and Anchor-Conditioned Input Formulation}
-To process the relational audio data, we will employ a state-of-the-art, pre-trained ALM capable of handling multiple audio inputs.
+\subsection*{Data Augmentation and Cross-Sample Training}
+To improve generalization, we will implement cross-sample training strategies.
+We will explore creating hybrid training examples by combining stems from different songs while maintaining musical coherence. 
+This approach may help the model learn generalizable mixing principles rather than memorizing specific song characteristics.
 
-\paragraph{Base Model} We will use Qwen-Audio as the foundational model \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023}. 
-Its architecture has demonstrated the ability to process multiple audio streams within a single context, making it exceptionally well-suited for the anchor-based comparison task central to our methodology.
-
-\paragraph{Input Structure} The model will be presented with a targeted set of stems for comparison. 
-A typical input will consist of two audio files: the anchor stem (e.g., drums) and a target stem (e.g., vocals). 
-These audio files will be accompanied by a text prompt that instructs the model to provide gain-balancing advice for the target stem relative to the anchor stem. 
-This focused input structure allows the model to learn the specific gain relationships between pairs of instruments, mirroring a fundamental aspect of the mixing process.
-
-\subsection{Parameter-Efficient Fine-Tuning}
-To adapt the pre-trained ALM to our specialized mixing task, we will employ a parameter-efficient fine-tuning (PEFT) methodology.
-
-\paragraph{Methodology} We will use Low-Rank Adaptation (LoRA) to fine-tune the LLM component of the Qwen-Audio model \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021}. 
-LoRA is a standard, computationally efficient method that has been proven highly effective for adapting large models to downstream tasks. 
-By inserting small, trainable low-rank matrices into the model's architecture, LoRA allows for significant task-specific adaptation while keeping the vast majority of the base model's parameters frozen. 
-This approach dramatically reduces the computational resources required for training and mitigates the risk of catastrophic forgetting.
-
-\paragraph{QLoRA Variant} In resource-constrained settings, we will employ QLoRA, which performs LoRA fine-tuning on a 4-bit quantized copy of the base model \cite{Dettmers_2023_QLoRA}. 
-QLoRA preserves model quality while enabling the fine-tuning of large models on a single high-memory GPU, facilitating broader experimentation (e.g., ablations across different anchor-target pairings, prompt formats, and genre contexts) without sacrificing performance.
+% \subsection*{Architecture Experiments}
+% We will conduct systematic experiments to optimize the model architecture and training approach.
+% We will evaluate different anchor selection strategies and their impact on model performance across various musical contexts and genres.

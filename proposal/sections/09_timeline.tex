@@ -1,46 +1,31 @@
-\section{Timeline}
+\section*{Timeline}
 
-\subsection{Phase 1: Foundation and Dataset Creation (Weeks 1-8)}
+\subsection*{Current Progress (Completed)}
 \begin{itemize}
-    \item \textbf{Weeks 1-2}: Literature review and finalization of anchor-conditioned model architecture.
-    \item \textbf{Weeks 3-5}: Development of the anchor-based dataset generation pipeline.
-    \item \textbf{Weeks 6-8}: Generation and validation of the anchor-based instructional dataset.
+    \item \textbf{Dataset Setup}: MUSDB18 preprocessing and JSONL format conversion completed
+    \item \textbf{Codebase and Pipeline Setup}: Initial implementation and data loading pipeline completed
+    \item \textbf{Partial Experiments}: Some fine-tuning experiments and architecture testing completed
 \end{itemize}
 
-\subsection{Phase 2: Model Fine-Tuning and Development (Weeks 9-20)}
+\subsection*{Remaining Tasks (Leading to November 28th Submission)}
 \begin{itemize}
-    \item \textbf{Weeks 9-12}: Implementation of the data loading and pre-processing for the anchor-target model.
-    \item \textbf{Weeks 13-16}: Initial model fine-tuning (LoRA/QLoRA) on the new dataset.
-    \item \textbf{Weeks 17-20}: Iterative refinement of the model based on initial results; development of baseline models for ablation.
+    \item \textbf{CITI Certification}: Complete CITI training for IRB approval
+    \item \textbf{Experiment Definition and Execution}: Finalize all experimental designs and complete remaining fine-tuning experiments
+    \item \textbf{IRB Approval}: Submit and obtain approval for human evaluation studies
+    \item \textbf{Human Evaluation}: Conduct evaluation study with audio professionals (anticipated longest phase due to human involvement)
+    \item \textbf{Final Deliverables}: Complete paper writing, develop web interface, and deploy to Hugging Face
 \end{itemize}
 
-\subsection{Phase 3: Evaluation and Analysis (Weeks 21-36)}
+\subsection*{Future Expansion (Post-Milestone 0)}
+This milestone serves as a foundation for potential expansion in three directions:
 \begin{itemize}
-    \item \textbf{Weeks 21-24}: Development of the evaluation protocol, including surveys for the human study and automated metric scripts.
-    \item \textbf{Weeks 25-30}: Recruitment of audio professionals and execution of the subjective evaluation study.
-    \item \textbf{Weeks 31-36}: Analysis of quantitative and qualitative data; correlation analysis between subjective and automated metrics.
+    \item \textbf{Differentiable Tools}: Integration of differentiable audio processing tools for end-to-end training
+    \item \textbf{Extended Audio Effects}: Expansion to include additional mixing parameters (EQ, compression, spatial effects) using the same anchor-conditioned architecture
+    \item \textbf{Dataset Quality Assessment \& Curating}: Study whether current multi-track datasets meet professional mixing standards and curate a new dataset with expert consensus to ensure realistic and informed training data.
 \end{itemize}
 
-\subsection{Phase 4: Dissemination and Finalization (Weeks 37-52)}
+\subsection*{Risk Mitigation}
 \begin{itemize}
-    \item \textbf{Weeks 37-44}: Preparation of manuscripts for conference and journal submission based on research findings.
-    \item \textbf{Weeks 45-48}: Refinement of open-source code, models, and dataset for public release.
-    \item \textbf{Weeks 49-52}: Finalization of thesis/dissertation and dissemination of results through presentations.
-\end{itemize}
-
-\subsection{Milestones and Deliverables}
-\begin{itemize}
-    \item \textbf{Week 8}: Finalized anchor-based dataset.
-    \item \textbf{Week 20}: First fine-tuned prototype of the anchor-conditioned model.
-    \item \textbf{Week 36}: Completed analysis of human evaluation study and metric correlation.
-    \item \textbf{Week 44}: First draft of primary research paper.
-    \item \textbf{Week 52}: Final deliverables, including open-source code and pre-trained models.
-\end{itemize}
-
-\subsection{Risk Mitigation}
-\begin{itemize}
-    \item \textbf{Data Quality}: Validate the generated dataset with a small pilot study before full-scale training.
-    \item \textbf{Recruitment Challenges}: Begin recruitment for the human evaluation study early and leverage professional networks.
-    \item \textbf{Technical Challenges}: Maintain clear versioning of models and experiments; rely on proven PEFT techniques.
-    \item \textbf{Timeline Delays}: Incorporate buffer time within each phase and maintain a clear focus on the primary research question.
+    \item \textbf{Human Evaluation Delays}: Begin IRB process early and maintain flexible recruitment strategies
+    \item \textbf{Timeline Buffer}: Web interface and Hugging Face deployment can be simplified or delayed. Conference paper submission can be later than november 28th. Core research paper (7100 submission) and poster presentation are fixed requirements. Open source documentation can be prioritized based on available time.
 \end{itemize}

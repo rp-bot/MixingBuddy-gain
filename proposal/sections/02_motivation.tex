@@ -1,14 +1,9 @@
-\section{Motivation}
+\section*{Motivation}
 
-\subsection{Research Gap}
-Current models often operate as ``black boxes,'' analyzing audio in isolation and generating mixed outputs without a clear, musically relevant context. 
-This limits their usefulness for audio engineers, who need explainable, actionable guidance rather than final results. 
-Engineers want to understand the reasoning behind mixing decisions and maintain control over the creative process.
-No existing systems provide anchor-based mixing advice, leaving a gap in the ability to learn and reason about the nuanced, context-dependent gain relationships that are fundamental to professional mixing.
+\subsection*{Research Gap}
+Current automatic mixing systems operate as ``black boxes,'' generating final outputs without providing explainable, actionable guidance that audio engineers need. 
+No existing systems provide mixing advice based on multi-track analysis and relative gain relationships, leaving a gap in the ability to learn and reason about the nuanced, context-dependent gain relationships that are fundamental to professional mixing.
 
-\subsection{Research Impact}
-This research aims to bridge this gap by introducing an anchor-conditioned framework for training ALMs. 
-By teaching the model to reason about mix balance relative to a stable reference point, we can better align its ``understanding'' of multi-track audio with the cognitive workflows of human engineers. 
-This approach enables effective human-AI collaboration, where an engineer could provide multi-track stems and receive contextually relevant, actionable advice. 
-This paradigm shifts the focus from purely automated, black-box solutions to co-creative systems that empower musicians and producers with tools that understand and adapt to their creative process, fostering a more interactive and transparent mixing workflow. 
-This research aims to build a foundation for AI mixing assistants that can seamlessly integrate into professional workflows.
+\subsection*{Research Impact}
+This research aims to bridge this gap by teaching the model to reason about mix balance relative to a stable reference point (anchor track), aligning its understanding with the cognitive workflows of human engineers. 
+This approach enables human-AI collaboration by providing musicians and producers with contextually relevant, actionable advice that can integrate into their existing creative workflow, supporting a more interactive and transparent mixing process.

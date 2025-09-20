@@ -1,49 +1,58 @@
-\documentclass[11pt,a4paper]{article}
-
-% Packages
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{amsmath,amsfonts,amssymb}
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage{amsmath,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
 \usepackage{graphicx}
-\usepackage{hyperref}
 \usepackage{cite}
-\usepackage{geometry}
-\usepackage{setspace}
-\usepackage{titlesec}
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
 
-% Page setup
-\geometry{margin=1in}
-\onehalfspacing
+\title{Fine-Tuning LLMs for Multi-Track Audio Analysis: A Framework for Music Mixing Assistance}
 
-% Title formatting
-\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
-\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\author{Pratham Vadhulas and Alexander Lerch
+        % <-this % stops a space
+% \thanks{This work was supported by [Funding Source].}% <-this % stops a space
+% \thanks{Manuscript received [Date]; revised [Date].}
+}
 
-% Document information
-\title{Differential Multi-Track Gain Analysis for AI Mixing Assistance}
-\author{Pratham Vadhulas}
-\date{\today}
+% The paper headers
+\markboth{IEEE Transactions on Audio, Speech, and Language Processing,~Vol.~XX, No.~X, [Month]~2025}%
+{Fine-Tuning LLMs for Multi-Track Audio Analysis: A Framework for Music Mixing Assistance}
+
+% \IEEEpubid{0000--0000/00\$00.00~\copyright~2025 IEEE}
 
 \begin{document}
 
 \maketitle
 
+% \begin{abstract}
+% This paper presents a novel framework for fine-tuning Large Language Models (LLMs) to assist in multi-track audio analysis and music mixing. Our approach leverages the powerful reasoning capabilities of modern LLMs to understand complex audio relationships and provide intelligent mixing recommendations. We demonstrate the effectiveness of our method through comprehensive experiments on the MUSDB18 dataset, showing significant improvements in mixing quality and efficiency compared to traditional approaches.
+% \end{abstract}
 
-% \newpage
+% \begin{IEEEkeywords}
+% Automatic mixing, Large Language Models, Multi-track audio, Music production, Audio analysis, Machine learning.
+% \end{IEEEkeywords}
 
 % Main sections
-\input{sections/01_research_statement}
+\input{sections/01_introduction}
 \input{sections/02_motivation}
-\input{sections/03_related_work}
+\input{sections/03_related_work_min}
 \input{sections/04_proposed_method}
 \input{sections/05_proposed_evaluation}
-\input{sections/06_novelty}
-\input{sections/07_required_resources}
+% \input{sections/06_novelty}
+% \input{sections/07_required_resources}
 \input{sections/08_deliverables}
 \input{sections/09_timeline}
 
+\IEEEpubidadjcol
+
 % Bibliography
-\bibliographystyle{ieeetr}
-\bibliography{references/paradigms,references/evolution,references/llms,references/ai-foundations,references/datasets}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}

@@ -1,0 +1,29 @@
+\section*{Related Work}
+\label{sec:related_work}
+
+The field of ``Co-Creative AI'' provides a compelling framework for music production, envisioning AI not as a replacement for human creativity, but as an intelligent partner that augments the artistic workflow \cite{Louie_Coenen_Huang_Terry_Cai_2020b}. 
+
+\subsection*{Audio Mixing Paradigms}
+Traditional automated mixing approaches have evolved through several paradigms:
+Rule-based methods employed expert knowledge systems \cite{Dugan_1976, Perez-Gonzalez_Reiss_2013, Mansbridge_Finn_Reiss_2012}, while recent black box systems take raw multitrack audio and produce fully mixed outputs with minimal user intervention \cite{Steinmetz_Pons_Pascual_Serra_2020, Martinez-Ramirez_Liao_Fabbro_Uhlich_Nagashima_Mitsufuji_2022}. 
+However, these approaches limit the fine-grained control required in professional workflows.
+
+In contrast, the emerging Language Bridge paradigm uses natural language as the primary interface for interaction, allowing users to articulate creative intent in descriptive terms.
+Recent work has begun exploring this direction \cite{Clemens_Marasović_2025, Chu_OReilly_Barnett_Pardo_2025, Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025, Melechovsky_Mehrish_Herremans_2025, Lai_Hung_Zhu_Wang_Sheu_Juang_2022, Pardo_Cartwright_Seetharaman_Kim_2019, Venkatesh_Moffat_Miranda_2022}.
+
+\subsection*{Audio-Language Models}
+The development of audio-language models has progressed from task-specific supervised models to more sophisticated approaches.
+Contrastive dual-encoder models like CLAP learn audio concepts from natural language supervision, enabling zero-shot audio classification and retrieval \cite{Elizalde_Deshmukh_Ismail_Wang_2023, Koepke_Oncescu_Henriques_Akata_Albanie_2023}.
+Large Audio-Language Models (LALMs) represent a significant advancement, with models demonstrating language modeling approaches to audio generation \cite{Borsos_Marinier_Vincent_Kharitonov_Pietquin_Sharifi_Roblek_Teboul_Grangier_Tagliasacchi_etal_2023, zhao2023survey}.
+
+Multimodal Large Language Models have emerged with different architectural approaches, including modality interface architectures that augment pre-trained LLMs with specialized audio encoders \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023, Tang_Yu_Sun_Chen_Tan_Li_Lu_Ma_Zhang_2024}, and any-to-any systems that enable both perception and generation across multiple modalities \cite{Vyas_Shi_Le_Tjandra_Wu_Guo_Zhang_Zhang_Adkins_Ngan_eta_2023, Wu_Fei_Qu_Ji_Chua_2024}.
+
+\subsection*{LLM Integration Approaches}
+The integration of LLMs in audio tasks follows several key patterns \cite{Yin_Fu_Zhao_Li_Sun_Xu_Chen_2024}:
+\begin{itemize}
+    \item LLMs as Backbone: Pre-trained LLMs serve as the central architecture with modality-specific encoders/decoders
+    \item LLMs as Conditioner: LLMs encode text prompts into embeddings that condition audio generation
+    \item LLMs as Agent: LLMs act as controllers, coordinating external tools to accomplish audio tasks
+\end{itemize}
+
+Our research builds upon this foundation, specifically targeting the Language Bridge paradigm for audio mixing applications.
