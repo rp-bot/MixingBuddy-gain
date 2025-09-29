@@ -1,3 +1,14 @@
+proposal-presentation/build/
+# proposal-presentation/main.pdf
+proposal-presentation/*.aux
+proposal-presentation/*.log
+proposal-presentation/*.out
+proposal-presentation/*.toc
+proposal-presentation/*.bbl
+proposal-presentation/*.blg
+proposal-presentation/*.fdb_latexmk
+proposal-presentation/*.fls
+proposal-presentation/*.synctex.gz
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
