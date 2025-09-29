@@ -38,25 +38,25 @@
             %\href{http://www.gtcmt.gatech.edu}{\includegraphics[height=.8cm,keepaspectratio]{graph/Logo_GTCMT_black}}\hspace*{2ex}
         %\end{flushright}
         
-        \hspace*{1.8ex}\LARGE\inserttitle%
+        \LARGE\inserttitle%
         
         \vspace*{.5ex}
         
-        \hspace*{1.3ex}\small\insertsubtitle%
+        \small\insertsubtitle%
         
         \vspace*{.5ex}
     \end{beamercolorbox}%
     \nointerlineskip%
     \begin{beamercolorbox}[wd=\paperwidth,ht=.4\paperheight,dp=0.6ex]{page number in head/foot}
         %\vspace*{-.5ex}
-        \hspace*{1.7ex}\small\insertauthor%
+        \small\insertauthor%
         
         \vspace*{.3ex}
         
-        \hspace*{1.7ex}\small\insertdate%
+        \small\insertdate%
         %\hspace*{1.7ex}\small }%
         
-        \vspace*{6.5ex}
+        \vspace*{4ex}
         \vfill
         \begin{flushright}
             \href{http://www.gtcmt.gatech.edu}{\includegraphics[height=1cm,keepaspectratio]{shared/GT_COD_Center_Music_Technology_White.png}}\hspace*{2ex}
@@ -71,13 +71,10 @@
 {
   \leavevmode%
   \hbox{%
-  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,left,leftskip=1ex]{page number in head/foot}%
-    \inserttitle
-  \end{beamercolorbox}%
-  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,right,rightskip=1ex]{page number in head/foot}%
-    \hfill
-    \insertframenumber{} / \inserttotalframenumber
-  \end{beamercolorbox}}%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.25ex,dp=1ex,left,leftskip=1ex,rightskip=1ex]{page number in head/foot}%
+      \inserttitle\hfill\insertframenumber{} / \inserttotalframenumber
+    \end{beamercolorbox}%
+  }%
   \vskip0pt%
 }
 %\makeatletter

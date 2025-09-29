@@ -1,6 +1,6 @@
-\section{Multi-Modal Audio LLMs}
+\section{Multi-Modal LLMs}
 
-\begin{frame}\frametitle{\secname}\framesubtitle{Architectural Approaches}
+\begin{frame}\frametitle{\secname}\framesubtitle{Architectural Approaches for Audio-Language Models}
 \begin{columns}[T,totalwidth=\textwidth]
 \column{0.58\textwidth}
 \begin{itemize}
@@ -12,6 +12,24 @@
 \centering
 \only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/unified.png}}
 \only<2->{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/cascade.png}}
+\end{columns}
+\end{frame}
+
+\begin{frame}\frametitle{\secname}\framesubtitle{The Roles of LLMs in Audio Language Models}
+\begin{columns}[T,totalwidth=\textwidth]
+\column{0.6\textwidth}
+\begin{itemize}
+    \item<1-> \textbf{LLM as Backbone}: The LLM acts as the core processing engine, unifying audio and text into a single model \cite{Rubenstein_Asawaroengchai_Nguyen_Bapna_Borsos_Quitry_Chen_Badawy_Han_Kharitonov_etal_2023, Du_Wang_Chen_Chu_Gao_Li_Hu_Zhou_Xu_Ma_etal_2024, Zhang_Li_Zhang_Zhan_Wang_Zhou_Qiu_2023}.
+    % \item<3-> \textbf{LLM as Conditioner}: The LLM functions as a prompt translator, converting 
+    % text instructions into mathematical embeddings to guide a separate audio generation model \cite
+    % {placeholder-musicgen, placeholder-tango}.
+    \item<3-> \textbf{LLM as Conditioner}: The LLM converts text instructions into embeddings to guide audio generation models \cite{placeholder-musicgen, placeholder-tango}.
+    \item<4-> \textbf{LLM as Agent}: The LLM acts as an intelligent controller, orchestrating multiple specialized AI tools to execute complex audio tasks \cite{placeholder-audiogpt, placeholder-wavjourney, placeholder-musicagent}.
+\end{itemize}
+
+\column{0.4\textwidth}
+\centering
+% Add images here as needed
 \end{columns}
 \end{frame}
 

@@ -1,57 +1,38 @@
 \section{Related Work}
 
-\begin{frame}\frametitle{\secname}\framesubtitle{Rule-Based Systems}
+\begin{frame}\frametitle{\secname}\framesubtitle{Rule-Based \& Deep Learning Approaches}
 \begin{columns}[T,totalwidth=\textwidth]
 \column{0.58\textwidth}
-\textbf{Expert-Derived Rules}
+\textbf{Rule-Based and Traditional Machine Learning Systems}
 \begin{itemize}
-    \item<1-> A knowledge-engineered autonomous mixing system \cite{Perez-Gonzalez_Reiss_2013}
+    \item<1-> Knowledge-engineered autonomous mixing \cite{Perez-Gonzalez_Reiss_2013}
+    \item<2-> A machine-learning approach for instrument-specific application of artificial reverberation. \cite{placeholder-reverb}
 \end{itemize}
 
 \medskip
 
-\textbf{Instrument-Specific Processing}
+\textbf{Deep Learning Architectures}
 \begin{itemize}
-    \item<2-> A machine-learning approach to intelligent artificial reverberation \cite{placeholder-reverb}
+    \item<3-> Wave-U-Net autoencoders for automatic mixing \cite{placeholder-waveunet}
+    \item<4-> Differentiable mixing console with neural effects \cite{Steinmetz_Pons_Pascual_Serra_2020}
 \end{itemize}
 
 \column{0.42\textwidth}
 \centering
-\only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/rule-based.png}}
-\only<2->{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/ml-mixing-reverb.png}}
-\end{columns}
-\end{frame}
-
-\begin{frame}\frametitle{\secname}\framesubtitle{Deep Learning Architectures}
-\begin{columns}[T,totalwidth=\textwidth]
-\column{0.58\textwidth}
-\textbf{Wave-U-Net and Autoencoders}
-\begin{itemize}
-    \item Automatic music signal mixing with 1D Wave-U-Net autoencoders \cite{placeholder-waveunet}
-\end{itemize}
-
-\medskip
-
-\textbf{Differentiable Mixing Consoles}
-\begin{itemize}
-    \item Automatic multitrack mixing with a differentiable mixing console of neural audio effects \cite{Steinmetz_Pons_Pascual_Serra_2020}
-\end{itemize}
-
-\column{0.42\textwidth}
-\centering
-\only<1>{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/mixwaveunet.png}}
-\only<2>{\begin{minipage}[c][0.7\textheight][c]{\linewidth}\centering\includegraphics[height=0.25\textheight,keepaspectratio]{pictures/DMC-A.png}\end{minipage}}
-\only<3>{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/DMC-B.png}}
-\only<4->{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/DMC-C.png}}
+\only<1>{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/rule-based.png}}
+\only<2>{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/ml-mixing-reverb.png}}
+\only<3>{\includegraphics[height=0.6\textheight,keepaspectratio]{pictures/mixwaveunet.png}}
+\only<4->{\begin{minipage}[c][0.7\textheight][c]{\linewidth}\centering\includegraphics[height=0.25\textheight,keepaspectratio]{pictures/DMC-A.png}\end{minipage}}
 \end{columns}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Semantic Approaches}
 \begin{columns}[T,totalwidth=\textwidth]
 \column{0.58\textwidth}
+\textbf{Language-Audio Integration}
 \begin{itemize}
-    \item \textbf{Word-embedding approaches} learn semantic spaces linking audio and language to steer effects/EQ recommendations and retrieval-guided processing \cite{Chu_OReilly_Barnett_Pardo_2025, Venkatesh_Moffat_Miranda_2022, placeholder-semantic-mixing}.
-    \item \textbf{Text-driven interfaces} map natural-language instructions to effect parameters and mix actions, enabling promptable, co-creative workflows \cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025, Melechovsky_Mehrish_Herremans_2025, Clemens_Marasovic_2025}.
+    \item<1-> Word-embedding approaches linking audio and language for effects/EQ recommendations \cite{Chu_OReilly_Barnett_Pardo_2025, Venkatesh_Moffat_Miranda_2022, placeholder-semantic-mixing}
+    \item<2-> Text-driven interfaces mapping natural language to effect parameters and mix actions \cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025, Melechovsky_Mehrish_Herremans_2025, Clemens_Marasovic_2025}
 \end{itemize}
 
 \column{0.42\textwidth}
