@@ -39,27 +39,19 @@
 
 \column{0.42\textwidth}
 \centering
-\only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/mixwaveunet.png}}
+\only<1>{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/mixwaveunet.png}}
+\only<2>{\begin{minipage}[c][0.7\textheight][c]{\linewidth}\centering\includegraphics[height=0.25\textheight,keepaspectratio]{pictures/DMC-A.png}\end{minipage}}
+\only<3>{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/DMC-B.png}}
+\only<4->{\includegraphics[height=0.7\textheight,keepaspectratio]{pictures/DMC-C.png}}
 \end{columns}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Semantic Approaches}
 \begin{columns}[T,totalwidth=\textwidth]
 \column{0.58\textwidth}
-\textbf{Word Embeddings}
 \begin{itemize}
-    \item Text2FX: Harnessing CLAP Embeddings for Text-Guided Audio Effects \cite{Chu_OReilly_Barnett_Pardo_2025}
-    \item A Semantic Approach to Autonomous Mixing \cite{placeholder-semantic-mixing}
-    \item Word Embeddings for Automatic Equalization in Audio Mixing \cite{Venkatesh_Moffat_Miranda_2022}
-\end{itemize}
-
-\medskip
-
-\textbf{Text-Driven Interfaces}
-\begin{itemize}
-    \item Can Large Language Models Predict Audio Effects Parameters from Natural Language? \cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025}
-    \item SonicMaster: Towards Controllable All-in-One Music Restoration and Mastering \cite{Melechovsky_Mehrish_Herremans_2025}
-    \item MixAssist: An Audio-Language Dataset for Co-Creative AI Assistance in Music Mixing \cite{Clemens_Marasovic_2025}
+    \item \textbf{Word-embedding approaches} learn semantic spaces linking audio and language to steer effects/EQ recommendations and retrieval-guided processing \cite{Chu_OReilly_Barnett_Pardo_2025, Venkatesh_Moffat_Miranda_2022, placeholder-semantic-mixing}.
+    \item \textbf{Text-driven interfaces} map natural-language instructions to effect parameters and mix actions, enabling promptable, co-creative workflows \cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025, Melechovsky_Mehrish_Herremans_2025, Clemens_Marasovic_2025}.
 \end{itemize}
 
 \column{0.42\textwidth}
