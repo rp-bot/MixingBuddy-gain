@@ -1,52 +1,39 @@
-\section{Evaluation}
+\section{Evaluation Framework}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Human Evaluation}
-\textbf{Study with Semi-Professional Audio Engineers}
-\begin{itemize}
-    \item \textbf{Participants}: Semi-professional audio engineers and producers
-    \item \textbf{Evaluation Criteria}:
     \begin{itemize}
-        \item \textbf{Effectiveness}: How well does the advice address the mixing challenge?
-        \item \textbf{Actionability}: How clear and implementable is the advice?
-        \item \textbf{Adherence to Conventions}: How well does the advice follow established mixing practices?
+        \item \textbf{Participants}: Semi-professional audio engineers and producers
+        \item \textbf{Evaluation Criteria}:
+        \begin{itemize}
+            \item \textbf{Effectiveness}: How well does the advice address the mixing challenge?
+            \item \textbf{Actionability}: How clear and implementable is the advice?
+            \item \textbf{Adherence to Conventions}: How well does the advice follow established mixing practices?
+        \end{itemize}
+        \item \textbf{Methodology}: Rating scales and qualitative feedback collection
     \end{itemize}
-    \item \textbf{Methodology}: Rating scales and qualitative feedback collection
-\end{itemize}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Automated Evaluation}
-\textbf{Complementary Metrics to Human Ratings}
-\begin{itemize}
-    \item \textbf{LLM-as-a-Judge}: Using language models to evaluate the quality and relevance of generated advice
-    \item \textbf{Semantic Similarity}: Measuring similarity between generated advice and expert annotations
-    \item \textbf{Gain Advice Accuracy}: Evaluating the direction and magnitude of gain recommendations
-    \begin{itemize}
-        \item Direction accuracy: Does the model suggest increasing or decreasing levels correctly?
-        \item Magnitude accuracy: How close are the suggested gain changes to optimal values?
-    \end{itemize}
-\end{itemize}
-\end{frame}
-
-\begin{frame}\frametitle{\secname}\framesubtitle{Evaluation Framework}
 \begin{columns}
     \begin{column}{0.5\textwidth}
-        \textbf{Human Evaluation}
+        \centering
         \begin{itemize}
-            \item Real-world applicability
-            \item Professional judgment
-            \item Workflow integration
+            \item \textbf{LLM-as-a-Judge}: Use LLMs to rate advice quality and relevance
+            \item \textbf{Semantic Similarity}: Compare advice to expert annotations
+            \item \textbf{Gain Advice Accuracy}:
+            \begin{itemize}
+                \item Direction accuracy: Increase vs. decrease correctness
+                \item Magnitude accuracy: Proximity of suggested dB changes to optimal
+            \end{itemize}
         \end{itemize}
     \end{column}
     \begin{column}{0.5\textwidth}
-        \textbf{Automated Evaluation}
+        \centering
         \begin{itemize}
-            \item Scalable assessment
-            \item Objective metrics
-            \item Reproducible results
+            \item picture here
         \end{itemize}
+        
     \end{column}
 \end{columns}
 
-\vspace{1em}
-\textbf{Combined Approach}: Human evaluation provides ground truth for real-world effectiveness, while automated metrics enable systematic model comparison and iteration.
 \end{frame}

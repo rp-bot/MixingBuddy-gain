@@ -1,67 +1,47 @@
 \section{Proposed Method}
 
-\begin{frame}\frametitle{\secname}
-    \begin{itemize}
-        \item \textbf{Multimodal LLM Architecture}
+\begin{frame}\frametitle{\secname}\framesubtitle{Overview}
+    \begin{columns}[T,totalwidth=\textwidth]
+        \column{0.6\textwidth}
         \begin{itemize}
-            \item Audio encoder for multitrack analysis
-            \item Text encoder for natural language instructions
-            \item Cross-modal attention mechanisms
+            \item \textbf{Base Model}: A pretrained Audio LLM like Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the base model.
+            \item \textbf{Dataset}: A multitrack dataset like MUSDB18 \cite{Rafii_Liutkus_Stoter_Mimilakis_Bittner_2019} for synthesizing the prompt-response pairs.
+            \item \textbf{Input}: Anchor track and the rest of the tracks.
+            \item \textbf{Output}: A structured response containing advice for the user to balance the levels of the tracks.
+            \item \textbf{Architecture}: Cascade approach, with the LLM as the backbone.
+            \item \textbf{Training strategy}: LoRA \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} or QLoRA \cite{Dettmers_2023_QLoRA} to fine-tune the model.
         \end{itemize}
-        
-        \item \textbf{Anchor-Conditioned Training}
-        \begin{itemize}
-            \item Reference track conditioning
-            \item Relative level prediction
-            \item Context-aware mixing advice
-        \end{itemize}
-        
-        \item \textbf{Training Data}
-        \begin{itemize}
-            \item Professional mixing examples
-            \item Synthetic multitrack datasets
-            \item Expert annotations and feedback
-        \end{itemize}
-    \end{itemize}
-\end{frame}
 
-\begin{frame}\frametitle{\secname}\framesubtitle{Architecture Overview}
-    \begin{center}
-        \includegraphics[width=0.8\textwidth]{pictures/unified.png}
-    \end{center}
-    
-    \begin{itemize}
-        \item Unified framework for audio-text understanding
-        \item End-to-end training for mixing advice generation
-        \item Scalable to different mixing scenarios
-    \end{itemize}
-\end{frame}
-
-\begin{frame}\frametitle{\secname}\framesubtitle{Key Components}
-    \begin{columns}
-        \begin{column}{0.5\textwidth}
-            \textbf{Audio Processing}
-            \begin{itemize}
-                \item Multitrack feature extraction
-                \item Temporal context modeling
-                \item Spectral analysis
-            \end{itemize}
-        \end{column}
-        \begin{column}{0.5\textwidth}
-            \textbf{Text Processing}
-            \begin{itemize}
-                \item Natural language understanding
-                \item Mixing terminology mapping
-                \item Instruction parsing
-            \end{itemize}
-        \end{column}
+        \column{0.4\textwidth}
+        \centering
+        % Replace the image below with your desired figure for this overview
+        \includegraphics[width=\linewidth]{pictures/unified.png}
+        %\vspace{2mm}
+        %\captionof{figure}{System overview}
     \end{columns}
-    
-    \vspace{1em}
-    \textbf{Integration}
+\end{frame}
+
+\begin{frame}\frametitle{\secname}\framesubtitle{Dataset Synthesis}
     \begin{itemize}
-        \item Cross-modal attention mechanisms
-        \item Joint representation learning
-        \item Contextual advice generation
+        \item \textbf{Per-Sample Prompt}: We will have 4 categories of per-sample prompts:
+        \begin{itemize}
+            \item \textbf{Audio-only prompts}: Response will default to giving advice.
+            \item \textbf{Incorrect description prompts}: Response will correct the description in addition to the advice.
+            \item \textbf{Advice-seeking prompts}: Response will be only advice.
+            \item \textbf{Correct description prompts}: Response will confirm the description in addition to the advice.
+        \end{itemize}
+        \item \textbf{Audio}: 
+        \begin{itemize}
+            \item Chunk the song into 10-second segments.
+            \item Inject an error of $\pm n$ dB on the non-anchor track.
+        \end{itemize}
+        \item \textbf{Response Formulation}: We will programmitically create structured responses.
+        \begin{itemize}
+            \item We will first pick a template based on the prompt, containing both description and solution placeholders.
+            \item We populate the placeholders with the description and solution.
+        \end{itemize}
     \end{itemize}
 \end{frame}
+
+
+

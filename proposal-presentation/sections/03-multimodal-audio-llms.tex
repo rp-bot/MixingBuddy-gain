@@ -1,11 +1,11 @@
-\section{Multi-Modal LLMs}
+\subsection{Multi-Modal LLMs}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Architectural Approaches for Audio-Language Models}
 \begin{columns}[T,totalwidth=\textwidth]
 \column{0.58\textwidth}
 \begin{itemize}
-    \item<1-> Direct Tokenization (Unified Approach): converts raw audio into discrete tokens via audio codecs; tokens are flattened into a 1D sequence as LLM input; the LLM vocabulary is extended to include audio tokens (e.g., AudioPaLM, LauraGPT, SpeechGPT) \cite{Rubenstein_Asawaroengchai_Nguyen_Bapna_Borsos_Quitry_Chen_Badawy_Han_Kharitonov_etal_2023, Du_Wang_Chen_Chu_Gao_Li_Hu_Zhou_Xu_Ma_etal_2024, Zhang_Li_Zhang_Zhan_Wang_Zhou_Qiu_2023}.
-    \item<2-> Feature Extraction (Cascade Approach): uses audio-specific encoders/decoders with the LLM as a central backbone; high-level features are passed between modules (e.g., M$^{2}$UGen; LTU placeholder) \cite{Liu_Hussain_Wu_Sun_Shan_2024, placeholder-ltu}.
+    \item<1-> \textbf{Direct Tokenization (Unified Approach)}: converts raw audio into discrete tokens via audio codecs; tokens are flattened into a 1D sequence as LLM input; the LLM vocabulary is extended to include audio tokens \cite{Rubenstein_Asawaroengchai_Nguyen_Bapna_Borsos_Quitry_Chen_Badawy_Han_Kharitonov_etal_2023, Du_Wang_Chen_Chu_Gao_Li_Hu_Zhou_Xu_Ma_etal_2024, Zhang_Li_Zhang_Zhan_Wang_Zhou_Qiu_2023}.
+    \item<2-> \textbf{Feature Extraction (Cascade Approach)}: uses audio-specific encoders/decoders with the LLM as a central backbone; high-level features are passed between modules (e.g., M$^{2}$UGen) \cite{Liu_Hussain_Wu_Sun_Shan_2024, Gong_Luo_Liu_Karlinsky_Glass_2024}.
 \end{itemize}
 
 \column{0.42\textwidth}
@@ -23,8 +23,8 @@
     % \item<3-> \textbf{LLM as Conditioner}: The LLM functions as a prompt translator, converting 
     % text instructions into mathematical embeddings to guide a separate audio generation model \cite
     % {placeholder-musicgen, placeholder-tango}.
-    \item<3-> \textbf{LLM as Conditioner}: The LLM converts text instructions into embeddings to guide audio generation models \cite{placeholder-musicgen, placeholder-tango}.
-    \item<4-> \textbf{LLM as Agent}: The LLM acts as an intelligent controller, orchestrating multiple specialized AI tools to execute complex audio tasks \cite{placeholder-audiogpt, placeholder-wavjourney, placeholder-musicagent}.
+    \item<2-> \textbf{LLM as Conditioner}: The LLM converts text instructions into embeddings to guide audio generation models \cite{Copet_Kreuk_Gat_Remez_Kant_Synnaeve_Adi_Défossez}.
+    \item<3-> \textbf{LLM as Agent}: The LLM acts as an intelligent controller, orchestrating multiple specialized AI tools to execute complex audio tasks \cite{Huang_Li_Yang_Shi_Chang_Ye_Wu_Hong_Huang_Liu_etal_2023, Liu_Zhu_Liu_Yuan_Huang_Cui_Liang_Cao_Kong_Plumbley_etal_2025, Yu_Song_Lu_He_Tan_Ye_Zhang_Bian_2023}.
 \end{itemize}
 
 \column{0.4\textwidth}
