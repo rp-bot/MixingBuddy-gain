@@ -21,16 +21,20 @@ all: $(MAIN).pdf
 
 # Compile the document
 $(MAIN).pdf: $(MAIN).tex sections/*.tex references.bib | $(OUTDIR)
-	$(LATEX) -output-directory=$(OUTDIR) $(MAIN).tex
+	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
 	$(BIBTEX) $(OUTDIR)/$(MAIN)
-	$(LATEX) -output-directory=$(OUTDIR) $(MAIN).tex
-	$(LATEX) -output-directory=$(OUTDIR) $(MAIN).tex
+	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
+	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
 	cp $(OUTDIR)/$(MAIN).pdf .
+	@echo "Cleaning up any stray auxiliary files..."
+	@rm -f *.aux *.log *.out *.toc *.bbl *.blg *.fdb_latexmk *.fls *.synctex.gz
 
 # Quick compilation (without bibliography)
 quick: $(MAIN).tex sections/*.tex | $(OUTDIR)
-	$(LATEX) -output-directory=$(OUTDIR) $(MAIN).tex
+	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
 	cp $(OUTDIR)/$(MAIN).pdf .
+	@echo "Cleaning up any stray auxiliary files..."
+	@rm -f *.aux *.log *.out *.toc *.bbl *.blg *.fdb_latexmk *.fls *.synctex.gz
 
 # Clean up generated files
 clean:

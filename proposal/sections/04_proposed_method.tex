@@ -1,34 +1,40 @@
 \section*{Proposed Method}
 \label{sec:proposed_method}
 
-This research introduces a novel framework for fine-tuning an Audio-Language Model (ALM) to generate gain-balancing advice for music mixing. 
-The approach conditions the model on a designated anchor track to learn relational understanding of multi-track audio levels, emulating how human engineers establish mix foundations.
+This research presents a framework for fine-tuning an Audio-Language Model (ALM) to generate gain-balancing advice for music mixing. 
+The approach conditions the model on a designated anchor track to learn relational understanding of multi-track audio levels.
 
 \subsection*{Data Preprocessing and Dataset Creation}
 We will utilize the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019} to create a structured training dataset in JSONL format.
 
-Each training instance will contain a prompt with text instruction for gain-balancing advice, audio data with anchor track and other track stems, and a response with generated mixing advice describing gain relationships.
-We will generate training examples through both programmatic annotation. 
-For each anchor track and other tracks combination, we will create annotations describing the ideal gain relationship (e.g., ``Relative to the drums, the vocal stem is well-balanced and sits clearly on top of the mix'') and corrective advice for imbalanced cases (e.g., ``The vocal stem is too loud relative to the drums; decrease its gain for better balance''). 
-We will evaluate different anchor selection strategies and their impact on model performance across various musical contexts and genres.
+Each training instance will contain a prompt, audio data with anchor track and other track stems, and a response with generated mixing advice describing gain relationships.
+Since the original tracks are already well-balanced, we will create flawed versions by artificially adjusting gain levels.
+
+We will create four prompt categories:
+\begin{itemize}
+    \item \textbf{Audio-only prompts:} Training instances with no text input, requiring the model to analyze audio stems directly.
+    
+    \item \textbf{Incorrect description prompts:} Training instances where the text prompt contains deliberately wrong descriptions of the audio content (e.g., ``The vocals are too quiet'' when they are actually too loud).
+    
+    \item \textbf{Advice-seeking prompts:} Training instances with open-ended questions or requests for mixing guidance (e.g., ``How should I balance these tracks?'').
+    
+    \item \textbf{Correct description prompts:} Training instances with accurate text descriptions of the audio content (e.g., ``The vocal stem is too loud relative to the drums'' or ``The drums are too dominant and overpowering'').
+\end{itemize}
+We will focus on a single anchor track approach and experiment with scenarios: balanced mixes, one flawed track, and multiple flawed tracks requiring correction.
 
 \subsection*{Model Architecture and Training Strategy}
-We will employ Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the primary base model, while also exploring other pre-trained Audio-Language Models for fine-tuning using parameter-efficient methods.
+We will use Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the base model, while exploring other pre-trained Audio-Language Models for fine-tuning.
 \begin{figure*}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/arch.pdf}
     \caption{Proposed architecture of Audio-Language Model fine-tuning for music mixing advice generation.}
     \label{fig:architecture}
 \end{figure*}
-The model will process anchor track and other track stems with text prompts instructing it to provide gain-balancing advice. 
-We will focus on a single anchor track approach and experiment with the number of flawed tracks in the mix: scenarios with no flawed tracks (balanced mix), one flawed track requiring adjustment, and multiple flawed tracks (2 or more) requiring simultaneous correction.
-We will use Low-Rank Adaptation (LoRA) \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} and QLoRA \cite{Dettmers_2023_QLoRA} for parameter-efficient fine-tuning. 
-We will conduct studies to determine which model components to adapt.
+We will use Low-Rank Adaptation (LoRA) \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} and QLoRA \cite{Dettmers_2023_QLoRA} for parameter-efficient fine-tuning.
 
 \subsection*{Data Augmentation and Cross-Sample Training}
-To improve generalization, we will implement cross-sample training strategies.
-We will explore creating hybrid training examples by combining stems from different songs while maintaining musical coherence. 
-This approach may help the model learn generalizable mixing principles rather than memorizing specific song characteristics.
+We will implement cross-sample training strategies to improve generalization.
+We will explore creating hybrid training examples by combining stems from different songs while maintaining musical coherence.
 
 % \subsection*{Architecture Experiments}
 % We will conduct systematic experiments to optimize the model architecture and training approach.
