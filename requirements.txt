@@ -44,5 +44,5 @@ seaborn>=0.12.0
 plotly>=5.15.0
 
 # Audio processing
-soundfile>=0.12.1
+soundfile
 librosa>=0.10.0
