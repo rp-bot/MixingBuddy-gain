@@ -14,26 +14,28 @@
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Automated Evaluation}
-\begin{columns}
-    \begin{column}{0.5\textwidth}
+    \begin{columns}[T,totalwidth=\textwidth]
+    \column{0.5\textwidth}
         \centering
         \begin{itemize}
-            \item \textbf{LLM-as-a-Judge}: Use LLMs to rate advice quality and relevance
-            \item \textbf{Semantic Similarity}: Compare advice to expert annotations
-            \item \textbf{Gain Advice Accuracy}:
+            \item<1-> \textbf{LLM-as-a-Judge}: Use LLMs to rate advice quality and relevance
+            \item<2-> \textbf{Semantic Similarity}: Compare advice to expert annotations
+            \item<3-> \textbf{Gain Advice Accuracy}:
             \begin{itemize}
-                \item Direction accuracy: Increase vs. decrease correctness
-                \item Magnitude accuracy: Proximity of suggested dB changes to optimal
+                \item<3-> \textbf{Direction accuracy}: Increase vs. decrease correctness
+                \item<4-> \textbf{Magnitude accuracy}: Correctness of categorical intensity labels (e.g., ``too loud'')
             \end{itemize}
         \end{itemize}
-    \end{column}
-    \begin{column}{0.5\textwidth}
+ 
+        \column{0.5\textwidth}
         \centering
-        \begin{itemize}
-            \item picture here
-        \end{itemize}
         
-    \end{column}
+        {\begin{minipage}[c][0.7\textheight][c]{\linewidth}
+            \only<1->{\centering\includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{pictures/llm-as-judge.png}}
+            \only<2->{\centering\includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{pictures/semantic-similarity.png}}
+        \end{minipage}}
+        
+
 \end{columns}
 
 \end{frame}

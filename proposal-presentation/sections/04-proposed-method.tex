@@ -4,43 +4,39 @@
     \begin{columns}[T,totalwidth=\textwidth]
         \column{0.6\textwidth}
         \begin{itemize}
-            \item \textbf{Base Model}: A pretrained Audio LLM like Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the base model.
-            \item \textbf{Dataset}: A multitrack dataset like MUSDB18 \cite{Rafii_Liutkus_Stoter_Mimilakis_Bittner_2019} for synthesizing the prompt-response pairs.
-            \item \textbf{Input}: Anchor track and the rest of the tracks.
-            \item \textbf{Output}: A structured response containing advice for the user to balance the levels of the tracks.
-            \item \textbf{Architecture}: Cascade approach, with the LLM as the backbone.
-            \item \textbf{Training strategy}: LoRA \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} or QLoRA \cite{Dettmers_2023_QLoRA} to fine-tune the model.
+            \item<1-> \textbf{Base Model}: A pretrained Audio LLM like Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the backbone.
+            \item<2-> \textbf{Input}: Anchor track and the rest of the tracks and a text prompt.
+            \item<3-> \textbf{Output}: A structured response containing advice for the user to balance the levels of the tracks.
+            \item<4-> \textbf{Architecture}: Cascade approach, with the LLM as the backbone.
+            \item<5-> \textbf{Training strategy}: Supervised fine-tuning using PEFT (Parameter-Efficient Fine-Tuning), specifically LoRA \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} or QLoRA \cite{Dettmers_2023_QLoRA}.
         \end{itemize}
 
         \column{0.4\textwidth}
         \centering
-        % Replace the image below with your desired figure for this overview
-        \includegraphics[width=\linewidth]{pictures/unified.png}
-        %\vspace{2mm}
-        %\captionof{figure}{System overview}
+        % Overview architecture variants
+        \only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch1.png}}
+        \only<2>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch2.png}}
+        \only<3>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch3.png}}
+        \only<4->{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch4.png}}
     \end{columns}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Dataset Synthesis}
     \begin{itemize}
-        \item \textbf{Per-Sample Prompt}: We will have 4 categories of per-sample prompts:
+        \item<1-> \textbf{Prompt}: Create per-sample prompts in addtion to the constant system prompt.
+        \item<1-> \textbf{Multitrack Input}: 
         \begin{itemize}
-            \item \textbf{Audio-only prompts}: Response will default to giving advice.
-            \item \textbf{Incorrect description prompts}: Response will correct the description in addition to the advice.
-            \item \textbf{Advice-seeking prompts}: Response will be only advice.
-            \item \textbf{Correct description prompts}: Response will confirm the description in addition to the advice.
+            \item \textbf{Dataset}: A multitrack dataset like MUSDB18 \cite{Rafii_Liutkus_Stoter_Mimilakis_Bittner_2019}.
+            \item<2-> Chunk the song into 10-second segments.
+            \item<3-> Inject an error of $\pm n$ dB on the non-anchor track.
         \end{itemize}
-        \item \textbf{Audio}: 
+        \item<4-> \textbf{Response Formulation}: We will programmitically create structured responses.
         \begin{itemize}
-            \item Chunk the song into 10-second segments.
-            \item Inject an error of $\pm n$ dB on the non-anchor track.
-        \end{itemize}
-        \item \textbf{Response Formulation}: We will programmitically create structured responses.
-        \begin{itemize}
-            \item We will first pick a template based on the prompt, containing both description and solution placeholders.
-            \item We populate the placeholders with the description and solution.
+            \item<5-> Pick a template based on the prompt, containing both description and solution placeholders.
+            \item<6-> Populate the placeholders with the ground truth description and solution.
         \end{itemize}
     \end{itemize}
+
 \end{frame}
 
 
