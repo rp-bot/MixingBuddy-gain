@@ -12,6 +12,7 @@ import csv
 import math
 import time
 import logging
+import sys
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,10 +22,16 @@ import numpy as np
 import soundfile as sf
 import pandas as pd
 from omegaconf import OmegaConf
+from tqdm.auto import tqdm
 
 
 STEMS = ["mixture", "vocals", "drums", "bass", "other"]
 LOGGER_NAME = "musdb_stats"
+
+# Ensure project root on sys.path for 'src' imports (if needed later)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 @dataclass
@@ -227,7 +234,9 @@ def main():
         total_tracks_planned += sample_n
         logger.info("Split=%s | sampling %d/%d tracks", split, sample_n, len(tracks))
         tracks_sample = rng.sample(tracks, sample_n)
-        for idx, t in enumerate(tracks_sample, start=1):
+        for idx, t in enumerate(
+            tqdm(tracks_sample, desc=f"{split} tracks", unit="track"), start=1
+        ):
             try:
                 m_before = len(all_metrics)
                 track_metrics = analyze_track(
@@ -237,6 +246,11 @@ def main():
                     frame_ms=float(cfg.frame.ms),
                     active_thresh_dbfs=float(cfg.active_threshold_dbfs),
                 )
+                # Show inner chunk-level progress bar
+                for _ in tqdm(
+                    track_metrics, desc=f"{t.name} chunks", leave=False, unit="chunk"
+                ):
+                    pass
                 all_metrics.extend(track_metrics)
                 added = len(all_metrics) - m_before
                 total_chunks += added

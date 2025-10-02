@@ -1,0 +1,14 @@
+# Thresholds and anchor policy tuned from MUSDB18HQ stats (summary.csv)
+
+data:
+  gating:
+    mixture_min_rms_dbfs: -25.0
+    stem_min_rms_dbfs: -40.0
+    min_active_frame_ratio: 0.30
+
+  anchor:
+    fallback_order:
+      - bass
+      - drums
+      - vocals
+      - other
