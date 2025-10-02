@@ -5,7 +5,7 @@ output:
   dir: outputs/musdb_stats
 
 # Number of tracks per split to sample (train/test)
-sample_size: 20
+sample_size: 100
 
 chunk:
   sec: 10.0

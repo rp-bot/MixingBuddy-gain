@@ -23,7 +23,7 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/data/preprocess_musdb.yaml",
+        default="configs/data/02_preprocess_musdb.yaml",
         help="Path to YAML config",
     )
     args = parser.parse_args()

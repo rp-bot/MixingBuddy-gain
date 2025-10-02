@@ -188,7 +188,7 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/data/musdb_stats.yaml",
+        default="configs/data/01_musdb_stats.yaml",
         help="Path to YAML config",
     )
     args = parser.parse_args()
