@@ -1,0 +1,43 @@
+paths:
+  processed_root: data/musdb18hq_processed
+  output_root: data/musdb18hq_processed
+
+instruction_templates:
+  - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. The anchor stem is {anchor_stem}. Please analyze the mix and provide mixing advice."
+  - "This is a {duration_sec}s audio segment with stems: {stems_present}. The {anchor_stem} is the reference. Evaluate the mix balance and suggest improvements."
+  - "Analyze this {duration_sec}s track segment. Stems present: {stems_present}. Use {anchor_stem} as your reference. What mixing adjustments are needed?"
+  - "Listen to this {duration_sec}s audio clip. Available tracks: {stems_present}. The {anchor_stem} serves as the anchor. How should the mix be adjusted?"
+
+response_templates:
+  no_error:
+    - "The mix sounds balanced. All elements are at appropriate levels."
+    - "The balance is good. All instruments are sitting well in the mix."
+    - "The mix is well-balanced. No adjustments needed."
+    - "Everything sounds properly leveled. The mix is solid."
+
+  quiet:
+    - "The {target_stem} is too quiet. Increase the {target_stem} level by {intended_gain_db} dB to bring it up to the proper balance."
+    - "The {target_stem} needs more presence. Boost it by {intended_gain_db} dB to balance the mix."
+    - "The {target_stem} is getting lost. Bring it up by {intended_gain_db} dB."
+    - "The {target_stem} is too low in the mix. Add {intended_gain_db} dB to fix the balance."
+
+  very_quiet:
+    - "The {target_stem} is much too quiet. Boost the {target_stem} by {intended_gain_db} dB to restore the mix balance."
+    - "The {target_stem} is barely audible. Increase it by {intended_gain_db} dB to bring it forward."
+    - "The {target_stem} is way too low. Add {intended_gain_db} dB to make it present."
+    - "The {target_stem} needs a significant boost. Raise it by {intended_gain_db} dB."
+
+  loud:
+    - "The {target_stem} is too loud. Reduce the {target_stem} level by {abs_gain_db} dB to balance the mix."
+    - "The {target_stem} is overpowering. Turn it down by {abs_gain_db} dB."
+    - "The {target_stem} is too prominent. Cut it by {abs_gain_db} dB to balance."
+    - "The {target_stem} needs to be quieter. Reduce by {abs_gain_db} dB."
+
+  very_loud:
+    - "The {target_stem} is overpowering. Cut the {target_stem} by {abs_gain_db} dB to fix the balance."
+    - "The {target_stem} is way too loud. Bring it down by {abs_gain_db} dB."
+    - "The {target_stem} is dominating the mix. Cut it by {abs_gain_db} dB."
+    - "The {target_stem} is overwhelming. Reduce by {abs_gain_db} dB to balance."
+
+rng:
+  seed: 42
