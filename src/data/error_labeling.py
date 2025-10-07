@@ -1,9 +1,8 @@
 import json
-import math
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Optional
+from typing import Dict, Iterator, Optional
 
 import numpy as np
 
@@ -13,8 +12,10 @@ CATEGORIES = ["no_error", "quiet", "very_quiet", "loud", "very_loud"]
 
 @dataclass
 class TrackStats:
-    median_track_dbfs: float
-    iqr_db: float
+    median_track_dbfs: Optional[float]
+    iqr_db: Optional[float]
+    median_delta_db: Optional[float]
+    iqr_delta_db: Optional[float]
 
 
 def load_track_stats(path: Path) -> Dict[str, TrackStats]:
@@ -23,8 +24,16 @@ def load_track_stats(path: Path) -> Dict[str, TrackStats]:
         for line in f:
             r = json.loads(line)
             stats[r["track_id"]] = TrackStats(
-                median_track_dbfs=float(r["median_track_dbfs"]),
-                iqr_db=float(r["iqr_db"]),
+                median_track_dbfs=float(r["median_track_dbfs"])
+                if r.get("median_track_dbfs") is not None
+                else None,
+                iqr_db=float(r["iqr_db"]) if r.get("iqr_db") is not None else None,
+                median_delta_db=float(r["median_delta_db"])
+                if r.get("median_delta_db") is not None
+                else None,
+                iqr_delta_db=float(r["iqr_delta_db"])
+                if r.get("iqr_delta_db") is not None
+                else None,
             )
     return stats
 
@@ -40,20 +49,20 @@ def sample_category(rng: random.Random, priors: Dict[str, float]) -> str:
 def compute_intended_gain_db(
     category: str,
     chunk_stem_rms_dbfs: float,
-    track_median_dbfs: float,
-    track_iqr_db: float,
+    baseline_db: float,
+    iqr_db: float,
     scales: Dict[str, float],
     gain_limits_db: Dict[str, float],
 ) -> float:
     if category == "no_error":
         return 0.0
-    delta = float(scales.get(category, 0.0)) * float(track_iqr_db)
+    delta = float(scales.get(category, 0.0)) * float(iqr_db)
     if category in ("quiet", "very_quiet"):
-        target_dbfs = track_median_dbfs - delta
+        target_dbfs = baseline_db - delta
     elif category in ("loud", "very_loud"):
-        target_dbfs = track_median_dbfs + delta
+        target_dbfs = baseline_db + delta
     else:
-        target_dbfs = track_median_dbfs
+        target_dbfs = baseline_db
     gain = target_dbfs - float(chunk_stem_rms_dbfs)
     gain = max(
         float(gain_limits_db.get("min", -12.0)),
@@ -94,11 +103,26 @@ def label_errors_for_split(
             tstats = stats.get(r.get("track_id"))
             if tstats is None:
                 continue
+            # Anchor-relative baseline only: require track delta stats and current anchor RMS
+            if (
+                tstats.median_delta_db is None
+                or tstats.iqr_delta_db is None
+                or anchor not in (r.get("stems_present") or [])
+            ):
+                continue
+            anchor_rms = (r.get("activity", {}).get("stem_rms_dbfs", {}) or {}).get(
+                anchor
+            )
+            if anchor_rms is None:
+                continue
+            baseline = float(anchor_rms) + float(tstats.median_delta_db)
+            iqr_use = float(tstats.iqr_delta_db)
+
             intended_gain_db = compute_intended_gain_db(
                 category=category,
                 chunk_stem_rms_dbfs=float(stem_rms),
-                track_median_dbfs=tstats.median_track_dbfs,
-                track_iqr_db=tstats.iqr_db,
+                baseline_db=baseline,
+                iqr_db=iqr_use,
                 scales=iqr_scales,
                 gain_limits_db=gain_limits_db,
             )

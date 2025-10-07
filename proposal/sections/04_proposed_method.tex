@@ -7,10 +7,21 @@ The approach conditions the model on a designated anchor track to learn relation
 \subsection*{Data Preprocessing and Dataset Creation}
 We will utilize the MUSDB18 dataset \cite{Rafii_Liutkus_Stöter_Mimilakis_Bittner_2019} to create a structured training dataset in JSONL format.
 
-Each training instance will contain a prompt, audio data with anchor track and other track stems, and a response with generated mixing advice describing gain relationships.
-Since the original tracks are already well-balanced, we will create flawed versions by artificially adjusting gain levels.
+Each training instance will contain an instruction (contextual description of the current clip and stems), audio data with an anchor track and other track stems, and a response with generated mixing advice describing gain relationships. Since the original tracks are already well-balanced, we will create flawed versions by artificially adjusting gain levels at training time.
 
-We will create four prompt categories:
+\paragraph{Collecting dataset statistics.}
+We analyze MUSDB18HQ tracks by splitting each song into non-overlapping 10~s windows and computing per-stem and mixture loudness/activity features: root-mean-square (RMS) in dBFS and active frame ratio using 50~ms windows. We summarize distributions per split and stem (p5, p25, p50, p75, p95) to obtain robust operating ranges. These statistics guide gating thresholds for filtering silent or near-silent segments and inform track-level variability.
+
+\paragraph{Thresholds and preprocessing.}
+Guided by the observed distributions, we adopt conservative gates to exclude low-information segments: mixture minimum RMS at about $-25$~dBFS, stem minimum RMS at about $-40$~dBFS, and a minimum active-frame ratio of 0.30. We chunk audio into 10~s segments, discard tails shorter than 5~s, and select an \emph{anchor} stem per chunk by preference order (bass$\rightarrow$drums$\rightarrow$vocals$\rightarrow$other) subject to the activity gates. We store relative paths to stems (no audio duplication), time bounds (start/end), and per-chunk activity snapshots in a JSONL \texttt{metadata} file.
+
+\paragraph{Track-wide error labeling via IQR-scaled policy.}
+To synthesize target corrections that are consistent with each song's context, we pool all stems per track to compute a track-level median RMS (dBFS) and interquartile range (IQR). For each chunk, we sample an error category with priors (\textit{no\_error, quiet, very\_quiet, loud, very\_loud}). We then map categories to an \emph{adaptive} target level using an IQR-scaled policy: for attenuation categories we shift the target below the track median by $\alpha\cdot\text{IQR}$ (e.g., $\alpha\in\{0.75,1.50\}$), and for amplification categories we shift above the median by the same scaled amount. The per-chunk intended gain (in dB) is the clamped difference between this target and the current chunk's stem RMS. We store error labels (target stem, category, intended gain) keyed by chunk identifier.
+
+\paragraph{Synthesis of instructions and responses.}
+For this project scope, we focus on audio-conditioned training with a constant instruction family and diverse response templates. Instructions concisely describe the clip duration, available stems, and the anchor stem. Responses are selected from a small template bank per category and instantiated with placeholders (e.g., target stem and intended gain). The final SFT record comprises an \texttt{instruction}, a \texttt{response}, and a \texttt{meta} block with references to audio paths, time bounds, selected anchor/target stems, and activity summaries. During training, we inject the labeled error \emph{on-the-fly} by applying the intended gain to the target stem and summing stems to form a flawed mixture, aligning the audio conditioning with the response content.
+
+While future work considers multiple prompt categories, in this project we concentrate on response-only mixing guidance with a constant instruction context. For completeness, we outline possible prompt categories for subsequent extensions:
 \begin{itemize}
     \item \textbf{Audio-only prompts:} Training instances with no text input, requiring the model to analyze audio stems directly.
     
