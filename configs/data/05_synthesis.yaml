@@ -2,6 +2,23 @@ paths:
   processed_root: data/musdb18hq_processed
   output_root: data/musdb18hq_processed
 
+audio:
+  sample_rate: 24000
+  peak_normalize: true
+  peak_target: 0.99
+
+# Optional: limit number of samples per split (useful for smoke tests)
+limit: 10
+
+splits:
+  - train
+  - test
+
+output:
+  flawed_mix_subdir: flawed_mixes
+  train_samples: training_samples.jsonl
+  test_samples: test_samples.jsonl
+
 instruction_templates:
   - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. The anchor stem is {anchor_stem}. Please analyze the mix and provide mixing advice."
   - "This is a {duration_sec}s audio segment with stems: {stems_present}. The {anchor_stem} is the reference. Evaluate the mix balance and suggest improvements."

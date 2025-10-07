@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.synthesis import (load_metadata,load_error_labels,synthesize_training_samples,write_training_samples)  # noqa: E402
+from src.data.synthesis import load_metadata, load_error_labels, synthesize_training_samples, write_training_samples  # noqa: E402
 
 
 def main():
@@ -32,7 +32,12 @@ def main():
     output_root = Path(cfg.paths.output_root)
     seed = int(cfg.rng.seed)
 
-    for split in ["train", "test"]:
+    splits = list(getattr(cfg, "splits", ["train", "test"]))
+    flawed_mix_subdir = getattr(cfg, "output", {}).get(
+        "flawed_mix_subdir", "flawed_mixes"
+    )
+
+    for split in splits:
         print(f"Processing {split} split...")
 
         metadata_path = processed_root / split / "metadata.jsonl"
@@ -48,9 +53,15 @@ def main():
 
         print(f"Loaded {len(metadata)} chunks, {len(error_labels)} error labels")
 
-        # Synthesize training samples
+        # Synthesize training samples (with flawed mix generation)
         instruction_templates = list(cfg.instruction_templates)
         response_templates = dict(cfg.response_templates)
+        audio_sr = int(getattr(cfg, "audio", {}).get("sample_rate", 24000))
+        limit = getattr(cfg, "limit", None)
+        peak_norm = bool(getattr(cfg, "audio", {}).get("peak_normalize", True))
+        peak_target = float(getattr(cfg, "audio", {}).get("peak_target", 0.99))
+        flawed_mix_dir = output_root / split / flawed_mix_subdir
+
         samples = list(
             synthesize_training_samples(
                 metadata=metadata,
@@ -58,14 +69,25 @@ def main():
                 instruction_templates=instruction_templates,
                 response_templates=response_templates,
                 seed=seed,
+                audio_sample_rate=audio_sr,
+                flawed_mix_output_dir=flawed_mix_dir,
+                peak_normalize=peak_norm,
+                peak_target=peak_target,
+                limit=limit,
             )
         )
 
         # Write output
-        output_path = output_root / split / "training_samples.jsonl"
+        out_cfg = getattr(cfg, "output", {})
+        if split == "train":
+            output_name = out_cfg.get("train_samples", "training_samples.jsonl")
+        else:
+            output_name = out_cfg.get("test_samples", "test_samples.jsonl")
+
+        output_path = output_root / split / output_name
         write_training_samples(samples, output_path)
 
-        print(f"Wrote {len(samples)} training samples to {output_path}")
+        print(f"Wrote {len(samples)} {split}ing samples to {output_path}")
 
 
 if __name__ == "__main__":

@@ -46,3 +46,5 @@ plotly>=5.15.0
 # Audio processing
 soundfile
 librosa>=0.10.0
+torchaudio
+encodec

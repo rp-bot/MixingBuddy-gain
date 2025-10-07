@@ -81,6 +81,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+plans/
 
 # PyBuilder
 .pybuilder/
@@ -289,3 +290,4 @@ sample_data/
 api_keys.txt
 tokens.txt
 credentials.json
+
