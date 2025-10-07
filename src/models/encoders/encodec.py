@@ -30,7 +30,7 @@ class EncodecEncoder(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "facebook/encodec_24khz",
+        model_name: str = "facebook/encodec_48khz",
         target_bandwidth: float = 6.0,
         freeze: bool = True,
         device: Optional[Union[str, torch.device]] = None,
