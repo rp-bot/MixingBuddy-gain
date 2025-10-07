@@ -36,8 +36,9 @@ def synthesize_training_samples(
     seed: int = 42,
     *,
     audio_sample_rate: Optional[int] = None,
+    audio_bit_depth: int = 32,
     flawed_mix_output_dir: Optional[Path] = None,
-    peak_normalize: bool = True,
+    peak_normalize: bool = False,  # Default to False - let audio clip naturally
     peak_target: float = 0.99,
     limit: Optional[int] = None,
 ) -> Iterator[Dict]:
@@ -160,8 +161,19 @@ def synthesize_training_samples(
                     if peak > peak_target:
                         mix = mix / (peak + 1e-12) * peak_target
 
-            # Write WAV
-            sf.write(str(out_path), mix, audio_sample_rate, subtype="PCM_16")
+            # Write WAV with configurable bit depth
+            if audio_bit_depth == 32:
+                subtype = "FLOAT"
+            elif audio_bit_depth == 24:
+                subtype = "PCM_24"
+            elif audio_bit_depth == 16:
+                subtype = "PCM_16"
+            else:
+                raise ValueError(
+                    f"Unsupported bit depth: {audio_bit_depth}. Use 16, 24, or 32."
+                )
+
+            sf.write(str(out_path), mix, audio_sample_rate, subtype=subtype)
             training_sample["flawed_mix_path"] = str(out_path)
 
         yield training_sample

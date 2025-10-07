@@ -4,14 +4,19 @@ import sys
 from pathlib import Path
 
 from omegaconf import OmegaConf
-# from tqdm.auto import tqdm  # Not used in this script
+from tqdm.auto import tqdm
 
 # Ensure project root is on sys.path so 'src' is importable
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.synthesis import load_metadata, load_error_labels, synthesize_training_samples, write_training_samples  # noqa: E402
+from src.data.synthesis import (
+    load_metadata,
+    load_error_labels,
+    synthesize_training_samples,
+    write_training_samples,
+)  # noqa: E402
 
 
 def main():
@@ -56,26 +61,41 @@ def main():
         # Synthesize training samples (with flawed mix generation)
         instruction_templates = list(cfg.instruction_templates)
         response_templates = dict(cfg.response_templates)
-        audio_sr = int(getattr(cfg, "audio", {}).get("sample_rate", 24000))
+        audio_sr = int(
+            getattr(cfg, "audio", {}).get("sample_rate", 48000)
+        )  # Default to 48kHz
+        audio_bit_depth = int(
+            getattr(cfg, "audio", {}).get("bit_depth", 32)
+        )  # Default to 32-bit
         limit = getattr(cfg, "limit", None)
-        peak_norm = bool(getattr(cfg, "audio", {}).get("peak_normalize", True))
+        peak_norm = bool(
+            getattr(cfg, "audio", {}).get("peak_normalize", False)
+        )  # Default to False
         peak_target = float(getattr(cfg, "audio", {}).get("peak_target", 0.99))
         flawed_mix_dir = output_root / split / flawed_mix_subdir
 
-        samples = list(
-            synthesize_training_samples(
+        # Create progress bar for synthesis
+        total_samples = min(len(metadata), len(error_labels))
+        if limit is not None:
+            total_samples = min(total_samples, limit)
+
+        samples = []
+        with tqdm(total=total_samples, desc=f"Synthesizing {split} samples") as pbar:
+            for sample in synthesize_training_samples(
                 metadata=metadata,
                 error_labels=error_labels,
                 instruction_templates=instruction_templates,
                 response_templates=response_templates,
                 seed=seed,
                 audio_sample_rate=audio_sr,
+                audio_bit_depth=audio_bit_depth,
                 flawed_mix_output_dir=flawed_mix_dir,
                 peak_normalize=peak_norm,
                 peak_target=peak_target,
                 limit=limit,
-            )
-        )
+            ):
+                samples.append(sample)
+                pbar.update(1)
 
         # Write output
         out_cfg = getattr(cfg, "output", {})
