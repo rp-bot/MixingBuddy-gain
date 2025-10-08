@@ -100,6 +100,77 @@ def test_modular_with_dataset():
         outputs["loss"].backward()
         print("✅ Dataset-backed forward/backward successful!")
 
+        # Generate and print model response
+        print("\n🎯 Generating model response...")
+        print("-" * 50)
+
+        # Set model to eval mode for generation
+        mm_model.eval()
+
+        with torch.no_grad():
+            # Prepare audio embeddings for generation
+            anchor_features = mm_model.audio_encoder.encode(anchor_audio)
+            mix_features = mm_model.audio_encoder.encode(mix_audio)
+
+            # Project audio features
+            target_dtype = mm_model.projection.projection.weight.dtype
+            anchor_features = anchor_features.to(target_dtype)
+            mix_features = mix_features.to(target_dtype)
+            audio_embeds = mm_model.projection(anchor_features, mix_features)
+
+            # Get text embeddings for instruction
+            text_embeds = mm_model.llm.get_input_embeddings()(instr_ids)
+
+            # Ensure same dtype
+            target_embed_dtype = mm_model.llm.get_input_embeddings().weight.dtype
+            if audio_embeds.dtype != target_embed_dtype:
+                audio_embeds = audio_embeds.to(target_embed_dtype)
+            if text_embeds.dtype != target_embed_dtype:
+                text_embeds = text_embeds.to(target_embed_dtype)
+
+            # Concatenate audio and text embeddings
+            inputs_embeds = torch.cat([audio_embeds, text_embeds], dim=1)
+
+            # Build attention mask
+            audio_len = audio_embeds.shape[1]
+            text_len = instr_ids.shape[1]
+            audio_attn = torch.ones(
+                (1, audio_len), dtype=torch.long, device=inputs_embeds.device
+            )
+            text_attn = torch.ones(
+                (1, text_len), dtype=torch.long, device=inputs_embeds.device
+            )
+            attention_mask = torch.cat([audio_attn, text_attn], dim=1)
+
+            # Generate using the LLM with prepared embeddings
+            generated_ids = mm_model.llm.generate(
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                max_new_tokens=100,
+                do_sample=True,
+                temperature=0.7,
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+            )
+
+            # Decode the generated response (skip the input part)
+            generated_text = tokenizer.decode(
+                generated_ids[0], skip_special_tokens=True
+            )
+
+            # Also decode the original instruction and expected response for comparison
+            original_instruction = tokenizer.decode(
+                instr_ids[0], skip_special_tokens=True
+            )
+            expected_response = tokenizer.decode(resp_ids[0], skip_special_tokens=True)
+
+            print(f"📝 Original instruction:\n{original_instruction}")
+            print(f"\n🎯 Model's response:\n{generated_text}")
+            print(f"\n📋 Expected response:\n{expected_response}")
+
+        print("-" * 50)
+        print("✅ Model response generation successful!")
+
         return True
 
     except Exception as e:
