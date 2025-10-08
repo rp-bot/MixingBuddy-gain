@@ -98,12 +98,8 @@ class MixingDataset(Dataset):
                 padding = np.zeros(len(anchor) - len(flawed_mix), dtype=np.float32)
                 flawed_mix = np.concatenate([flawed_mix, padding])
 
-        # Create silence between anchor and mix
+        # Create silence metadata between anchor and mix (don't concatenate here)
         silence_samples = int(self.silence_duration * self.sample_rate)
-        silence = np.zeros(silence_samples, dtype=np.float32)
-
-        # Concatenate: [anchor | silence | mix]
-        audio = np.concatenate([anchor, silence, flawed_mix])
 
         # Get instruction and response
         instruction = item["instruction"]
@@ -133,7 +129,10 @@ class MixingDataset(Dataset):
         labels = response_ids.clone()
 
         return {
-            "audio": torch.from_numpy(audio).float(),
+            "anchor_audio": torch.from_numpy(anchor).float(),
+            "mix_audio": torch.from_numpy(flawed_mix).float(),
+            "silence_samples": silence_samples,
+            "sample_rate": self.sample_rate,
             "input_ids": input_ids,
             "labels": labels,
             "instruction": instruction,

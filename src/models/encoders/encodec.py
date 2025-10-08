@@ -30,7 +30,7 @@ class EncodecEncoder(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "facebook/encodec_48khz",
+        model_name: str = "facebook/encodec_24khz",
         target_bandwidth: float = 6.0,
         freeze: bool = True,
         device: Optional[Union[str, torch.device]] = None,
@@ -125,29 +125,27 @@ class EncodecEncoder(nn.Module):
             # We want (batch, time, channels, features_per_channel)
             batch_size, channels, time_features = continuous_features.shape
 
-            # Reshape to (batch, time, channels, features_per_channel)
-            # Assuming 75 features per channel (this is the Encodec standard)
+            # Group features per channel (Encodec standard: 75 features per channel)
             features_per_channel = 75
-            time_steps = time_features // features_per_channel
+            remainder = time_features % features_per_channel
+            if remainder != 0:
+                # Trim tail so time_features is divisible by features_per_channel
+                trimmed = time_features - remainder
+                if trimmed <= 0:
+                    raise ValueError(
+                        f"Encodec features too short to reshape: time_features={time_features}, remainder={remainder}"
+                    )
+                continuous_features = continuous_features[:, :, :trimmed]
+                time_features = trimmed
 
-            if time_features % features_per_channel != 0:
-                # If not divisible, we need to handle this differently
-                # For now, let's just reshape and see what happens
-                continuous_features = continuous_features.permute(
-                    0, 2, 1
-                )  # (batch, time_features, channels)
-                # Add a dummy dimension for features
-                continuous_features = continuous_features.unsqueeze(
-                    -1
-                )  # (batch, time_features, channels, 1)
-            else:
-                # Reshape to (batch, time, channels, features_per_channel)
-                continuous_features = continuous_features.permute(
-                    0, 2, 1
-                )  # (batch, time_features, channels)
-                continuous_features = continuous_features.reshape(
-                    batch_size, time_steps, channels, features_per_channel
-                )
+            time_steps = time_features // features_per_channel
+            # Reshape to (batch, time, channels, features_per_channel)
+            continuous_features = continuous_features.permute(
+                0, 2, 1
+            )  # (batch, time_features, channels)
+            continuous_features = continuous_features.reshape(
+                batch_size, time_steps, channels, features_per_channel
+            )
         elif hasattr(continuous_features, "dim") and continuous_features.dim() == 4:
             # Already in correct shape: (batch, time, channels, features)
             pass

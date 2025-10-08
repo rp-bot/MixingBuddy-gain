@@ -23,7 +23,7 @@ def test_encodec_basic():
     try:
         # Create encoder
         print("📥 Creating Encodec encoder...")
-        encoder = EncodecEncoder(freeze=True)
+        encoder = EncodecEncoder(model_name="facebook/encodec_24khz", freeze=True)
         print("✅ Encoder created successfully")
 
         # Test with random audio
@@ -131,7 +131,15 @@ def test_encodec_with_real_audio():
         for i in range(min(2, len(dataset))):
             print(f"  Testing sample {i}...")
             sample = dataset[i]
-            audio = sample["audio"]  # Shape: (samples,)
+            # Reconstruct concatenated audio from separate fields for this test
+            anchor = sample["anchor_audio"]
+            mix = sample["mix_audio"]
+            silence_samples = int(sample.get("silence_samples", 0))
+            if silence_samples > 0:
+                silence = torch.zeros(silence_samples, dtype=anchor.dtype)
+                audio = torch.cat([anchor, silence, mix], dim=0)
+            else:
+                audio = torch.cat([anchor, mix], dim=0)
 
             # Resample to 24kHz if needed (our dataset is 48kHz)
             if len(audio) > 0:

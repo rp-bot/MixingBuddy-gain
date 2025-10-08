@@ -54,7 +54,9 @@ def test_dataset_loading():
         print("🔍 Testing sample loading...")
         sample = dataset[0]
 
-        print(f"  Audio shape: {sample['audio'].shape}")
+        print(f"  Anchor shape: {sample['anchor_audio'].shape}")
+        print(f"  Mix shape: {sample['mix_audio'].shape}")
+        print(f"  Silence samples: {sample['silence_samples']}")
         print(f"  Input IDs shape: {sample['input_ids'].shape}")
         print(f"  Labels shape: {sample['labels'].shape}")
         print(f"  Instruction: {sample['instruction'][:100]}...")
@@ -64,16 +66,18 @@ def test_dataset_loading():
         print(f"  Error category: {sample['error_category']}")
 
         # Verify audio properties
-        audio = sample["audio"]
-        expected_length = (
-            int(10 * 48000) + int(0.5 * 48000) + int(10 * 48000)
-        )  # anchor + silence + mix at 48kHz
-        if abs(len(audio) - expected_length) > 1000:  # Allow some tolerance
-            print(
-                f"⚠️  Audio length unexpected: {len(audio)} vs expected ~{expected_length}"
-            )
+        # Verify per-part properties
+        anchor = sample["anchor_audio"]
+        mix = sample["mix_audio"]
+        sr = sample["sample_rate"]
+        expected_anchor = int(10 * sr)
+        expected_mix = int(10 * sr)
+        if abs(len(anchor) - expected_anchor) > int(0.01 * expected_anchor):
+            print(f"⚠️  Anchor length unexpected: {len(anchor)} vs ~{expected_anchor}")
+        if abs(len(mix) - expected_mix) > int(0.01 * expected_mix):
+            print(f"⚠️  Mix length unexpected: {len(mix)} vs ~{expected_mix}")
         else:
-            print("✅ Audio length looks correct")
+            print("✅ Anchor/Mix lengths look correct")
 
         # Test tokenization
         instruction_text = tokenizer.decode(
@@ -88,7 +92,8 @@ def test_dataset_loading():
         print("🔄 Testing batch loading...")
         for i in range(min(3, len(dataset))):
             sample = dataset[i]
-            assert sample["audio"].shape[0] > 0, f"Sample {i} has empty audio"
+            assert sample["anchor_audio"].shape[0] > 0, f"Sample {i} has empty anchor"
+            assert sample["mix_audio"].shape[0] > 0, f"Sample {i} has empty mix"
             assert sample["input_ids"].shape[0] > 0, f"Sample {i} has empty input_ids"
             assert sample["labels"].shape[0] > 0, f"Sample {i} has empty labels"
             print(f"  Sample {i}: ✅ OK")

@@ -31,34 +31,31 @@ def plot_audio_sample(sample, sample_idx, output_dir):
     fig = plt.figure(figsize=(16, 12))
     gs = GridSpec(4, 2, figure=fig, hspace=0.3, wspace=0.3)
 
-    # Get audio data
-    audio = sample["audio"].numpy()
-    sample_rate = 48000  # Our dataset uses 48kHz
+    # Get audio data (separate fields)
+    anchor_audio = sample["anchor_audio"].numpy()
+    mix_audio = sample["mix_audio"].numpy()
+    silence_samples = int(sample.get("silence_samples", 0))
+    sample_rate = int(sample.get("sample_rate", 48000))
+
+    # Build concatenated waveform for full-plot view
+    if silence_samples > 0:
+        silence = np.zeros(silence_samples, dtype=np.float32)
+        audio_full = np.concatenate([anchor_audio, silence, mix_audio])
+    else:
+        audio_full = np.concatenate([anchor_audio, mix_audio])
 
     # Calculate time axis
-    duration = len(audio) / sample_rate
-    time_axis = np.linspace(0, duration, len(audio))
+    duration = len(audio_full) / sample_rate
+    time_axis = np.linspace(0, duration, len(audio_full))
 
-    # Split audio into anchor, silence, and mix
-    anchor_duration = 10.0  # 10 seconds
-    silence_duration = 0.5  # 0.5 seconds
-    mix_duration = 10.0  # 10 seconds
-
-    anchor_samples = int(anchor_duration * sample_rate)
-    silence_samples = int(silence_duration * sample_rate)
-    mix_samples = int(mix_duration * sample_rate)
-
-    anchor_audio = audio[:anchor_samples]
-    silence_audio = audio[anchor_samples : anchor_samples + silence_samples]
-    mix_audio = audio[
-        anchor_samples + silence_samples : anchor_samples
-        + silence_samples
-        + mix_samples
-    ]
+    # Durations derived from actual arrays
+    anchor_duration = len(anchor_audio) / sample_rate
+    silence_duration = silence_samples / sample_rate
+    mix_duration = len(mix_audio) / sample_rate
 
     # Plot 1: Full waveform
     ax1 = fig.add_subplot(gs[0, :])
-    ax1.plot(time_axis, audio, "b-", linewidth=0.5, alpha=0.7)
+    ax1.plot(time_axis, audio_full, "b-", linewidth=0.5, alpha=0.7)
     ax1.set_title(
         f"Sample {sample_idx}: Full Audio Waveform (Anchor + Silence + Mix)",
         fontsize=14,
@@ -195,7 +192,7 @@ Sample Info:
 • Error Category: {sample["error_category"]}
 • Instruction: {sample["instruction"][:100]}...
 • Response: {sample["response"][:100]}...
-• Audio Length: {len(audio)} samples ({duration:.2f}s)
+• Audio Length: {len(audio_full)} samples ({duration:.2f}s)
 • Sample Rate: {sample_rate} Hz
     """
 
