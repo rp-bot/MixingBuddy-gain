@@ -116,65 +116,69 @@ def synthesize_training_samples(
             },
         }
 
-        # Optionally synthesize flawed mix audio
-        if audio_sample_rate is not None and flawed_mix_output_dir is not None:
-            flawed_mix_output_dir.mkdir(parents=True, exist_ok=True)
-            out_path = flawed_mix_output_dir / f"{global_uid}.wav"
+        # Synthesize flawed mix audio
+        flawed_mix_output_dir.mkdir(parents=True, exist_ok=True)
+        out_path = flawed_mix_output_dir / f"{global_uid}.wav"
 
-            # Load stems chunk
-            start_sec = float(chunk_meta["start_sec"])
-            end_sec = float(chunk_meta["end_sec"])
-            stems_paths: Dict[str, str] = chunk_meta["paths"]["stems"]
+        # Load stems chunk
+        start_sec = float(chunk_meta["start_sec"])
+        end_sec = float(chunk_meta["end_sec"])
+        stems_paths: Dict[str, str] = chunk_meta["paths"]["stems"]
 
-            stem_audio: Dict[str, np.ndarray] = {}
-            for stem_name, stem_path in stems_paths.items():
-                audio = load_audio_chunk(
-                    stem_path, start_sec, end_sec, audio_sample_rate
-                )
-                audio = to_mono(audio)
-                stem_audio[stem_name] = audio
+        stem_audio: Dict[str, np.ndarray] = {}
+        for stem_name, stem_path in stems_paths.items():
+            audio = load_audio_chunk(stem_path, start_sec, end_sec, audio_sample_rate)
+            audio = to_mono(audio)
+            stem_audio[stem_name] = audio
 
-            # Align lengths
-            max_len = max((a.shape[0] for a in stem_audio.values()), default=0)
-            if max_len == 0:
-                mix = np.zeros(1, dtype=np.float32)
-            else:
-                for k, a in list(stem_audio.items()):
-                    if a.shape[0] < max_len:
-                        pad = np.zeros(max_len - a.shape[0], dtype=np.float32)
-                        stem_audio[k] = np.concatenate([a, pad], axis=0)
+        # Align lengths
+        max_len = max((a.shape[0] for a in stem_audio.values()), default=0)
+        if max_len == 0:
+            mix = np.zeros(1, dtype=np.float32)
+        else:
+            for k, a in list(stem_audio.items()):
+                if a.shape[0] < max_len:
+                    pad = np.zeros(max_len - a.shape[0], dtype=np.float32)
+                    stem_audio[k] = np.concatenate([a, pad], axis=0)
 
-                # Apply gain to target stem to introduce the flaw
-                target_stem = error_label["target_stem"]
-                intended_gain_db = float(error_label["intended_gain_db"])
-                # We apply the NEGATIVE of intended correction to synthesize the flawed state
+            # Apply gain to target stem to introduce the flaw
+            target_stem = error_label["target_stem"]
+            intended_gain_db = float(error_label["intended_gain_db"])
+            category = error_label["category"]
+
+            # Apply the appropriate flawed gain based on category
+            if category in ["quiet", "very_quiet"]:
                 flawed_gain = db_to_linear(-intended_gain_db)
+            elif category in ["loud", "very_loud"]:
+                flawed_gain = db_to_linear(+intended_gain_db)
+            else:  # no_error
+                flawed_gain = 1.0
 
-                mix = np.zeros(max_len, dtype=np.float32)
-                for stem_name, a in stem_audio.items():
-                    g = flawed_gain if stem_name == target_stem else 1.0
-                    mix = mix + (a.astype(np.float32) * float(g))
+            mix = np.zeros(max_len, dtype=np.float32)
+            for stem_name, a in stem_audio.items():
+                g = flawed_gain if stem_name == target_stem else 1.0
+                mix = mix + (a.astype(np.float32) * float(g))
 
-                # Peak normalize to avoid clipping if requested
-                if peak_normalize:
-                    peak = float(np.max(np.abs(mix))) if mix.size > 0 else 0.0
-                    if peak > peak_target:
-                        mix = mix / (peak + 1e-12) * peak_target
+            # Peak normalize to avoid clipping if requested
+            if peak_normalize:
+                peak = float(np.max(np.abs(mix))) if mix.size > 0 else 0.0
+                if peak > peak_target:
+                    mix = mix / (peak + 1e-12) * peak_target
 
-            # Write WAV with configurable bit depth
-            if audio_bit_depth == 32:
-                subtype = "FLOAT"
-            elif audio_bit_depth == 24:
-                subtype = "PCM_24"
-            elif audio_bit_depth == 16:
-                subtype = "PCM_16"
-            else:
-                raise ValueError(
-                    f"Unsupported bit depth: {audio_bit_depth}. Use 16, 24, or 32."
-                )
+        # Write WAV with configurable bit depth
+        if audio_bit_depth == 32:
+            subtype = "FLOAT"
+        elif audio_bit_depth == 24:
+            subtype = "PCM_24"
+        elif audio_bit_depth == 16:
+            subtype = "PCM_16"
+        else:
+            raise ValueError(
+                f"Unsupported bit depth: {audio_bit_depth}. Use 16, 24, or 32."
+            )
 
-            sf.write(str(out_path), mix, audio_sample_rate, subtype=subtype)
-            training_sample["flawed_mix_path"] = str(out_path)
+        sf.write(str(out_path), mix, audio_sample_rate, subtype=subtype)
+        training_sample["flawed_mix_path"] = str(out_path)
 
         yield training_sample
 

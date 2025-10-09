@@ -3,11 +3,11 @@ paths:
   output_root: data/musdb18hq_processed
 
 audio:
-  sample_rate: 48000 # Base sample rate - can be downsampled later for model input
+  sample_rate: 44100 # Base sample rate - can be downsampled later for model input
   bit_depth: 24 # Audio bit depth: 16, 24, or 32 (float)
   # peak_normalize: false  # Removed - let audio clip naturally to preserve relative levels
 
-limit: 10
+# limit: 10
 
 splits:
   - train

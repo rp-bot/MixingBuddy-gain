@@ -27,7 +27,7 @@ def main():
     cfg = OmegaConf.load(args.config)
     root = Path(cfg.paths.processed_root)
     priors = dict(cfg.error.priors)
-    iqr_scales = dict(cfg.error.iqr_scale)
+    ranges_db = dict(cfg.error.ranges_db)
     gain_limits = dict(cfg.error.gain_limits_db)
     seed = int(cfg.rng.seed)
 
@@ -44,7 +44,7 @@ def main():
                     meta_path,
                     stats_path,
                     priors=priors,
-                    iqr_scales=iqr_scales,
+                    ranges_db=ranges_db,
                     gain_limits_db=gain_limits,
                     seed=seed,
                 ),

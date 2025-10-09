@@ -3,20 +3,21 @@ paths:
 
 error:
   priors:
-    no_error: 0.40
+    no_error: 0.20
     quiet: 0.20
-    very_quiet: 0.10
+    very_quiet: 0.20
     loud: 0.20
-    very_loud: 0.10
-  # IQR-scaled deltas (relative to per-track pooled median)
-  iqr_scale:
-    quiet: 0.75
-    very_quiet: 1.50
-    loud: 0.75
-    very_loud: 1.50
+    very_loud: 0.20
+  # Fixed dB ranges for each category (no IQR scaling)
+  ranges_db:
+    quiet: [-6, -3]
+    very_quiet: [-12, -6]
+    loud: [3, 6]
+    very_loud: [6, 12]
+  # Overall gain limits for safety
   gain_limits_db:
-    min: -12.0
-    max: 12.0
+    min: -15.0
+    max: 15.0
 
 rng:
   seed: 42

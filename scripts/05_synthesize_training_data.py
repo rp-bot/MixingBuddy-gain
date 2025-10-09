@@ -11,12 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.synthesis import (
-    load_metadata,
-    load_error_labels,
-    synthesize_training_samples,
-    write_training_samples,
-)  # noqa: E402
+from src.data.synthesis import load_metadata, load_error_labels, synthesize_training_samples, write_training_samples  # noqa: E402
 
 
 def main():
