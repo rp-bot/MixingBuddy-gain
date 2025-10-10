@@ -1,0 +1,24 @@
+# @package _global_
+
+# Default configurations
+defaults:
+  - data: 05_synthesis
+  - model: qwen2_7b
+  - training: lora_default
+  - experiment_tracking: wandb
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}

@@ -105,35 +105,41 @@ class MixingDataset(Dataset):
         instruction = item["instruction"]
         response = item["response"]
 
-        # Tokenize instruction
-        instruction_encoded = self.tokenizer(
-            instruction,
+        # Tokenize instruction and response together
+        # This is the standard way for training a causal LM.
+        # The model learns to predict the response given the instruction.
+        full_text = instruction + self.tokenizer.eos_token + response
+        tokenized = self.tokenizer(
+            full_text,
+            return_tensors="pt",
+            padding="max_length",
+            truncation=True,
+            max_length=self.max_length,
+        )
+        input_ids = tokenized["input_ids"].squeeze(0)
+        attention_mask = tokenized["attention_mask"].squeeze(0)
+
+        # Create labels, ignoring the instruction part
+        # We need to find where the instruction ends and the response begins
+        instruction_tokenized = self.tokenizer(
+            instruction + self.tokenizer.eos_token,
             return_tensors="pt",
             padding=False,
             truncation=True,
-            max_length=self.max_length // 2,  # Reserve space for response
+            max_length=self.max_length,
         )
-        input_ids = instruction_encoded["input_ids"].squeeze(0)
+        instruction_len = instruction_tokenized["input_ids"].shape[1]
 
-        # Tokenize response
-        response_encoded = self.tokenizer(
-            response,
-            return_tensors="pt",
-            padding=False,
-            truncation=True,
-            max_length=self.max_length // 2,
-        )
-        response_ids = response_encoded["input_ids"].squeeze(0)
-
-        # Create labels (same as response_ids for causal LM)
-        labels = response_ids.clone()
+        labels = input_ids.clone()
+        labels[:instruction_len] = -100  # -100 is the ignore index for CrossEntropyLoss
 
         return {
             "anchor_audio": torch.from_numpy(anchor).float(),
-            "mix_audio": torch.from_numpy(flawed_mix).float(),
+            "audio": torch.from_numpy(flawed_mix).float(),
             "silence_samples": silence_samples,
             "sample_rate": self.sample_rate,
             "input_ids": input_ids,
+            "attention_mask": attention_mask,
             "labels": labels,
             "instruction": instruction,
             "response": response,

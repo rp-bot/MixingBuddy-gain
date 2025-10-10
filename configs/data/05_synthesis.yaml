@@ -2,12 +2,20 @@ paths:
   processed_root: data/musdb18hq_processed
   output_root: data/musdb18hq_processed
 
+# Training dataset paths
+train_jsonl_path: data/musdb18hq_processed/train/training_samples.jsonl
+train_audio_root: data/musdb18hq_processed/train/flawed_mixes
+eval_jsonl_path: data/musdb18hq_processed/test/test_samples.jsonl
+eval_audio_root: data/musdb18hq_processed/test/flawed_mixes
+
+# Training parameters
+
 audio:
-  sample_rate: 44100 # Base sample rate - can be downsampled later for model input
+  sample_rate: 24000 # Base sample rate - can be downsampled later for model input
   bit_depth: 24 # Audio bit depth: 16, 24, or 32 (float)
   # peak_normalize: false  # Removed - let audio clip naturally to preserve relative levels
 
-# limit: 10
+limit: null # Set to a number to limit dataset size for testing
 
 splits:
   - train

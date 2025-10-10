@@ -1,12 +1,20 @@
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import sys
-from pathlib import Path
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+# import sys
+# from pathlib import Path
 from typing import Optional
 
+from peft import (
+    get_peft_model,
+    LoraConfig,
+    TaskType,
+    prepare_model_for_kbit_training,
+)
+
 # Add parent directory to path to access src module
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.models.encoders.encodec import EncodecEncoder
 
 
@@ -16,23 +24,70 @@ class ModularMultimodalModel(nn.Module):
     It is designed to be extended with different modalities.
     """
 
-    def __init__(self, model_name: str = "Qwen/Qwen2-7B-Instruct"):
+    def __init__(
+        self,
+        model_name: str = "Qwen/Qwen2-7B-Instruct",
+        use_qlora: bool = True,
+        lora_config: Optional[LoraConfig] = None,
+    ):
         """
         Initializes the model.
 
         Args:
             model_name (str): The name of the Hugging Face model to use.
+            use_qlora (bool): Whether to use QLoRA for fine-tuning.
+            lora_config (LoraConfig, optional): The LoRA configuration to use.
         """
         super().__init__()
         self.model_name = model_name
+
+        quantization_config = None
+        if use_qlora:
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+            )
+
         self.llm = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype="auto"
+            self.model_name,
+            torch_dtype="auto",
+            quantization_config=quantization_config,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.llm.config.pad_token_id = self.llm.config.eos_token_id
+
+        if use_qlora:
+            self.llm = prepare_model_for_kbit_training(self.llm)
+            # Explicitly enable gradient checkpointing with use_reentrant=False to suppress the warning
+            self.llm.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False}
+            )
+            if lora_config is None:
+                lora_config = LoraConfig(
+                    r=8,
+                    lora_alpha=32,
+                    # Note: These target modules are common for models like Llama/Mistral.
+                    # You should verify them for the specific model you are using (e.g., Qwen2)
+                    # by inspecting the model architecture (e.g., print(model) and look for linear layers in attention blocks).
+                    target_modules=[
+                        "q_proj",
+                        "k_proj",
+                        "v_proj",
+                        "o_proj",
+                        "gate_proj",
+                        "up_proj",
+                        "down_proj",
+                    ],
+                    lora_dropout=0.05,
+                    bias="none",
+                    task_type=TaskType.CAUSAL_LM,
+                )
+            self.llm = get_peft_model(self.llm, lora_config)
 
         # Initialize audio encoder (frozen EnCodec)
         self.audio_encoder = EncodecEncoder(freeze=True)
@@ -42,6 +97,28 @@ class ModularMultimodalModel(nn.Module):
         audio_hidden_size = self.audio_encoder.output_dim
         self.audio_projection = nn.Linear(audio_hidden_size, llm_hidden_size)
 
+        # Move other modules to the same device as the LLM
+        # PEFT with quantization handles the device placement of the LLM,
+        # so we need to manually move the other modules.
+        llm_device = self.llm.device
+        self.audio_encoder.to(llm_device)
+        self.audio_projection.to(llm_device)
+
+    def print_trainable_parameters(self):
+        """
+        Prints the number of trainable parameters in the model.
+        """
+        trainable_params = 0
+        all_param = 0
+        for _, param in self.named_parameters():
+            all_param += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+        print(
+            f"trainable params: {trainable_params} || all params: {all_param} || "
+            f"trainable%: {100 * trainable_params / all_param}"
+        )
+
     def encode_audio(self, audio: torch.Tensor) -> torch.Tensor:
         """
         Encode audio using the frozen EnCodec model.
@@ -50,11 +127,43 @@ class ModularMultimodalModel(nn.Module):
             audio (torch.Tensor): Audio tensor of shape (batch_size, samples) or (samples,)
 
         Returns:
-            torch.Tensor: Encoded audio features
+            torch.Tensor: Encoded audio features of shape (batch_size, seq_len, hidden_dim)
         """
-        return self.audio_encoder(audio)
+        # Handle both batched and unbatched input
+        if audio.dim() == 1:
+            # Single sample: [samples] → add batch dim
+            audio = audio.unsqueeze(0)
+            squeeze_output = True
+        else:
+            squeeze_output = False
 
-    def forward(self, input_ids, attention_mask, audio=None, labels=None):
+        # Now audio is [batch_size, samples]
+        # Process each sample in the batch individually (EnCodec expects 1D input)
+        batch_size = audio.shape[0]
+        encoded_list = []
+
+        for i in range(batch_size):
+            # Extract single sample: [samples]
+            single_audio = audio[i]
+            # Encode it: returns [1, seq_len, hidden_dim] or [seq_len, hidden_dim]
+            encoded = self.audio_encoder(single_audio)
+            # Remove the extra dimension if present
+            if encoded.dim() == 3:
+                encoded = encoded.squeeze(
+                    0
+                )  # [1, seq_len, hidden_dim] → [seq_len, hidden_dim]
+            encoded_list.append(encoded)
+
+        # Stack into batch: [batch_size, seq_len, hidden_dim]
+        batched_features = torch.stack(encoded_list, dim=0)
+
+        # If input was unbatched, remove batch dimension
+        if squeeze_output:
+            batched_features = batched_features.squeeze(0)
+
+        return batched_features
+
+    def forward(self, input_ids, attention_mask, audio, labels):
         """
         Defines the forward pass of the model.
 
@@ -67,10 +176,46 @@ class ModularMultimodalModel(nn.Module):
         Returns:
             transformers.modeling_outputs.CausalLMOutputWithPast: The output from the language model.
         """
+        # 1. Encode audio
+        audio_features = self.encode_audio(audio)
+
+        # 2. Project audio features to LLM's embedding space
+        projected_audio_embeds = self.audio_projection(audio_features)
+
+        # 3. Get text embeddings
+        text_embeds = self.llm.get_input_embeddings()(input_ids)
+
+        # 4. Ensure dtypes match
+        projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
+
+        # 5. Concatenate audio and text embeddings
+        inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
+
+        # 6. Create attention mask for audio
+        audio_attention_mask = torch.ones(
+            projected_audio_embeds.shape[:2],
+            dtype=torch.long,
+            device=input_ids.device,
+        )
+
+        # 7. Concatenate attention masks
+        attention_mask = torch.cat((audio_attention_mask, attention_mask), dim=1)
+
+        # 8. Adjust labels for audio part (ignore in loss)
+        if labels is not None:
+            audio_labels = torch.full(
+                projected_audio_embeds.shape[:2],
+                -100,
+                dtype=torch.long,
+                device=labels.device,
+            )
+            labels = torch.cat((audio_labels, labels), dim=1)
+
         output = self.llm(
-            input_ids=input_ids,
+            inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
             labels=labels,
+            return_dict=True,
         )
         return output
 
@@ -105,20 +250,16 @@ class ModularMultimodalModel(nn.Module):
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(device)
 
         if audio is not None:
-            # if audio.dim() == 1:
-            #     audio = audio.unsqueeze(0)
             audio = audio.to(device)
 
             audio_features = self.encode_audio(audio)
             projected_audio_embeds = self.audio_projection(audio_features)
-            print(f"Projected audio embeds shape: {projected_audio_embeds.shape}")
-            text_embeds = self.llm.model.embed_tokens(model_inputs.input_ids)
+            text_embeds = self.llm.get_input_embeddings()(model_inputs.input_ids)
 
             # Ensure projected audio embeddings match the LLM's dtype
             projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
 
             inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
-            print(f"Inputs embeds shape: {inputs_embeds.shape}")
             audio_attention_mask = torch.ones(
                 projected_audio_embeds.shape[:2],
                 dtype=torch.long,
@@ -132,10 +273,8 @@ class ModularMultimodalModel(nn.Module):
                 "inputs_embeds": inputs_embeds,
                 "attention_mask": attention_mask,
             }
-            prompt_length = inputs_embeds.shape[1]
         else:
             generate_kwargs = {"input_ids": model_inputs.input_ids}
-            prompt_length = model_inputs.input_ids.shape[1]
 
         generated_ids = self.llm.generate(
             **generate_kwargs,
@@ -166,12 +305,25 @@ if __name__ == "__main__":
 
     # Instantiate the model
     # The model will be downloaded from Hugging Face Hub the first time it's used.
-    model = ModularMultimodalModel()
+    model = ModularMultimodalModel(use_qlora=True)
 
     # Move the model to a CUDA device if available, otherwise use CPU
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
-    print(f"Model moved to {device}")
+    # model.to(device) # PEFT with quantization handles device placement
+    print(f"Model loaded on {model.llm.device}")
+
+    print("\n--- Trainable Parameters ---")
+    model.print_trainable_parameters()
+    print("--------------------------\n")
+
+    # To verify target_modules, you can uncomment the following lines:
+    # print("\n--- Model Modules ---")
+    # with open("model_modules.txt", "w") as f:
+    #     for name, module in model.llm.named_modules():
+    #         if "proj" in name:
+    #             f.write(name + "\n")
+    #             print(name)
+    print("---------------------\n")
 
     # Load one sample from dataset
     dataset = MixingDataset(
@@ -184,13 +336,13 @@ if __name__ == "__main__":
     sample = dataset[0]
     print(f"Loaded sample: {sample['instruction'][:100]}...")
     print(
-        f"Audio shapes - anchor: {sample['anchor_audio'].shape}, mix: {sample['mix_audio'].shape}"
+        f"Audio shapes - anchor: {sample['anchor_audio'].shape}, mix: {sample['audio'].shape}"
     )
 
     # Test generation with audio
     print("\n--- Testing generation with audio ---")
     instruction = sample["instruction"]
-    mix_audio = sample["mix_audio"]
+    mix_audio = sample["audio"]
 
     generated_text_with_audio = model.generate(
         text_input=instruction, audio=mix_audio, max_new_tokens=150
@@ -198,6 +350,36 @@ if __name__ == "__main__":
     print(f"Instruction: {instruction}")
     print(f"Generated response (with audio): {generated_text_with_audio}")
     print("-----------------------------------")
+
+    # --- Test Training Step ---
+    print("\n--- Testing training step ---")
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    model.train()
+
+    # Prepare batch
+    input_ids = sample["input_ids"].unsqueeze(0).to(device)
+    attention_mask = sample["attention_mask"].unsqueeze(0).to(device)
+    mix_audio = sample["audio"].to(device)
+    labels = sample["labels"].unsqueeze(0).to(device)
+
+    # Forward pass
+    outputs = model(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        audio=mix_audio,
+        labels=labels,
+    )
+    loss = outputs.loss
+
+    print(f"Loss: {loss.item()}")
+
+    # Backward pass and optimization
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    print("Training step completed successfully.")
+    print("---------------------------\n")
 
     # Test generation without audio
     print("\n--- Testing generation without audio ---")
