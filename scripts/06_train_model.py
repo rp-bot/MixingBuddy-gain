@@ -6,132 +6,53 @@ import hydra
 from omegaconf import DictConfig
 import sys
 from pathlib import Path
-import warnings
-import logging
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.data.dataset import MixingDataset  # noqa: E402
 from src.models.modular_multimodal_model import ModularMultimodalModel  # noqa: E402
 from src.training.trainer import LoRATrainer  # noqa: E402
-from src.utils.experiment_tracking import ExperimentTracker  # noqa: E402
-
-# Suppress warnings
-# The "resume_download" warning is a FutureWarning from huggingface_hub
-warnings.filterwarnings("ignore", category=FutureWarning)
-# The "special tokens" warning is logged by the transformers library
-logging.getLogger("transformers").setLevel(logging.ERROR)
-
-
-def create_lora_config(cfg: DictConfig):
-    """Create LoRA configuration from config."""
-    from peft import LoraConfig, TaskType
-
-    # Map string task type to TaskType enum
-    task_type_mapping = {
-        "CAUSAL_LM": TaskType.CAUSAL_LM,
-        "SEQ_2_SEQ_LM": TaskType.SEQ_2_SEQ_LM,
-        "TOKEN_CLS": TaskType.TOKEN_CLS,
-        "QUESTION_ANS": TaskType.QUESTION_ANS,
-    }
-
-    task_type = task_type_mapping.get(cfg.model.lora.task_type, TaskType.CAUSAL_LM)
-
-    return LoraConfig(
-        r=cfg.model.lora.r,
-        lora_alpha=cfg.model.lora.lora_alpha,
-        target_modules=cfg.model.lora.target_modules,
-        lora_dropout=cfg.model.lora.lora_dropout,
-        bias=cfg.model.lora.bias,
-        task_type=task_type,
-    )
-
-
-def setup_qlora_model(model, cfg: DictConfig, lora_config):
-    """Setup QLoRA with quantization and LoRA."""
-    import torch
-    from peft import get_peft_model, prepare_model_for_kbit_training
-    from transformers import BitsAndBytesConfig, AutoModelForCausalLM
-
-    print("Setting up QLoRA...")
-
-    # Create quantization config
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=cfg.model.quantization.load_in_4bit,
-        bnb_4bit_quant_type=cfg.model.quantization.bnb_4bit_quant_type,
-        bnb_4bit_compute_dtype=getattr(
-            torch, cfg.model.quantization.bnb_4bit_compute_dtype
-        ),
-        bnb_4bit_use_double_quant=cfg.model.quantization.bnb_4bit_use_double_quant,
-    )
-
-    # Reload model with quantization
-    model.llm = AutoModelForCausalLM.from_pretrained(
-        model.model_name,
-        torch_dtype="auto",
-        quantization_config=quantization_config,
-    )
-
-    # Prepare for k-bit training
-    model.llm = prepare_model_for_kbit_training(model.llm)
-    model.llm.gradient_checkpointing_enable(
-        gradient_checkpointing_kwargs={"use_reentrant": False}
-    )
-
-    # Apply LoRA
-    model.llm = get_peft_model(model.llm, lora_config)
-    print("QLoRA setup complete.")
-
-
-def setup_standard_lora(model, lora_config):
-    """Setup standard LoRA."""
-    from peft import get_peft_model
-
-    print("Using standard LoRA...")
-    model.llm = get_peft_model(model.llm, lora_config)
-    print("Standard LoRA setup complete.")
+from src.utils.model_utils import (  # noqa: E402
+    create_lora_config,
+    initialize_lora_model,
+    initialize_qlora_model,
+    initialize_experiment_tracker,
+    load_dataset,
+)
 
 
 def initialize_model(cfg: DictConfig):
     """Initialize model with LoRA/QLoRA setup."""
+    from transformers import AutoTokenizer
+
     print("Initializing model...")
 
     # Create LoRA configuration
     lora_config = create_lora_config(cfg)
 
-    # Initialize basic model
+    # Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(cfg.model.model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # Initialize model based on configuration
+    if cfg.model.use_qlora:
+        llm = initialize_qlora_model(cfg, lora_config, tokenizer)
+    else:
+        llm = initialize_lora_model(cfg, lora_config, tokenizer)
+
+    # Initialize the multimodal model with the correctly configured LLM
     model = ModularMultimodalModel(
         model_name=cfg.model.model_name,
-        use_qlora=False,
-        lora_config=None,
+        use_qlora=cfg.model.use_qlora,
+        lora_config=lora_config,
+        llm=llm,  # Pass the pre-configured LLM
+        tokenizer=tokenizer,  # Pass the tokenizer
     )
-
-    # Apply LoRA setup based on config
-    if cfg.model.use_qlora:
-        setup_qlora_model(model, cfg, lora_config)
-    else:
-        setup_standard_lora(model, lora_config)
 
     print("Model initialized.")
     model.print_trainable_parameters()
     return model
-
-
-def initialize_experiment_tracker(cfg: DictConfig):
-    """Initialize experiment tracker."""
-    print("Initializing experiment tracker...")
-
-    if cfg.experiment_tracking.get("use_wandb", False):
-        tracker = ExperimentTracker(config=cfg, backend="wandb")
-    elif cfg.experiment_tracking.get("use_mlflow", False):
-        tracker = ExperimentTracker(config=cfg, backend="mlflow")
-    else:
-        raise ValueError("No experiment tracking backend configured")
-
-    print("Experiment tracker initialized.")
-    return tracker
 
 
 def load_datasets(cfg: DictConfig, model):
@@ -142,22 +63,10 @@ def load_datasets(cfg: DictConfig, model):
     print("Loading data...")
 
     # Load full training dataset
-    full_train_dataset = MixingDataset(
-        jsonl_path=cfg.data.train_jsonl_path,
-        audio_root=cfg.data.train_audio_root,
-        tokenizer=model.tokenizer,
-        sample_rate=cfg.data.audio.sample_rate,
-        limit=cfg.data.get("limit"),
-    )
+    full_train_dataset = load_dataset(cfg, model, "train")
 
-    # Load test dataset (renamed from eval)
-    test_dataset = MixingDataset(
-        jsonl_path=cfg.data.test_jsonl_path,  # Renamed from eval_jsonl_path
-        audio_root=cfg.data.test_audio_root,  # Renamed from eval_audio_root
-        tokenizer=model.tokenizer,
-        sample_rate=cfg.data.audio.sample_rate,
-        limit=cfg.data.get("limit"),
-    )
+    # Load test dataset
+    test_dataset = load_dataset(cfg, model, "test")
 
     # Split training data into train/validation (80/20 split)
     train_size = int(0.8 * len(full_train_dataset))
@@ -174,11 +83,7 @@ def load_datasets(cfg: DictConfig, model):
     print(f"  - Validation: {len(val_dataset)} samples")
     print(f"  - Test: {len(test_dataset)} samples")
 
-    # Quick validation
-    sample = train_dataset[0]
-    print(f"Sample audio shape: {sample['audio'].shape}")
     print("Data loaded.")
-
     return train_dataset, val_dataset, test_dataset
 
 
@@ -215,43 +120,12 @@ def main(cfg: DictConfig):
     trainer.train(train_dataset=train_dataset, eval_dataset=val_dataset)
     print("Training finished.")
 
-    # --- 6. Final Test Evaluation ---
-    print("Running final test evaluation...")
-
-    # Aggressive memory cleanup before evaluation
-    import torch
-    import gc
-
-    # Clear training-related variables
-    del train_dataset, val_dataset
-    gc.collect()
-
-    # Clear GPU cache
-    torch.cuda.empty_cache()
-
-    # Force garbage collection again
-    gc.collect()
-
-    print(f"GPU memory before evaluation: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
-
-    try:
-        # Try evaluation on full test dataset with cleaned memory
-        test_results = trainer.evaluate(test_dataset)
-        print(f"Final test results: {test_results}")
-
-        # Log final test results
-        tracker.log_metrics(test_results, step="final")
-    except Exception as e:
-        print(f"Evaluation failed: {e}")
-        print("Skipping final evaluation.")
-        test_results = {"eval_loss": "N/A", "eval_perplexity": "N/A"}
-
-    # --- 7. Save Model ---
+    # --- 6. Save Model ---
     print("Saving model...")
     trainer.save_model()
     print("Model saved.")
 
-    # --- 8. Finish Experiment Tracking ---
+    # --- 7. Finish Experiment Tracking ---
     tracker.finish()
 
 

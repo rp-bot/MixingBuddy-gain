@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import Optional, Any
 
 # Add parent directory to path to access src module
@@ -19,6 +18,8 @@ class ModularMultimodalModel(nn.Module):
         model_name: str = "Qwen/Qwen2-7B-Instruct",
         use_qlora: bool = False,
         lora_config: Optional[Any] = None,
+        llm: Any = None,
+        tokenizer: Any = None,
     ):
         """
         Initializes the model.
@@ -27,20 +28,15 @@ class ModularMultimodalModel(nn.Module):
             model_name (str): The name of the Hugging Face model to use.
             use_qlora (bool): Whether to use QLoRA quantization (handled by training script).
             lora_config (LoraConfig, optional): The LoRA configuration to use (handled by training script).
+            llm: Pre-configured language model (required).
+            tokenizer: Pre-configured tokenizer (required).
         """
         super().__init__()
         self.model_name = model_name
 
-        # Load model without quantization (training script handles QLoRA setup)
-        self.llm = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            torch_dtype="auto",
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-            self.llm.config.pad_token_id = self.llm.config.eos_token_id
+        # Use pre-configured LLM and tokenizer (always provided by training script)
+        self.llm = llm
+        self.tokenizer = tokenizer
 
         # Note: QLoRA and LoRA setup is now handled by the training script
         # This keeps the model constructor focused on basic model initialization

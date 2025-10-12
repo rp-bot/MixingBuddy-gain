@@ -23,8 +23,13 @@ from src.utils.experiment_tracking import ExperimentTracker
 class ExperimentTrackingCallback(TrainerCallback):
     """Callback for logging metrics and artifacts to an experiment tracker."""
 
-    def __init__(self, experiment_tracker: Optional[ExperimentTracker]):
+    def __init__(
+        self,
+        experiment_tracker: Optional[ExperimentTracker],
+        model: Optional[ModularMultimodalModel] = None,
+    ):
         self.experiment_tracker = experiment_tracker
+        self.model = model
         self.step = 0
 
     def on_log(self, args, state, control, logs=None, **kwargs):
@@ -41,10 +46,33 @@ class ExperimentTrackingCallback(TrainerCallback):
             raise ValueError("Experiment tracker is required for artifact logging")
 
         checkpoint_dir = f"{args.output_dir}/checkpoint-{state.global_step}"
+
+        # Save custom model components in checkpoint directory
+        # if self.model is not None:
+        self._save_custom_components(checkpoint_dir)
+
         if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
             self.experiment_tracker.log_artifacts(checkpoint_dir)
         elif not torch.distributed.is_initialized():
             self.experiment_tracker.log_artifacts(checkpoint_dir)
+
+    def _save_custom_components(self, checkpoint_dir: str):
+        """Save custom model components that aren't handled by HuggingFace Trainer."""
+        import os
+
+        os.makedirs(checkpoint_dir, exist_ok=True)
+
+        # Save audio projection weights
+        torch.save(
+            self.model.audio_projection.state_dict(),
+            f"{checkpoint_dir}/audio_projection.bin",
+        )
+
+        # Save LoRA adapter files (these are needed for inference)
+        # Save the LoRA adapter to the checkpoint directory
+        self.model.llm.save_pretrained(checkpoint_dir)
+
+        print(f"Saved custom components to {checkpoint_dir}/")
 
 
 def compute_metrics(eval_pred):
@@ -71,7 +99,7 @@ class LoRATrainer:
         self,
         model: ModularMultimodalModel,
         config: DictConfig,
-        experiment_tracker: ExperimentTracker,
+        experiment_tracker: Optional[ExperimentTracker] = None,
     ):
         """
         Initializes the LoRATrainer.
@@ -79,13 +107,13 @@ class LoRATrainer:
         Args:
             model: The model to train.
             config: The configuration for training.
-            experiment_tracker: The experiment tracker to use (required).
+            experiment_tracker: The experiment tracker to use (optional for evaluation).
 
         Raises:
-            ValueError: If experiment_tracker is None.
+            ValueError: If experiment_tracker is None during training.
         """
-        if not experiment_tracker:
-            raise ValueError("Experiment tracker is required for LoRATrainer")
+        # Only require tracker for training, not evaluation
+        self.is_training = False
 
         self.model = model
         self.config = config
@@ -152,8 +180,11 @@ class LoRATrainer:
                 )
             )
 
-        # Experiment tracking callback (required)
-        callbacks.append(ExperimentTrackingCallback(self.experiment_tracker))
+        # Experiment tracking callback (only for training)
+        if self.experiment_tracker:
+            callbacks.append(
+                ExperimentTrackingCallback(self.experiment_tracker, self.model)
+            )
 
         return callbacks
 
@@ -168,6 +199,10 @@ class LoRATrainer:
         Returns:
             The trainer object.
         """
+        if not self.experiment_tracker:
+            raise ValueError("Experiment tracker is required for training")
+
+        self.is_training = True
         training_args = self.setup_training_args()
         data_collator = self.setup_data_collator()
         callbacks = self.setup_callbacks()
@@ -193,6 +228,44 @@ class LoRATrainer:
 
         return self.trainer
 
+    def _setup_evaluation_trainer(self):
+        """Sets up the trainer for evaluation only."""
+        # Create minimal training args for evaluation
+        from transformers import TrainingArguments
+
+        # Create a temporary output directory for evaluation
+        import tempfile
+
+        temp_dir = tempfile.mkdtemp()
+
+        # Get batch size from evaluation config or use training config
+        eval_batch_size = self.config.evaluation.batch_size
+        
+
+        training_args = TrainingArguments(
+            output_dir=temp_dir,
+            per_device_eval_batch_size=eval_batch_size,
+            dataloader_pin_memory=False,
+            dataloader_num_workers=0,
+            remove_unused_columns=False,
+            fp16=self.config.training.mixed_precision.enabled
+            and self.config.training.mixed_precision.dtype == "fp16",
+            bf16=self.config.training.mixed_precision.enabled
+            and self.config.training.mixed_precision.dtype == "bf16",
+        )
+
+        data_collator = self.setup_data_collator()
+        callbacks = self.setup_callbacks()
+
+        self.trainer = Trainer(
+            model=self.model,
+            args=training_args,
+            eval_dataset=None,  # Will be set during evaluation
+            data_collator=data_collator,
+            compute_metrics=compute_metrics,
+            callbacks=callbacks,
+        )
+
     def evaluate(self, eval_dataset) -> Dict[str, float]:
         """
         Evaluates the model.
@@ -204,7 +277,8 @@ class LoRATrainer:
             A dictionary of evaluation metrics.
         """
         if not self.trainer:
-            raise ValueError("Trainer not initialized. Call train() first.")
+            # Initialize trainer for evaluation if not already done
+            self._setup_evaluation_trainer()
         return self.trainer.evaluate(eval_dataset)
 
     def save_model(self, output_dir: Optional[str] = None):
@@ -226,8 +300,9 @@ class LoRATrainer:
             f"{output_dir}/audio_projection.bin",
         )
 
-        # Log artifacts (required)
-        self.experiment_tracker.log_artifacts(output_dir)
+        # Log artifacts (only if tracker is available)
+        if self.experiment_tracker:
+            self.experiment_tracker.log_artifacts(output_dir)
 
     def get_trainable_parameters_info(self) -> Dict[str, Any]:
         """
