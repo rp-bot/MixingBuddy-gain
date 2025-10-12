@@ -2,11 +2,11 @@ paths:
   processed_root: data/musdb18hq_processed
   output_root: data/musdb18hq_processed
 
-# Training dataset paths
+# Dataset paths
 train_jsonl_path: data/musdb18hq_processed/train/training_samples.jsonl
 train_audio_root: data/musdb18hq_processed/train/flawed_mixes
-eval_jsonl_path: data/musdb18hq_processed/test/test_samples.jsonl
-eval_audio_root: data/musdb18hq_processed/test/flawed_mixes
+test_jsonl_path: data/musdb18hq_processed/test/test_samples.jsonl
+test_audio_root: data/musdb18hq_processed/test/flawed_mixes
 
 # Training parameters
 

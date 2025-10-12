@@ -67,11 +67,13 @@ class MultimodalDataCollator:
             return_tensors=self.return_tensors,
         )
 
-        # Stack audio tensors (all audio should have the same length)
+        # Stack audio tensors (pad to same length if needed)
         if "audio" not in features[0]:
             raise KeyError("Expected 'audio' key in features[0]")
         audio_list = [feature["audio"] for feature in features]
-        batch["audio"] = torch.stack(audio_list, dim=0)
+
+        # Pad audio tensors to the same length
+        batch["audio"] = self._pad_audio_tensors(audio_list)
 
         # Preserve metadata (take from first sample or collect all)
         for meta_key in metadata_keys:
@@ -86,3 +88,45 @@ class MultimodalDataCollator:
                     batch[meta_key] = [feature[meta_key] for feature in features]
 
         return batch
+
+    def _pad_audio_tensors(self, audio_list: List[torch.Tensor]) -> torch.Tensor:
+        """Pad audio tensors to the same length."""
+        if not audio_list:
+            return torch.empty(0)
+
+        # Find the maximum length
+        max_length = max(audio.shape[-1] for audio in audio_list)
+
+        # Pad or crop each tensor to max_length
+        padded_audio = []
+        for audio in audio_list:
+            if audio.shape[-1] < max_length:
+                # Pad with zeros
+                padding_size = max_length - audio.shape[-1]
+                if len(audio.shape) == 1:
+                    # 1D tensor: pad at the end
+                    padded = torch.nn.functional.pad(
+                        audio, (0, padding_size), mode="constant", value=0
+                    )
+                else:
+                    # Multi-dimensional: pad the last dimension
+                    pad_width = [0, 0] * (len(audio.shape) - 1) + [0, padding_size]
+                    padded = torch.nn.functional.pad(
+                        audio, pad_width, mode="constant", value=0
+                    )
+                padded_audio.append(padded)
+            elif audio.shape[-1] > max_length:
+                # Crop to max_length
+                if len(audio.shape) == 1:
+                    # 1D tensor: crop the last dimension
+                    cropped = audio[:max_length]
+                else:
+                    # Multi-dimensional: crop the last dimension
+                    cropped = audio[..., :max_length]
+                padded_audio.append(cropped)
+            else:
+                # Already the right length
+                padded_audio.append(audio)
+
+        # Stack the padded tensors
+        return torch.stack(padded_audio, dim=0)

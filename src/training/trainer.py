@@ -2,7 +2,6 @@
 This module contains the LoRATrainer class for fine-tuning models with LoRA.
 """
 
-import datetime
 import math
 from typing import Any, Dict, List, Optional
 
@@ -28,7 +27,9 @@ class ExperimentTrackingCallback(TrainerCallback):
         self.step = 0
 
     def on_log(self, args, state, control, logs=None, **kwargs):
-        if not self.experiment_tracker or not logs:
+        if not self.experiment_tracker:
+            raise ValueError("Experiment tracker is required for logging")
+        if not logs:
             return
 
         self.step = state.global_step
@@ -36,7 +37,7 @@ class ExperimentTrackingCallback(TrainerCallback):
 
     def on_save(self, args, state, control, **kwargs):
         if not self.experiment_tracker:
-            return
+            raise ValueError("Experiment tracker is required for artifact logging")
 
         checkpoint_dir = f"{args.output_dir}/checkpoint-{state.global_step}"
         if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
@@ -69,7 +70,7 @@ class LoRATrainer:
         self,
         model: ModularMultimodalModel,
         config: DictConfig,
-        experiment_tracker: Optional[ExperimentTracker] = None,
+        experiment_tracker: ExperimentTracker,
     ):
         """
         Initializes the LoRATrainer.
@@ -77,8 +78,14 @@ class LoRATrainer:
         Args:
             model: The model to train.
             config: The configuration for training.
-            experiment_tracker: The experiment tracker to use.
+            experiment_tracker: The experiment tracker to use (required).
+
+        Raises:
+            ValueError: If experiment_tracker is None.
         """
+        if not experiment_tracker:
+            raise ValueError("Experiment tracker is required for LoRATrainer")
+
         self.model = model
         self.config = config
         self.experiment_tracker = experiment_tracker
@@ -87,10 +94,9 @@ class LoRATrainer:
     def setup_training_args(self) -> TrainingArguments:
         """Sets up the training arguments."""
         training_args_config = self.config.training.training_args
-        if "run_name" not in training_args_config or not training_args_config.run_name:
-            run_name = f"lora-{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-        else:
-            run_name = training_args_config.run_name
+
+        # Get run name from experiment tracker (should always be set during initialization)
+        run_name = self.experiment_tracker._current_run_name
 
         return TrainingArguments(
             output_dir=training_args_config.output_dir,
@@ -117,6 +123,9 @@ class LoRATrainer:
             bf16=self.config.training.mixed_precision.enabled
             and self.config.training.mixed_precision.dtype == "bf16",
             seed=self.config.env.seed,
+            dataloader_pin_memory=False,  # Reduce memory usage
+            dataloader_num_workers=0,  # Reduce memory usage
+            remove_unused_columns=False,  # Keep all columns
         )
 
     def setup_data_collator(self) -> MultimodalDataCollator:
@@ -129,14 +138,18 @@ class LoRATrainer:
     def setup_callbacks(self) -> List[TrainerCallback]:
         """Sets up the callbacks."""
         callbacks = []
+
+        # Early stopping callback (optional)
         if self.config.training.early_stopping.enabled:
             callbacks.append(
                 EarlyStoppingCallback(
                     early_stopping_patience=self.config.training.early_stopping.patience
                 )
             )
-        if self.experiment_tracker:
-            callbacks.append(ExperimentTrackingCallback(self.experiment_tracker))
+
+        # Experiment tracking callback (required)
+        callbacks.append(ExperimentTrackingCallback(self.experiment_tracker))
+
         return callbacks
 
     def train(self, train_dataset, eval_dataset: Optional[Any] = None) -> Trainer:
@@ -164,14 +177,14 @@ class LoRATrainer:
             callbacks=callbacks,
         )
 
-        if self.experiment_tracker:
-            self.experiment_tracker.log_params(self.config)
+        # Log configuration parameters (required)
+        self.experiment_tracker.log_params(self.config)
 
         self.trainer.train()
 
-        if self.experiment_tracker:
-            metrics = self.trainer.state.log_history[-1]
-            self.experiment_tracker.log_metrics(metrics)
+        # Log final metrics (required)
+        metrics = self.trainer.state.log_history[-1]
+        self.experiment_tracker.log_metrics(metrics)
 
         return self.trainer
 
@@ -208,8 +221,8 @@ class LoRATrainer:
             f"{output_dir}/audio_projection.bin",
         )
 
-        if self.experiment_tracker:
-            self.experiment_tracker.log_artifacts(output_dir)
+        # Log artifacts (required)
+        self.experiment_tracker.log_artifacts(output_dir)
 
     def get_trainable_parameters_info(self) -> Dict[str, Any]:
         """

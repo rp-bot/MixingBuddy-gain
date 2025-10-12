@@ -1,0 +1,47 @@
+# @package experiment_naming
+
+# Experiment naming convention configuration
+naming:
+  # Base format: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}-{version}
+  format: "{exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}-{version}"
+
+  # Components
+  components:
+    exp_type:
+      lora: "lora"
+      qlora: "qlora"
+      full: "full"
+
+    model_abbr:
+      "Qwen/Qwen2-7B-Instruct": "qwen2-7b"
+
+    dataset_abbr:
+      musdb: "musdb"
+
+    version_format: "v{num:03d}" # v001, v002, etc.
+    timestamp_format: "{mmdd}-{HHMM}" # 1015-1430
+
+# Experiment types and their configurations
+experiment_types:
+  baseline:
+    name: "lora-qwen2-7b-r8a16-musdb-baseline"
+    description: "Baseline LoRA experiment with standard parameters"
+
+  parameter_sweep:
+    rank_alpha_combinations:
+      - { rank: 4, alpha: 8, name: "lora-qwen2-7b-r4a8-musdb-v001" }
+      - { rank: 8, alpha: 16, name: "lora-qwen2-7b-r8a16-musdb-v002" }
+      - { rank: 16, alpha: 32, name: "lora-qwen2-7b-r16a32-musdb-v003" }
+      - { rank: 32, alpha: 64, name: "lora-qwen2-7b-r32a64-musdb-v004" }
+
+# Tags for different experiment types
+tags:
+  baseline: ["baseline", "lora", "qwen2", "automatic-mixing"]
+  parameter_sweep: ["parameter-sweep", "lora", "qwen2", "automatic-mixing"]
+  ablation: ["ablation", "lora", "qwen2", "automatic-mixing"]
+
+# Notes templates
+notes_templates:
+  baseline: "Baseline LoRA experiment with rank={rank}, alpha={alpha} on {dataset} dataset"
+  parameter_sweep: "Parameter sweep experiment testing rank={rank}, alpha={alpha} on {dataset} dataset"
+  ablation: "Ablation study: {ablation_type} - {description}"

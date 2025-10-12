@@ -1,17 +1,7 @@
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-
-# import sys
-# from pathlib import Path
-from typing import Optional
-
-from peft import (
-    get_peft_model,
-    LoraConfig,
-    TaskType,
-    prepare_model_for_kbit_training,
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import Optional, Any
 
 # Add parent directory to path to access src module
 # sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -27,33 +17,24 @@ class ModularMultimodalModel(nn.Module):
     def __init__(
         self,
         model_name: str = "Qwen/Qwen2-7B-Instruct",
-        use_qlora: bool = True,
-        lora_config: Optional[LoraConfig] = None,
+        use_qlora: bool = False,
+        lora_config: Optional[Any] = None,
     ):
         """
         Initializes the model.
 
         Args:
             model_name (str): The name of the Hugging Face model to use.
-            use_qlora (bool): Whether to use QLoRA for fine-tuning.
-            lora_config (LoraConfig, optional): The LoRA configuration to use.
+            use_qlora (bool): Whether to use QLoRA quantization (handled by training script).
+            lora_config (LoraConfig, optional): The LoRA configuration to use (handled by training script).
         """
         super().__init__()
         self.model_name = model_name
 
-        quantization_config = None
-        if use_qlora:
-            quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_compute_dtype=torch.bfloat16,
-                bnb_4bit_use_double_quant=True,
-            )
-
+        # Load model without quantization (training script handles QLoRA setup)
         self.llm = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             torch_dtype="auto",
-            quantization_config=quantization_config,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
@@ -61,33 +42,8 @@ class ModularMultimodalModel(nn.Module):
             self.tokenizer.pad_token = self.tokenizer.eos_token
             self.llm.config.pad_token_id = self.llm.config.eos_token_id
 
-        if use_qlora:
-            self.llm = prepare_model_for_kbit_training(self.llm)
-            # Explicitly enable gradient checkpointing with use_reentrant=False to suppress the warning
-            self.llm.gradient_checkpointing_enable(
-                gradient_checkpointing_kwargs={"use_reentrant": False}
-            )
-            if lora_config is None:
-                lora_config = LoraConfig(
-                    r=8,
-                    lora_alpha=32,
-                    # Note: These target modules are common for models like Llama/Mistral.
-                    # You should verify them for the specific model you are using (e.g., Qwen2)
-                    # by inspecting the model architecture (e.g., print(model) and look for linear layers in attention blocks).
-                    target_modules=[
-                        "q_proj",
-                        "k_proj",
-                        "v_proj",
-                        "o_proj",
-                        "gate_proj",
-                        "up_proj",
-                        "down_proj",
-                    ],
-                    lora_dropout=0.05,
-                    bias="none",
-                    task_type=TaskType.CAUSAL_LM,
-                )
-            self.llm = get_peft_model(self.llm, lora_config)
+        # Note: QLoRA and LoRA setup is now handled by the training script
+        # This keeps the model constructor focused on basic model initialization
 
         # Initialize audio encoder (frozen EnCodec)
         self.audio_encoder = EncodecEncoder(freeze=True)
@@ -163,7 +119,7 @@ class ModularMultimodalModel(nn.Module):
 
         return batched_features
 
-    def forward(self, input_ids, attention_mask, audio, labels):
+    def forward(self, input_ids, attention_mask, audio, labels, **kwargs):
         """
         Defines the forward pass of the model.
 
@@ -172,6 +128,7 @@ class ModularMultimodalModel(nn.Module):
             attention_mask (torch.Tensor): The attention mask for the language model.
             audio (torch.Tensor, optional): Audio input to be processed.
             labels (torch.Tensor, optional): The labels for computing the loss. Defaults to None.
+            **kwargs: Additional arguments (metadata) that are ignored.
 
         Returns:
             transformers.modeling_outputs.CausalLMOutputWithPast: The output from the language model.
@@ -202,20 +159,23 @@ class ModularMultimodalModel(nn.Module):
         attention_mask = torch.cat((audio_attention_mask, attention_mask), dim=1)
 
         # 8. Adjust labels for audio part (ignore in loss)
-        if labels is not None:
-            audio_labels = torch.full(
-                projected_audio_embeds.shape[:2],
-                -100,
-                dtype=torch.long,
-                device=labels.device,
-            )
-            labels = torch.cat((audio_labels, labels), dim=1)
+        if labels is None:
+            raise ValueError("labels cannot be None")
+
+        audio_labels = torch.full(
+            projected_audio_embeds.shape[:2],
+            -100,
+            dtype=torch.long,
+            device=labels.device,
+        )
+        labels = torch.cat((audio_labels, labels), dim=1)
 
         output = self.llm(
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
             labels=labels,
             return_dict=True,
+            use_cache=False,  # Disable cache to avoid padding issues
         )
         return output
 

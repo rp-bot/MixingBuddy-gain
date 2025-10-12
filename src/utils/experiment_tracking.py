@@ -4,6 +4,7 @@ Experiment tracking utilities for Weights & Biases and MLflow.
 
 import json
 import logging
+
 # import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -29,6 +30,7 @@ class ExperimentTracker:
         self.config = config
         self.backend = backend
         self.run = None
+        self._current_run_name = None  # Initialize to ensure it exists
 
         if backend == "wandb":
             self._init_wandb()
@@ -37,13 +39,60 @@ class ExperimentTracker:
         else:
             raise ValueError(f"Unsupported backend: {backend}")
 
+        # Ensure _current_run_name is always set
+        if not self._current_run_name:
+            self._current_run_name = self._generate_run_name()
+
+    def _generate_run_name(self):
+        """Generate run name using naming convention."""
+        # Check if custom name is provided
+        custom_name = self.config.experiment_tracking.get("name")
+        if custom_name:
+            return custom_name
+
+        # Extract components for naming convention
+        model_name = self.config.model.model_name
+
+        # Get model abbreviation from config mapping
+        model_abbr = self.config.experiment_naming.naming.components.model_abbr.get(
+            model_name, model_name.lower().replace("-instruct", "").replace("-", "")
+        )
+
+        # LoRA configuration
+        lora_config = self.config.model.lora
+        rank = lora_config.r
+        alpha = lora_config.lora_alpha
+        lora_str = f"r{rank}a{alpha}"
+
+        # Dataset identifier from config mapping
+        dataset_path = self.config.data.train_jsonl_path
+        if "musdb" in dataset_path.lower():
+            dataset_abbr = "musdb"
+        else:
+            dataset_abbr = "custom"
+
+        # Experiment type from config mapping
+        if self.config.model.use_qlora:
+            exp_type = self.config.experiment_naming.naming.components.exp_type.qlora
+        else:
+            exp_type = self.config.experiment_naming.naming.components.exp_type.lora
+
+        # Version (use timestamp for uniqueness)
+        import datetime
+
+        timestamp = datetime.datetime.now().strftime("%m%d-%H%M")
+
+        # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}-{timestamp}
+        run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}-{timestamp}"
+
+        return run_name
+
     def _init_wandb(self):
         """Initialize Weights & Biases tracking."""
         try:
-            # Set run name if not provided
-            run_name = self.config.experiment_tracking.get("name")
-            if not run_name:
-                run_name = f"lora-{self.config.model.pretrained_model_name_or_path.split('/')[-1]}-{self.config.env.seed}"
+            # Generate run name using naming convention
+            run_name = self._generate_run_name()
+            self._current_run_name = run_name  # Store for trainer access
 
             # Initialize wandb
             self.run = wandb.init(
@@ -65,10 +114,9 @@ class ExperimentTracker:
     def _init_mlflow(self):
         """Initialize MLflow tracking."""
         try:
-            # Set run name if not provided
-            run_name = self.config.experiment_tracking.get("run_name")
-            if not run_name:
-                run_name = f"lora-{self.config.model.pretrained_model_name_or_path.split('/')[-1]}-{self.config.env.seed}"
+            # Generate run name using naming convention
+            run_name = self._generate_run_name()
+            self._current_run_name = run_name  # Store for trainer access
 
             # Set experiment name
             experiment_name = self.config.experiment_tracking.get(
@@ -99,8 +147,26 @@ class ExperimentTracker:
             if isinstance(v, DictConfig):
                 items.extend(self._flatten_config(v, new_key, sep=sep).items())
             else:
-                items.append((new_key, v))
+                # Convert non-serializable values to strings
+                serialized_value = self._serialize_value(v)
+                items.append((new_key, serialized_value))
         return dict(items)
+
+    def _serialize_value(self, value: Any) -> Union[str, int, float, bool, None]:
+        """Convert value to a format that can be logged to Wandb."""
+        if value is None:
+            return None
+        elif isinstance(value, (str, int, float, bool)):
+            return value
+        elif isinstance(value, (list, tuple)):
+            # Convert lists/tuples to strings
+            return str(value)
+        elif isinstance(value, dict):
+            # Convert dicts to strings
+            return str(value)
+        else:
+            # Convert any other type to string
+            return str(value)
 
     def log_params(self, params: Dict[str, Any]):
         """Log parameters to the tracking backend."""
@@ -108,13 +174,23 @@ class ExperimentTracker:
             return
 
         try:
+            # Filter out any remaining non-serializable values
+            serialized_params = {}
+            for key, value in params.items():
+                serialized_value = self._serialize_value(value)
+                serialized_params[key] = serialized_value
+
             if self.backend == "wandb":
-                wandb.config.update(params)
+                wandb.config.update(serialized_params)
             elif self.backend == "mlflow":
-                for key, value in params.items():
+                for key, value in serialized_params.items():
                     mlflow.log_param(key, value)
         except Exception as e:
             logger.error(f"Failed to log parameters: {e}")
+            # Log the problematic parameters for debugging
+            logger.error(
+                f"Problematic parameters: {[(k, type(v), v) for k, v in params.items() if not isinstance(v, (str, int, float, bool, type(None)))]}"
+            )
 
     def log_metrics(
         self, metrics: Dict[str, Union[float, int]], step: Optional[int] = None

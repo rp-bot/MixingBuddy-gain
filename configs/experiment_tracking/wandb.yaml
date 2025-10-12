@@ -2,10 +2,10 @@
 
 _target_: wandb.init
 
-project: "llm-lora-automatic-mixing"
+project: "mixing-buddy-milestone-0"
 entity: null # Set your wandb entity/team name
-name: null # Will be set automatically
-tags: ["lora", "llm", "automatic-mixing", "music-production"]
-notes: "LoRA fine-tuning for automatic mixing research"
+name: null # Will be set automatically using naming convention
+tags: ["lora", "qwen2", "automatic-mixing", "music-production", "multimodal"]
+notes: "LoRA fine-tuning for automatic mixing research - Milestone 0"
 reinit: true
 save_code: true
