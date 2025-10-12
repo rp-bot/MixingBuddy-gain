@@ -240,7 +240,6 @@ class LoRATrainer:
 
         # Get batch size from evaluation config or use training config
         eval_batch_size = self.config.evaluation.batch_size
-        
 
         training_args = TrainingArguments(
             output_dir=temp_dir,

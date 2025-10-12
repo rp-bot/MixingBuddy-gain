@@ -1,0 +1,35 @@
+# @package _global_
+
+# Default configurations for evaluation
+defaults:
+  - data: 05_synthesis
+  - model: qwen2_7b
+  - evaluation: evaluation
+  - training: training # Include training config for trainer compatibility
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Model checkpoint settings
+checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-r8a16-musdb-1012-1301 # Set this to the path of your trained model checkpoint
+# Options:
+# - null: Use base model (no trained weights)
+# - "latest": Automatically use the latest checkpoint
+# - "path/to/checkpoint": Use specific checkpoint
+# Example: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-r8a16-musdb-1012-1301"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: true
+  use_mlflow: false
+
+# Hydra configuration
+hydra:
+  run:
+    dir: ${env.output_dir}
