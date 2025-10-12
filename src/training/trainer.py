@@ -3,6 +3,7 @@ This module contains the LoRATrainer class for fine-tuning models with LoRA.
 """
 
 import math
+import os
 from typing import Any, Dict, List, Optional
 
 import torch
@@ -98,8 +99,12 @@ class LoRATrainer:
         # Get run name from experiment tracker (should always be set during initialization)
         run_name = self.experiment_tracker._current_run_name
 
+        # Create output directory if it doesn't exist
+        output_dir = os.path.join(training_args_config.output_dir, run_name)
+        os.makedirs(output_dir, exist_ok=True)
+
         return TrainingArguments(
-            output_dir=training_args_config.output_dir,
+            output_dir=output_dir,
             num_train_epochs=training_args_config.num_train_epochs,
             per_device_train_batch_size=training_args_config.per_device_train_batch_size,
             per_device_eval_batch_size=training_args_config.per_device_eval_batch_size,

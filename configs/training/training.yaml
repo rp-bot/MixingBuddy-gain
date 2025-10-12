@@ -1,6 +1,6 @@
 # Training arguments
 training_args:
-  output_dir: "./outputs"
+  output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
   num_train_epochs: 0.1 # Short test run (about 10% of first epoch)
   per_device_train_batch_size: 1
   per_device_eval_batch_size: 1
