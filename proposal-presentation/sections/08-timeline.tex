@@ -1,16 +1,35 @@
 \section{Timeline}
 
 \begin{frame}\frametitle{\secname}
-    \textbf{Tasks Leading to Nov. 28th Submission}
-    \begin{itemize}
-        \item \sout{Dataset preprocessing and JSONL format conversion.}
-        \item \sout{Initial codebase and data loading pipeline setup.}
-        \item \sout{Partial fine-tuning pilot experiments and architecture testing.}
-        \item Finalize architecture and execute all remaining experiments.
-        \item Submit and obtain IRB approval for human studies.
-        \item Conduct the human evaluation study with audio professionals.
-        \item Complete the final paper, web interface, and Hugging Face deployment.
-    \end{itemize}
+    \begin{columns}[T,onlytextwidth]
+        \column{0.5\textwidth}
+        \onslide<1->{
+        \textbf{This Semester}
+        {\scriptsize
+        \begin{itemize}
+            \item \sout{Dataset preprocessing and JSONL format conversion.}
+            \item \sout{Initial codebase and data loading pipeline setup.}
+            \item \sout{Partial fine-tuning pilot experiments and architecture testing.}
+            \item Finalize architecture and execute all remaining experiments.
+            \item Submit and obtain IRB approval for human studies.
+            \item Conduct the human evaluation study with audio professionals.
+        \end{itemize}
+        }
+        }
+
+        \column{0.5\textwidth}
+        \onslide<2->{
+        \textbf{Next Semester}
+        {\scriptsize
+        \begin{itemize}
+            \item Submit to a conference, web interface, and Hugging Face deployment.
+            \item Establish better ground-truth dataset that is more representative of professional mixes.
+            \item Expand audio understanding from gain-only to spectral-aware controls.
+            \item Enhance LLM with tool-use for numeric predictions and estimations.
+        \end{itemize}
+        }
+        }
+    \end{columns}
 \end{frame}
 
 

@@ -5,59 +5,46 @@
         \item<1-> \textbf{Participants}: Semi-professional audio engineers and producers
         \item<2-> \textbf{Evaluation Criteria}:
         \begin{itemize}
-            \item<3-> \textbf{Effectiveness}: How well does the advice address the mixing challenge?
-            \item<4-> \textbf{Actionability}: How clear and implementable is the advice?
-            \item<5-> \textbf{Adherence to Conventions}: How well does the advice follow established mixing practices?
+            \item<2-> \textbf{Effectiveness}: How well does the advice address the mixing challenge?
+            \item<3-> \textbf{Actionability}: How clear and implementable is the advice?
+            \item<4-> \textbf{Adherence to Conventions}: How well does the advice follow established mixing practices?
         \end{itemize}
-        \item<6-> \textbf{Methodology}: [To be determined - considering multiple evaluation approaches]
+        \item<5-> \textbf{Methodology}: [To be determined - considering multiple evaluation approaches]
     \end{itemize}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Automated Evaluation}
     \begin{columns}[T,totalwidth=\textwidth]
     
-    % Column 1: Semantic Similarity
-    \column{0.33\textwidth}
-        \centering
-        \only<1->{\textbf{1. Semantic Similarity}}
+    % Left Column: Animated Text
+    \column{0.55\textwidth}
+        \alt<1>{\textbf{1. Semantic Similarity}}{\textcolor{gray}{1. Semantic Similarity}}
         \vspace{0.2cm}
         
         \small
-        \only<1->{Compares generated advice to expert annotations for relevance.}
-        \vspace{0.3cm}
+        \alt<1>{Compares generated advice to expert annotations for relevance.}{\textcolor{gray}{Compares generated advice to expert annotations for relevance.}}
+        \vspace{0.8cm}
         
-        \begin{center}
-        \only<1->{\includegraphics[width=\linewidth,height=0.5\textheight,keepaspectratio]{pictures/obj-eval-1.png}}
-        \end{center}
-    
-    % Column 2: LLM-as-a-Judge
-    \column{0.33\textwidth}
-        \centering
-        \only<2->{\textbf{2. LLM-as-a-Judge}}
+        \alt<2>{\textbf{2. LLM-as-a-Judge}}{\textcolor{gray}{2. LLM-as-a-Judge}}
         \vspace{0.2cm}
         
         \small
-        \only<2->{Uses GPT-4 to rate advice quality using a predefined rubric.}
-        \vspace{0.3cm}
+        \alt<2>{Uses a frontier LLM (e.g., Gemini-2.5, GPT-4o) to rate advice quality using a predefined rubric.}{\textcolor{gray}{Uses a frontier LLM (e.g., Gemini-2.5, GPT-4o) to rate advice quality using a predefined rubric.}}
+        \vspace{0.8cm}
         
-        \begin{center}
-        \only<2->{\includegraphics[width=\linewidth,height=0.5\textheight,keepaspectratio]{pictures/obj-eval-2.png}}
-        \end{center}
-    
-    % Column 3: Gain Advice Accuracy
-    \column{0.33\textwidth}
-        \centering
-        \only<3->{\textbf{3. Gain Advice Accuracy}}
+        \alt<3>{\textbf{3. Overall Advice Accuracy}}{\textcolor{gray}{3. Overall Advice Accuracy}}
         \vspace{0.2cm}
         
         \small
-        \only<3->{Compares suggested adjustments to ground truth.}
-        \vspace{0.3cm}
+        \alt<3>{Compares suggested adjustments to ground truth.}{\textcolor{gray}{Compares suggested adjustments to ground truth.}}
         
-        \begin{center}
-        \only<3->{\includegraphics[width=\linewidth,height=0.5\textheight,keepaspectratio]{pictures/obj-eval-3.png}}
-        \end{center}
+    % Right Column: Animated Image
+    \column{0.45\textwidth}
+        \centering
+        \only<1>{\includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{pictures/obj-eval-1.png}}
+        \only<2>{\includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{pictures/obj-eval-2.png}}
+        \only<3>{\includegraphics[width=\linewidth,height=0.8\textheight,keepaspectratio]{pictures/obj-eval-3.png}}
 
-\end{columns}
+    \end{columns}
 
 \end{frame}
