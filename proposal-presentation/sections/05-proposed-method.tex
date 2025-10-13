@@ -4,9 +4,9 @@
     \begin{columns}[T,totalwidth=\textwidth]
         \column{0.6\textwidth}
         \begin{itemize}
-            \item<1-> \textbf{LLM as backbone}: A pretrained Audio LLM like Qwen-Audio \cite{Chu_Xu_Zhou_Yang_Zhang_Yan_Zhou_Zhou_2023} as the backbone.
-            \item<2-> \textbf{Input}: Anchor track, rest of the tracks, and a text prompt.
-            \item<3-> \textbf{Output}: A structured response containing \textbf{advice} for the user to \textbf{balance the levels} of the tracks.
+            \item<1-> \textbf{LLM as backbone}: A pretrained LLM such as Qwen2 \cite{yang2024qwen2technicalreport} as the backbone.
+            \item<2-> \textbf{Input}: A Flawed mix and a text prompt.
+            \item<3-> \textbf{Output}: A structured response containing advice pointing out the flaws and suggesting solutions.
             \item<4-> \textbf{Architecture}: Cascade approach, with the LLM as the backbone.
             \item<5-> \textbf{Training strategy}: Supervised fine-tuning using PEFT (Parameter-Efficient Fine-Tuning), specifically LoRA \cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} or QLoRA \cite{Dettmers_2023_QLoRA}.
         \end{itemize}
@@ -14,29 +14,62 @@
         \column{0.4\textwidth}
         \centering
         % Overview architecture variants
-        \only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch1.png}}
-        \only<2>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch2.png}}
-        \only<3>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch3.png}}
-        \only<4->{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch4.png}}
+        \only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch-1.png}}
+        \only<2>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch-2.png}}
+        \only<3>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch-3.png}}
+        \only<4->{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/arch-4.png}}
     \end{columns}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Dataset Synthesis}
-    \begin{itemize}
-        \item<1-> \textbf{Prompt}: Create per-sample prompts in addtion to the constant system prompt.
-        \item<2-> \textbf{Multitrack Input}: 
+    \begin{columns}[T,totalwidth=\textwidth]
+        \column{0.5\textwidth}
         \begin{itemize}
-            \item<2-> \textbf{Dataset}: A multitrack dataset like MUSDB18 \cite{Rafii_Liutkus_Stoter_Mimilakis_Bittner_2019}.
-            \item<3-> Chunk a song into 10-second segments.
-            \item<4-> Inject an error of $\pm n$ dB on a non-anchor track.
+            \item<1-3> \textbf{Audio-Driven Prompt Generation}: For this milestone, user instructions are implicit or generic, focusing the model purely on audio input to identify mixing flaws.
+            \item<2-> \textbf{Flaw-Driven Templating}: a ``Flaw Category'' is identified, dictating the structure and content of the response.
+            \item<3-3> \textbf{Dynamic Population}: Template variables such as \textbf{stem names} and \textbf{suggested gain values} are automatically populated.
+            % \item<4-> \textbf{Output Pairs}: The synthesis process yields comprehensive (Implicit Instruction, Ideal Response) triplets for model training.
         \end{itemize}
-        \item<5-> \textbf{Response Formulation}: Programmitically create structured responses.
+
+        \column{0.5\textwidth}
+        \only<1-3>{
+            \centering
+            \includegraphics[height=0.8\textheight,keepaspectratio]{pictures/response-synthesis.png}
+        }
+        
+        \only<4>{
+            \textbf{Key Mixing Flaw Categories for Synthesis:}
+                \begin{itemize}
+                    \item \textbf{No Error}:  \textit{``The mix sounds balanced.''}
+                    \item \textbf{Quiet}: \textit{``The vocal is too quiet.''}
+                    \item \textbf{Very Quiet}: \textit{``The vocal is much too quiet.''}
+                    \item \textbf{Loud}: \textit{``The bass is too loud.''}
+                    \item \textbf{Very Loud}: \textit{``The bass is much too loud.''}
+                \end{itemize}
+        }
+        
+        
+    \end{columns}
+
+\end{frame}
+
+\begin{frame}\frametitle{\secname}\framesubtitle{Flawed Mix Input}
+    \begin{columns}[T,totalwidth=\textwidth]
+        \column{0.5\textwidth}
         \begin{itemize}
-            \item<5-> Create templates based on the prompt. The templates will be informed by established mixing conventions.
-            \item<6-> Pick a template based on the prompt, containing both description and solution placeholders.
-            \item<7-> Populate the placeholders with the ground truth description and solution.
+            \item<1-> \textbf{Dataset}: A multitrack dataset like MUSDB18 \cite{Rafii_Liutkus_Stoter_Mimilakis_Bittner_2019}.
+            \item<2-> Chunk a song into 10-second segments.
+            \item<3-> Inject an error of $\pm n$ dB on a non-anchor track based on Flaw Categories.
+            \item<4-> Sum the stems to get the flawed mix.
         \end{itemize}
-    \end{itemize}
+
+        \column{0.5\textwidth}
+        \centering
+        \only<1>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/mix-synthesis-1.png}}
+        \only<2>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/mix-synthesis-2.png}}
+        \only<3>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/mix-synthesis-3.png}}
+        \only<4>{\includegraphics[height=0.8\textheight,keepaspectratio]{pictures/mix-synthesis-4.png}}
+    \end{columns}
 
 \end{frame}
 

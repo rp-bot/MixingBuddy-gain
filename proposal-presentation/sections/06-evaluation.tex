@@ -2,40 +2,61 @@
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Human Evaluation}
     \begin{itemize}
-        \item \textbf{Participants}: Semi-professional audio engineers and producers
-        \item \textbf{Evaluation Criteria}:
+        \item<1-> \textbf{Participants}: Semi-professional audio engineers and producers
+        \item<2-> \textbf{Evaluation Criteria}:
         \begin{itemize}
-            \item \textbf{Effectiveness}: How well does the advice address the mixing challenge?
-            \item \textbf{Actionability}: How clear and implementable is the advice?
-            \item \textbf{Adherence to Conventions}: How well does the advice follow established mixing practices?
+            \item<3-> \textbf{Effectiveness}: How well does the advice address the mixing challenge?
+            \item<4-> \textbf{Actionability}: How clear and implementable is the advice?
+            \item<5-> \textbf{Adherence to Conventions}: How well does the advice follow established mixing practices?
         \end{itemize}
-        \item \textbf{Methodology}: Rating scales and qualitative feedback collection
+        \item<6-> \textbf{Methodology}: [To be determined - considering multiple evaluation approaches]
     \end{itemize}
 \end{frame}
 
 \begin{frame}\frametitle{\secname}\framesubtitle{Automated Evaluation}
     \begin{columns}[T,totalwidth=\textwidth]
-    \column{0.5\textwidth}
-        \centering
-        \begin{itemize}
-            \item<1-> \textbf{Semantic Similarity}: Compare advice to expert annotations
-            \item<2-> \textbf{LLM-as-a-Judge}: Use LLMs to rate advice quality and relevance
-            \item<3-> \textbf{Gain Advice Accuracy}:
-            \begin{itemize}
-                \item<3-> \textbf{Direction accuracy}: Increase vs. decrease correctness
-                \item<4-> \textbf{Magnitude accuracy}: Correctness of categorical intensity labels (e.g., ``too loud'')
-            \end{itemize}
-        \end{itemize}
- 
-        \column{0.5\textwidth}
-        \centering
-        
-        {\begin{minipage}[c][0.7\textheight][c]{\linewidth}
-            \only<1->{\centering\includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{pictures/semantic-similarity.png}}
-            \only<2->{\centering\includegraphics[width=\linewidth,height=0.4\textheight,keepaspectratio]{pictures/llm-as-judge.png}}
     
-        \end{minipage}}
+    % Column 1: Semantic Similarity
+    \column{0.33\textwidth}
+        \centering
+        \only<1->{\textbf{1. Semantic Similarity}}
+        \vspace{0.2cm}
         
+        \small
+        \only<1->{Compares generated advice to expert annotations for relevance.}
+        \vspace{0.3cm}
+        
+        \begin{center}
+        \only<1->{\includegraphics[width=\linewidth,height=0.5\textheight,keepaspectratio]{pictures/obj-eval-1.png}}
+        \end{center}
+    
+    % Column 2: LLM-as-a-Judge
+    \column{0.33\textwidth}
+        \centering
+        \only<2->{\textbf{2. LLM-as-a-Judge}}
+        \vspace{0.2cm}
+        
+        \small
+        \only<2->{Uses GPT-4 to rate advice quality using a predefined rubric.}
+        \vspace{0.3cm}
+        
+        \begin{center}
+        \only<2->{\includegraphics[width=\linewidth,height=0.5\textheight,keepaspectratio]{pictures/obj-eval-2.png}}
+        \end{center}
+    
+    % Column 3: Gain Advice Accuracy
+    \column{0.33\textwidth}
+        \centering
+        \only<3->{\textbf{3. Gain Advice Accuracy}}
+        \vspace{0.2cm}
+        
+        \small
+        \only<3->{Compares suggested adjustments to ground truth.}
+        \vspace{0.3cm}
+        
+        \begin{center}
+        \only<3->{\includegraphics[width=\linewidth,height=0.5\textheight,keepaspectratio]{pictures/obj-eval-3.png}}
+        \end{center}
 
 \end{columns}
 
