@@ -48,6 +48,7 @@ def initialize_model(cfg: DictConfig):
         lora_config=lora_config,
         llm=llm,  # Pass the pre-configured LLM
         tokenizer=tokenizer,  # Pass the tokenizer
+        encoder_config=cfg.model.get("encoder"),  # Pass encoder configuration
     )
 
     print("Model initialized.")

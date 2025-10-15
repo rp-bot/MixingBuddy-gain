@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 # Add parent directory to path to access src module
 # sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -20,6 +20,7 @@ class ModularMultimodalModel(nn.Module):
         lora_config: Optional[Any] = None,
         llm: Any = None,
         tokenizer: Any = None,
+        encoder_config: Optional[Dict[str, Any]] = None,
     ):
         """
         Initializes the model.
@@ -30,6 +31,7 @@ class ModularMultimodalModel(nn.Module):
             lora_config (LoraConfig, optional): The LoRA configuration to use (handled by training script).
             llm: Pre-configured language model (required).
             tokenizer: Pre-configured tokenizer (required).
+            encoder_config (dict, optional): Configuration for the audio encoder.
         """
         super().__init__()
         self.model_name = model_name
@@ -41,8 +43,20 @@ class ModularMultimodalModel(nn.Module):
         # Note: QLoRA and LoRA setup is now handled by the training script
         # This keeps the model constructor focused on basic model initialization
 
-        # Initialize audio encoder (frozen EnCodec)
-        self.audio_encoder = EncodecEncoder(freeze=True)
+        # Initialize audio encoder with configuration
+        if encoder_config is None:
+            # Default encoder configuration
+            encoder_config = {
+                "model_name": "facebook/encodec_24khz",
+                "freeze": True,
+                "device": None,
+            }
+
+        # Set device to match LLM device if not specified
+        if encoder_config.get("device") is None:
+            encoder_config["device"] = self.llm.device
+
+        self.audio_encoder = EncodecEncoder(**encoder_config)
 
         # Add projection layer
         llm_hidden_size = self.llm.config.hidden_size

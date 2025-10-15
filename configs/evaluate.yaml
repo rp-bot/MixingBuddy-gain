@@ -2,7 +2,7 @@
 
 # Default configurations for evaluation
 defaults:
-  - data: 05_synthesis
+  - data: synthesis
   - model: qwen2_7b
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility

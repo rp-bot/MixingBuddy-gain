@@ -34,7 +34,6 @@ class MultimodalDataCollator:
                 - attention_mask: Attention mask
                 - labels: Labels for language modeling
                 - audio: Audio tensor (all same length)
-                - anchor_audio: Reference audio (optional)
                 - Other metadata fields
 
         Returns:
@@ -43,11 +42,10 @@ class MultimodalDataCollator:
         # Separate text and audio/metadata fields
         text_keys = ["input_ids", "attention_mask", "labels"]
         metadata_keys = [
-            "silence_samples",
             "sample_rate",
             "instruction",
             "response",
-            "anchor_stem",
+            "reference_mix_path",
             "target_stem",
             "error_category",
             "global_uid",

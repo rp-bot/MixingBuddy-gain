@@ -58,3 +58,30 @@ def to_mono(audio: np.ndarray) -> np.ndarray:
         return mono.astype(np.float32, copy=False)
     # Fallback: flatten
     return audio.reshape(-1).astype(np.float32, copy=False)
+
+
+def save_audio(audio: np.ndarray, path: str, sample_rate: int, bit_depth: int) -> None:
+    """Save audio using soundfile with specified bit depth.
+
+    Args:
+        audio: Audio array to save
+        path: Output file path
+        sample_rate: Sample rate
+        bit_depth: Audio bit depth
+    """
+    from pathlib import Path
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Convert bit depth to soundfile format
+    if bit_depth == 16:
+        subtype = "PCM_16"
+    elif bit_depth == 24:
+        subtype = "PCM_24"
+    elif bit_depth == 32:
+        subtype = "PCM_32"
+    else:
+        subtype = "FLOAT"
+
+    sf.write(str(path), audio, sample_rate, subtype=subtype)

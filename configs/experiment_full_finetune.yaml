@@ -2,7 +2,7 @@
 
 # Full Fine-tuning Experiment Configuration
 defaults:
-  - data: 05_synthesis
+  - data: synthesis
   - model: qwen2_7b
   - training: full_finetune
   - experiment_tracking: wandb

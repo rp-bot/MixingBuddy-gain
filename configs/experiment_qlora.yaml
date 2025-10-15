@@ -2,7 +2,7 @@
 
 # QLoRA Experiment Configuration
 defaults:
-  - data: 05_synthesis
+  - data: synthesis
   - model: qwen2_7b
   - training: qlora
   - experiment_tracking: wandb

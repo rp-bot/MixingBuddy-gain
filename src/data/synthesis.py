@@ -1,198 +1,201 @@
+"""
+Core synthesis orchestration for data generation.
+
+This module coordinates the synthesis pipeline by bringing together
+audio processing, gating, error injection, and text generation.
+"""
+
 import json
 import random
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional
+from typing import Dict, Tuple, Union
 
 import numpy as np
-import soundfile as sf
-from src.utils.audio_utils import db_to_linear, load_audio_chunk, to_mono
+from omegaconf import DictConfig
+
+from src.data.audio_processing import load_track_stems, chunk_audio
+from src.data.gating import apply_gating
+from src.data.error_injection import sample_error_category, apply_gain_error
+from src.data.text_generation import create_instruction, create_response
+from src.utils.audio_utils import save_audio
 
 
-def load_metadata(metadata_path: Path) -> Dict[str, Dict]:
-    """Load metadata by global_uid."""
-    metadata = {}
-    with metadata_path.open("r") as f:
-        for line in f:
-            record = json.loads(line)
-            metadata[record["global_uid"]] = record
-    return metadata
+def synthesize_chunk(
+    chunk_stems: Dict[str, np.ndarray],
+    target_stem: str,
+    error_category: str,
+    config: DictConfig,
+    rng: random.Random,
+) -> Tuple[np.ndarray, np.ndarray, Dict]:
+    """Synthesize flawed and reference mixes for a chunk.
 
+    Args:
+        chunk_stems: Dict with stem arrays for the chunk
+        target_stem: Name of the stem to apply error to
+        error_category: Type of error to apply
+        config: Configuration object
+        rng: Random number generator
 
-def load_error_labels(error_labels_path: Path) -> Dict[str, Dict]:
-    """Load error labels by global_uid."""
-    labels = {}
-    with error_labels_path.open("r") as f:
-        for line in f:
-            record = json.loads(line)
-            labels[record["global_uid"]] = record
-    return labels
-
-
-def synthesize_training_samples(
-    metadata: Dict[str, Dict],
-    error_labels: Dict[str, Dict],
-    instruction_templates: List[str],
-    response_templates: Dict[str, List[str]],
-    seed: int = 42,
-    *,
-    audio_sample_rate: Optional[int] = None,
-    audio_bit_depth: int = 32,
-    flawed_mix_output_dir: Optional[Path] = None,
-    peak_normalize: bool = False,  # Default to False - let audio clip naturally
-    peak_target: float = 0.99,
-    limit: Optional[int] = None,
-) -> Iterator[Dict]:
-    """Synthesize training samples from chunks and error labels.
-
-    Optionally generates and saves a flawed mix WAV per sample and includes
-    its path in the yielded sample under key 'flawed_mix_path'.
+    Returns:
+        Tuple of (reference_mix, flawed_mix, metadata)
     """
-    rng = random.Random(seed)
+    # Create reference mix by summing all stems
+    reference_mix = sum(chunk_stems.values())
 
-    count = 0
-    for global_uid, chunk_meta in metadata.items():
-        error_label = error_labels.get(global_uid)
-        if error_label is None:
-            continue
-
-        # Generate instruction using template
-        # TODO: Add more instruction categories beyond basic track description:
-        # - Genre-specific instructions (rock, pop, jazz, etc.)
-        # - Mixing context (live vs studio, rough mix vs final)
-        # - Specific mixing challenges (frequency masking, dynamics, etc.)
-        # - Different mixing engineer personas/styles
-        instruction_template = rng.choice(instruction_templates)
-        instruction = instruction_template.format(
-            duration_sec=chunk_meta["duration_sec"],
-            stems_present=", ".join(chunk_meta["stems_present"]),
-            anchor_stem=chunk_meta["anchor_stem"],
+    # Apply error to target stem
+    modified_stems = chunk_stems.copy()
+    if error_category != "no_error":
+        modified_stems[target_stem], actual_gain_db = apply_gain_error(
+            chunk_stems[target_stem], error_category, config.error, rng
         )
+    else:
+        actual_gain_db = 0.0
 
-        # Generate response using template
-        category = error_label["category"]
-        target_stem = error_label["target_stem"]
-        intended_gain_db = error_label["intended_gain_db"]
+    # Create flawed mix by summing modified stems
+    flawed_mix = sum(modified_stems.values())
 
-        # Get templates for this category
-        category_templates = response_templates.get(
-            category, response_templates.get("no_error", [])
-        )
-        if not category_templates:
-            response = "The mix needs adjustment."
-        else:
-            # Randomly select a template
-            template = rng.choice(category_templates)
+    # Create metadata
+    metadata = {
+        "target_stem": target_stem,
+        "error_category": error_category,
+        "intended_gain_db": actual_gain_db,
+        "stems_present": list(chunk_stems.keys()),
+    }
 
-            # For loud/very_loud, use absolute value since gain is negative
-            abs_gain_db = abs(intended_gain_db)
-
-            response = template.format(
-                target_stem=target_stem,
-                intended_gain_db=intended_gain_db,
-                abs_gain_db=abs_gain_db,
-            )
-
-        # Create training sample with instruction and response
-        training_sample = {
-            "global_uid": global_uid,
-            "instruction": instruction,
-            "response": response,
-            "meta": {
-                "split": chunk_meta["split"],
-                "track_ref": {
-                    "album_id": chunk_meta["album_id"],
-                    "track_id": chunk_meta["track_id"],
-                },
-                "time_ref": {
-                    "start_sec": chunk_meta["start_sec"],
-                    "end_sec": chunk_meta["end_sec"],
-                },
-                "anchor_stem": chunk_meta["anchor_stem"],
-                "target_stem": error_label["target_stem"],
-                "error_category": error_label["category"],
-                "intended_gain_db": error_label["intended_gain_db"],
-                "activity_snapshot": chunk_meta["activity"],
-                "paths": chunk_meta["paths"],
-            },
-        }
-
-        # Synthesize flawed mix audio
-        flawed_mix_output_dir.mkdir(parents=True, exist_ok=True)
-        out_path = flawed_mix_output_dir / f"{global_uid}.wav"
-
-        # Load stems chunk
-        start_sec = float(chunk_meta["start_sec"])
-        end_sec = float(chunk_meta["end_sec"])
-        stems_paths: Dict[str, str] = chunk_meta["paths"]["stems"]
-
-        stem_audio: Dict[str, np.ndarray] = {}
-        for stem_name, stem_path in stems_paths.items():
-            audio = load_audio_chunk(stem_path, start_sec, end_sec, audio_sample_rate)
-            audio = to_mono(audio)
-            stem_audio[stem_name] = audio
-
-        # Align lengths
-        max_len = max((a.shape[0] for a in stem_audio.values()), default=0)
-        if max_len == 0:
-            mix = np.zeros(1, dtype=np.float32)
-        else:
-            for k, a in list(stem_audio.items()):
-                if a.shape[0] < max_len:
-                    pad = np.zeros(max_len - a.shape[0], dtype=np.float32)
-                    stem_audio[k] = np.concatenate([a, pad], axis=0)
-
-            # Apply gain to target stem to introduce the flaw
-            target_stem = error_label["target_stem"]
-            intended_gain_db = float(error_label["intended_gain_db"])
-            category = error_label["category"]
-
-            # Apply the appropriate flawed gain based on category
-            if category in ["quiet", "very_quiet"]:
-                flawed_gain = db_to_linear(-intended_gain_db)
-            elif category in ["loud", "very_loud"]:
-                flawed_gain = db_to_linear(+intended_gain_db)
-            else:  # no_error
-                flawed_gain = 1.0
-
-            mix = np.zeros(max_len, dtype=np.float32)
-            for stem_name, a in stem_audio.items():
-                g = flawed_gain if stem_name == target_stem else 1.0
-                mix = mix + (a.astype(np.float32) * float(g))
-
-            # Peak normalize to avoid clipping if requested
-            if peak_normalize:
-                peak = float(np.max(np.abs(mix))) if mix.size > 0 else 0.0
-                if peak > peak_target:
-                    mix = mix / (peak + 1e-12) * peak_target
-
-        # Write WAV with configurable bit depth
-        if audio_bit_depth == 32:
-            subtype = "FLOAT"
-        elif audio_bit_depth == 24:
-            subtype = "PCM_24"
-        elif audio_bit_depth == 16:
-            subtype = "PCM_16"
-        else:
-            raise ValueError(
-                f"Unsupported bit depth: {audio_bit_depth}. Use 16, 24, or 32."
-            )
-
-        sf.write(str(out_path), mix, audio_sample_rate, subtype=subtype)
-        training_sample["flawed_mix_path"] = str(out_path)
-
-        yield training_sample
-
-        count += 1
-        if limit is not None and count >= int(limit):
-            break
+    return reference_mix, flawed_mix, metadata
 
 
-def write_training_samples(
-    samples: Iterator[Dict],
-    output_path: Path,
+def process_split(
+    split_name: str,
+    musdb_root: Union[str, Path],
+    output_root: Union[str, Path],
+    config: DictConfig,
+    rng: random.Random,
 ) -> None:
-    """Write training samples to JSONL."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w") as f:
-        for sample in samples:
+    """Process all tracks in a split (train or test).
+
+    Args:
+        split_name: Name of the split ('train' or 'test')
+        musdb_root: Root directory of MUSDB18HQ dataset
+        output_root: Root directory for output files
+        config: Configuration object
+        rng: Random number generator
+    """
+    musdb_root = Path(musdb_root)
+    output_root = Path(output_root)
+
+    # Create output directories
+    split_output_dir = output_root / split_name
+    flawed_mixes_dir = split_output_dir / "flawed_mixes"
+    reference_mixes_dir = split_output_dir / "reference_mixes"
+    flawed_mixes_dir.mkdir(parents=True, exist_ok=True)
+    reference_mixes_dir.mkdir(parents=True, exist_ok=True)
+
+    # Get list of tracks
+    split_dir = musdb_root / split_name
+    track_dirs = [d for d in split_dir.iterdir() if d.is_dir()]
+
+    if config.get("limit"):
+        track_dirs = track_dirs[: config.limit]
+
+    print(f"Processing {len(track_dirs)} tracks in {split_name} split...")
+
+    all_samples = []
+    global_chunk_idx = 0
+
+    for track_idx, track_dir in enumerate(track_dirs):
+        print(f"Processing track {track_idx + 1}/{len(track_dirs)}: {track_dir.name}")
+
+        # Load track stems
+        stems = load_track_stems(track_dir, config.audio.sample_rate)
+
+        # Process chunks
+        for chunk_idx, chunk_stems in chunk_audio(
+            stems, config.chunk.sec, config.audio.sample_rate
+        ):
+            # Apply gating
+            if not apply_gating(chunk_stems, config):
+                print(f"Chunk skipped: failed gating, path: {track_dir.name} chunk_idx: {chunk_idx}")
+                continue
+
+            # Sample error category and target stem
+            error_category = sample_error_category(config.error.priors, rng)
+            target_stem = rng.choice(list(chunk_stems.keys()))
+
+            # Synthesize chunk
+            reference_mix, flawed_mix, metadata = synthesize_chunk(
+                chunk_stems, target_stem, error_category, config, rng
+            )
+
+            # Create filenames
+            chunk_filename = f"track{track_idx:03d}_chunk{chunk_idx:03d}"
+            flawed_mix_path = flawed_mixes_dir / f"{chunk_filename}_flawed.wav"
+            reference_mix_path = reference_mixes_dir / f"{chunk_filename}_reference.wav"
+
+            # Save audio files
+            save_audio(
+                flawed_mix,
+                flawed_mix_path,
+                config.audio.sample_rate,
+                config.audio.bit_depth,
+            )
+            save_audio(
+                reference_mix,
+                reference_mix_path,
+                config.audio.sample_rate,
+                config.audio.bit_depth,
+            )
+
+            # Create instruction and response
+            instruction = create_instruction(
+                config.instruction_templates,
+                config.chunk.sec,
+                list(chunk_stems.keys()),
+                rng,
+            )
+            response = create_response(
+                config.response_templates,
+                error_category,
+                target_stem,
+                metadata["intended_gain_db"],
+                rng,
+            )
+
+            # Create sample metadata
+            sample = {
+                "global_uid": f"{split_name}_{chunk_filename}",
+                "instruction": instruction,
+                "response": response,
+                "flawed_mix_path": str(flawed_mix_path),
+                "reference_mix_path": str(reference_mix_path),
+                "meta": {
+                    "track_name": track_dir.name,
+                    "split": split_name,
+                    "chunk_idx": chunk_idx,
+                    "time_ref": {
+                        "start_sec": chunk_idx * config.chunk.sec,
+                        "end_sec": (chunk_idx + 1) * config.chunk.sec,
+                    },
+                    "target_stem": metadata["target_stem"],
+                    "error_category": metadata["error_category"],
+                    "intended_gain_db": metadata["intended_gain_db"],
+                    "stems_present": metadata["stems_present"],
+                    "paths": {
+                        "stems": {
+                            stem: str(track_dir / f"{stem}.wav")
+                            for stem in chunk_stems.keys()
+                        }
+                    },
+                },
+            }
+
+            all_samples.append(sample)
+            global_chunk_idx += 1
+
+    # Write JSONL file
+    jsonl_path = split_output_dir / config.output[f"{split_name}_samples"]
+    with open(jsonl_path, "w") as f:
+        for sample in all_samples:
             f.write(json.dumps(sample) + "\n")
+
+    print(f"Saved {len(all_samples)} samples to {jsonl_path}")

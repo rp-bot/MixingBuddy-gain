@@ -173,6 +173,7 @@ def load_dataset(
         tokenizer=model.tokenizer,
         sample_rate=cfg.data.audio.sample_rate,
         limit=limit,
+        use_instruction=cfg.data.use_instruction,
     )
 
     print(f"{dataset_type.title()} dataset size: {len(dataset)} samples")

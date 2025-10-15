@@ -1,6 +1,7 @@
 paths:
   processed_root: data/musdb18hq_processed
   output_root: data/musdb18hq_processed
+  musdb_root: data/musdb18hq
 
 # Dataset paths
 train_jsonl_path: data/musdb18hq_processed/train/training_samples.jsonl
@@ -9,13 +10,51 @@ test_jsonl_path: data/musdb18hq_processed/test/test_samples.jsonl
 test_audio_root: data/musdb18hq_processed/test/flawed_mixes
 
 # Training parameters
+error:
+  priors:
+    no_error: 0.20
+    quiet: 0.20
+    very_quiet: 0.20
+    loud: 0.20
+    very_loud: 0.20
+  # Fixed dB ranges for each category (no IQR scaling)
+  ranges_db:
+    quiet: [-6, -3]
+    very_quiet: [-12, -6]
+    loud: [3, 6]
+    very_loud: [6, 12]
+  # Overall gain limits for safety
+  gain_limits_db:
+    min: -15.0
+    max: 15.0
+
+chunk:
+  sec: 10.0
+
+frame:
+  ms: 50.0
+
+gating:
+  mixture_min_rms_dbfs: -30.0 # More lenient - allow quieter mixes
+  stem_min_rms_dbfs: -40.0 # More lenient - allow quieter individual stems
+  min_active_frame_ratio: 0.20 # More lenient - allow more silence
+
+anchor:
+  fallback_order:
+    - bass
+    - drums
+    - other
+    - vocals
 
 audio:
-  sample_rate: 24000 # Base sample rate - can be downsampled later for model input
+  sample_rate: 32000 # Base sample rate - can be downsampled later for model input
   bit_depth: 24 # Audio bit depth: 16, 24, or 32 (float)
   # peak_normalize: false  # Removed - let audio clip naturally to preserve relative levels
 
 limit: null # Set to a number to limit dataset size for testing
+
+# Training mode settings
+use_instruction: true # Set to false for audio-only training (no instruction text)
 
 splits:
   - train
@@ -27,10 +66,10 @@ output:
   test_samples: test_samples.jsonl
 
 instruction_templates:
-  - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. The anchor stem is {anchor_stem}. Please analyze the mix and provide mixing advice."
-  - "This is a {duration_sec}s audio segment with stems: {stems_present}. The {anchor_stem} is the reference. Evaluate the mix balance and suggest improvements."
-  - "Analyze this {duration_sec}s track segment. Stems present: {stems_present}. Use {anchor_stem} as your reference. What mixing adjustments are needed?"
-  - "Listen to this {duration_sec}s audio clip. Available tracks: {stems_present}. The {anchor_stem} serves as the anchor. How should the mix be adjusted?"
+  - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. Please analyze the mix and provide mixing advice."
+  - "This is a {duration_sec}s audio segment with stems: {stems_present}. Evaluate the mix balance and suggest improvements."
+  - "Analyze this {duration_sec}s track segment. Stems present: {stems_present}. What mixing adjustments are needed?"
+  - "Listen to this {duration_sec}s audio clip. Available tracks: {stems_present}. How should the mix be adjusted?"
 
 response_templates:
   no_error:
