@@ -54,7 +54,7 @@ audio:
 limit: null # Set to a number to limit dataset size for testing
 
 # Training mode settings
-use_instruction: true # Set to false for audio-only training (no instruction text)
+use_instruction: false # Set to false for audio-only training (no instruction text)
 
 splits:
   - train

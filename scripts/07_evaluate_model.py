@@ -13,11 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from src.models.modular_multimodal_model import ModularMultimodalModel  # noqa: E402
-from src.training.trainer import LoRATrainer  # noqa: E402
 from src.utils.model_utils import (  # noqa: E402
-    create_lora_config,
-    initialize_lora_model,
-    initialize_qlora_model,
     find_latest_checkpoint,
     load_dataset,
 )
@@ -25,8 +21,10 @@ from src.utils.model_utils import (  # noqa: E402
 
 def load_trained_model(cfg: DictConfig):
     """Load a trained model for evaluation."""
-    from transformers import AutoTokenizer
-    from peft import PeftModel
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from peft import PeftModel, prepare_model_for_kbit_training
+    from transformers import BitsAndBytesConfig
+    import torch
 
     print("Loading trained model for evaluation...")
 
@@ -35,19 +33,10 @@ def load_trained_model(cfg: DictConfig):
 
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-    # Create LoRA configuration
-    lora_config = create_lora_config(cfg)
-
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.model_name)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-
-    # Load base model
-    if cfg.model.use_qlora:
-        llm = initialize_qlora_model(cfg, lora_config, tokenizer)
-    else:
-        llm = initialize_lora_model(cfg, lora_config, tokenizer)
 
     # Determine checkpoint path
     checkpoint_path = cfg.checkpoint_path
@@ -58,6 +47,35 @@ def load_trained_model(cfg: DictConfig):
                 "No checkpoint found when checkpoint_path is set to 'latest'"
             )
 
+    # Load base model without LoRA first
+    if cfg.model.use_qlora:
+        print("Loading base model with QLoRA quantization...")
+        # Create quantization config
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=cfg.model.quantization.load_in_4bit,
+            bnb_4bit_quant_type=cfg.model.quantization.bnb_4bit_quant_type,
+            bnb_4bit_compute_dtype=getattr(
+                torch, cfg.model.quantization.bnb_4bit_compute_dtype
+            ),
+            bnb_4bit_use_double_quant=cfg.model.quantization.bnb_4bit_use_double_quant,
+        )
+
+        # Load model with quantization
+        llm = AutoModelForCausalLM.from_pretrained(
+            cfg.model.model_name,
+            torch_dtype="auto",
+            quantization_config=quantization_config,
+        )
+
+        # Prepare for k-bit training
+        llm = prepare_model_for_kbit_training(llm)
+    else:
+        print("Loading base model without quantization...")
+        llm = AutoModelForCausalLM.from_pretrained(
+            cfg.model.model_name,
+            torch_dtype="auto",
+        )
+
     # Load the trained LoRA weights if checkpoint path is provided
     if checkpoint_path:
         print(f"Loading LoRA weights from {checkpoint_path}")
@@ -67,7 +85,7 @@ def load_trained_model(cfg: DictConfig):
     model = ModularMultimodalModel(
         model_name=cfg.model.model_name,
         use_qlora=cfg.model.use_qlora,
-        lora_config=lora_config,
+        lora_config=None,  # LoRA is already applied to the model
         llm=llm,
         tokenizer=tokenizer,
     )
@@ -244,7 +262,7 @@ def run_evaluation(cfg: DictConfig):
 
         # Save predictions if configured
         if cfg.evaluation.save_predictions:
-            save_predictions(cfg, model, test_dataset)
+            save_predictions(cfg, test_results)
 
         return test_results
 
@@ -254,22 +272,21 @@ def run_evaluation(cfg: DictConfig):
         return {"eval_loss": "N/A", "eval_perplexity": "N/A"}
 
 
-def save_predictions(cfg: DictConfig, model, test_dataset):
-    """Save model predictions to file."""
-    print("Saving model predictions...")
+def save_predictions(cfg: DictConfig, results: dict):
+    """Save evaluation results to file."""
+    import json
+
+    print("Saving evaluation results...")
 
     predictions_dir = Path(cfg.evaluation.predictions_output_dir)
     predictions_dir.mkdir(parents=True, exist_ok=True)
 
-    # This is a placeholder for saving predictions
-    # You can implement specific prediction saving logic here
-    predictions_file = predictions_dir / "predictions.json"
+    # Save the evaluation results
+    results_file = predictions_dir / "evaluation_results.json"
+    with open(results_file, "w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
 
-    # For now, just create an empty file as placeholder
-    with open(predictions_file, "w") as f:
-        f.write("{}")
-
-    print(f"Predictions saved to {predictions_file}")
+    print(f"Evaluation results saved to {results_file}")
 
 
 @hydra.main(config_path="../configs", config_name="evaluate", version_base=None)
