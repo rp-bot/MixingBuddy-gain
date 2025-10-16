@@ -5,19 +5,25 @@ This module contains the LoRATrainer class for fine-tuning models with LoRA.
 import math
 import os
 from typing import Any, Dict, List, Optional
+import logging
 
 import torch
 from omegaconf import DictConfig
+from tqdm.auto import tqdm
 from transformers import (
     EarlyStoppingCallback,
     Trainer,
     TrainerCallback,
     TrainingArguments,
 )
+from transformers.trainer_pt_utils import find_batch_size
+from transformers.trainer_utils import EvalLoopOutput
 
 from src.data.collator import MultimodalDataCollator
 from src.models.modular_multimodal_model import ModularMultimodalModel
 from src.utils.experiment_tracking import ExperimentTracker
+
+logger = logging.getLogger(__name__)
 
 
 class ExperimentTrackingCallback(TrainerCallback):
@@ -38,8 +44,15 @@ class ExperimentTrackingCallback(TrainerCallback):
         if not logs:
             return
 
-        self.step = state.global_step
-        self.experiment_tracker.log_metrics(logs, step=self.step)
+        is_eval = any(key.startswith("eval_") for key in logs.keys())
+        if is_eval:
+            # For evaluation, don't pass a step to use wandb's internal step counter
+            # This creates a separate x-axis for evaluation metrics
+            self.experiment_tracker.log_metrics(logs)
+        else:
+            # For training, log with the global step
+            self.step = state.global_step
+            self.experiment_tracker.log_metrics(logs, step=self.step)
 
     def on_save(self, args, state, control, **kwargs):
         if not self.experiment_tracker:
@@ -75,19 +88,125 @@ class ExperimentTrackingCallback(TrainerCallback):
         print(f"Saved custom components to {checkpoint_dir}/")
 
 
-def compute_metrics(eval_pred):
-    """Computes perplexity and loss for evaluation."""
-    logits, labels = eval_pred
-    # TODO: this might need adjustment based on the actual output format.
-    # It assumes logits are returned for all tokens.
-    shift_logits = logits[..., :-1, :].contiguous()
-    shift_labels = labels[..., 1:].contiguous()
+class MemorySafeTrainer(Trainer):
+    """
+    A Trainer subclass that moves predictions and labels to the CPU during evaluation
+    to avoid out-of-memory errors with large datasets.
+    """
 
-    loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-100)
-    loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+    def evaluation_loop(
+        self,
+        dataloader: torch.utils.data.DataLoader,
+        description: str,
+        prediction_loss_only: Optional[bool] = None,
+        ignore_keys: Optional[List[str]] = None,
+        metric_key_prefix: str = "eval",
+    ) -> Dict[str, float]:
+        """
+        An evaluation loop that moves predictions and labels to the CPU to save memory.
+        """
+        # This is a modified version of the original evaluation_loop in transformers.Trainer
+        # The main change is moving tensors to the CPU after each step.
+        model = self._wrap_model(self.model, training=False, dataloader=dataloader)
 
-    perplexity = math.exp(loss.item())
-    return {"perplexity": perplexity, "loss": loss.item()}
+        batch_size = dataloader.batch_size
+        num_examples = self.num_examples(dataloader)
+        logger.info(f"***** Running {description} *****")
+        if isinstance(dataloader.dataset, torch.utils.data.IterableDataset):
+            logger.info(f"  Num examples = {num_examples}")
+        else:
+            logger.info(f"  Num examples = {num_examples}")
+            logger.info(f"  Batch size = {batch_size}")
+
+        model.eval()
+
+        self.callback_handler.eval_dataloader = dataloader
+        # Do not use containers that move all tensors to the GPU at once
+        all_losses = None
+
+        for step, inputs in enumerate(tqdm(dataloader, desc=description)):
+            loss, logits, labels = self.prediction_step(
+                model,
+                inputs,
+                prediction_loss_only=False,  # Get logits for debugging
+                ignore_keys=ignore_keys,
+            )
+
+            # --- DEBUGGING PRINTS ---
+            if step == 0:
+                print("\n--- INSIDE EVALUATION_LOOP (FIRST BATCH) ---")
+                # Decode the first sample in the batch to see what's being evaluated
+                input_ids = inputs["input_ids"][0]
+                labels_vis = inputs["labels"][
+                    0
+                ].clone()  # clone to avoid modifying original
+
+                # Decode input_ids, skipping pad tokens for readability
+                decoded_input = self.tokenizer.decode(
+                    input_ids, skip_special_tokens=True
+                )
+                print(f"Decoded Input: '{decoded_input}'")
+
+                # Decode labels, replacing -100 with pad token before decoding
+                labels_vis[labels_vis == -100] = self.tokenizer.pad_token_id
+                decoded_labels = self.tokenizer.decode(
+                    labels_vis, skip_special_tokens=True
+                )
+                print(f"Decoded Labels (target for loss): '{decoded_labels}'")
+
+                print(f"Number of Tokens in Sequence: {len(input_ids)}")
+
+                # Decode the model's prediction from the logits
+                if logits is not None:
+                    preds = torch.argmax(logits[0], dim=-1)
+                    # Don't skip special tokens, to see exactly what's predicted
+                    decoded_preds = self.tokenizer.decode(
+                        preds, skip_special_tokens=True
+                    )
+                    print(f"Decoded Prediction from Logits: '{decoded_preds}'")
+
+                print(f"Number of Tokens in Logits: {len(preds)}")
+                print(f"Audio Tensor Shape: {inputs['audio'].shape}")
+                print(f"Loss for first batch: {loss.item():.4f}")
+                print("------------------------------------------\n")
+            # --- END DEBUGGING PRINTS ---
+
+            batch_size = find_batch_size(inputs)
+
+            if loss is not None:
+                losses = loss.repeat(batch_size)
+                all_losses = (
+                    losses
+                    if all_losses is None
+                    else torch.cat((all_losses, losses), dim=0)
+                )
+
+            self.control = self.callback_handler.on_prediction_step(
+                self.args, self.state, self.control
+            )
+
+        if self.args.past_index and hasattr(self, "_past"):
+            # Clean the state at the end of the evaluation loop
+            delattr(self, "_past")
+
+        metrics = {}
+        if all_losses is not None:
+            mean_loss = all_losses.mean().item()
+            metrics[f"{metric_key_prefix}_loss"] = mean_loss
+            try:
+                perplexity = math.exp(mean_loss)
+                metrics[f"{metric_key_prefix}_perplexity"] = perplexity
+            except OverflowError:
+                metrics[f"{metric_key_prefix}_perplexity"] = float("inf")
+
+        # Prefix all keys with metric_key_prefix + '_'
+        for key in list(metrics.keys()):
+            if not key.startswith(f"{metric_key_prefix}_"):
+                metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
+
+        return EvalLoopOutput(
+            predictions=None, label_ids=None, metrics=metrics, num_samples=num_examples
+        )
 
 
 class LoRATrainer:
@@ -207,13 +326,13 @@ class LoRATrainer:
         data_collator = self.setup_data_collator()
         callbacks = self.setup_callbacks()
 
-        self.trainer = Trainer(
+        self.trainer = MemorySafeTrainer(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             data_collator=data_collator,
-            compute_metrics=compute_metrics,
+            tokenizer=self.model.tokenizer,
             callbacks=callbacks,
         )
 
@@ -222,63 +341,11 @@ class LoRATrainer:
 
         self.trainer.train()
 
-        # Log final metrics (required)
-        metrics = self.trainer.state.log_history[-1]
-        self.experiment_tracker.log_metrics(metrics)
+        # Log final metrics (required) - This might be redundant with the callback
+        # metrics = self.trainer.state.log_history[-1]
+        # self.experiment_tracker.log_metrics(metrics)
 
         return self.trainer
-
-    def _setup_evaluation_trainer(self):
-        """Sets up the trainer for evaluation only."""
-        # Create minimal training args for evaluation
-        from transformers import TrainingArguments
-
-        # Create a temporary output directory for evaluation
-        import tempfile
-
-        temp_dir = tempfile.mkdtemp()
-
-        # Get batch size from evaluation config or use training config
-        eval_batch_size = self.config.evaluation.batch_size
-
-        training_args = TrainingArguments(
-            output_dir=temp_dir,
-            per_device_eval_batch_size=eval_batch_size,
-            dataloader_pin_memory=False,
-            dataloader_num_workers=0,
-            remove_unused_columns=False,
-            fp16=self.config.training.mixed_precision.enabled
-            and self.config.training.mixed_precision.dtype == "fp16",
-            bf16=self.config.training.mixed_precision.enabled
-            and self.config.training.mixed_precision.dtype == "bf16",
-        )
-
-        data_collator = self.setup_data_collator()
-        callbacks = self.setup_callbacks()
-
-        self.trainer = Trainer(
-            model=self.model,
-            args=training_args,
-            eval_dataset=None,  # Will be set during evaluation
-            data_collator=data_collator,
-            compute_metrics=compute_metrics,
-            callbacks=callbacks,
-        )
-
-    def evaluate(self, eval_dataset) -> Dict[str, float]:
-        """
-        Evaluates the model.
-
-        Args:
-            eval_dataset: The evaluation dataset.
-
-        Returns:
-            A dictionary of evaluation metrics.
-        """
-        if not self.trainer:
-            # Initialize trainer for evaluation if not already done
-            self._setup_evaluation_trainer()
-        return self.trainer.evaluate(eval_dataset)
 
     def save_model(self, output_dir: Optional[str] = None):
         """

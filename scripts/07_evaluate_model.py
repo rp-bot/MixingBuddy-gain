@@ -6,37 +6,33 @@ import hydra
 from omegaconf import DictConfig
 import sys
 from pathlib import Path
-import torch
 import gc
+import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from src.models.modular_multimodal_model import ModularMultimodalModel  # noqa: E402
+from src.training.trainer import MemorySafeTrainer  # noqa: E402
+from src.data.collator import MultimodalDataCollator  # noqa: E402
+from transformers import TrainingArguments  # noqa: E402
 from src.utils.model_utils import (  # noqa: E402
     find_latest_checkpoint,
+    initialize_tokenizer,
     load_dataset,
 )
 
 
 def load_trained_model(cfg: DictConfig):
     """Load a trained model for evaluation."""
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoModelForCausalLM
     from peft import PeftModel, prepare_model_for_kbit_training
     from transformers import BitsAndBytesConfig
-    import torch
 
     print("Loading trained model for evaluation...")
 
-    # Set memory management environment variable early
-    import os
-
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(cfg.model.model_name)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer = initialize_tokenizer(cfg.model.model_name)
 
     # Determine checkpoint path
     checkpoint_path = cfg.checkpoint_path
@@ -88,25 +84,27 @@ def load_trained_model(cfg: DictConfig):
         lora_config=None,  # LoRA is already applied to the model
         llm=llm,
         tokenizer=tokenizer,
+        encoder_config=cfg.model.get("encoder"),  # Pass encoder configuration
     )
 
-    # Load audio projection weights if available
-    if checkpoint_path and cfg.evaluation.model_loading.load_audio_projection:
-        projection_path = f"{checkpoint_path}/audio_projection.bin"
-        if Path(projection_path).exists():
-            print(f"Loading audio projection weights from {projection_path}")
-            map_location = cfg.evaluation.model_loading.map_location
-            if map_location == "auto":
-                map_location = "cuda" if torch.cuda.is_available() else "cpu"
+    # The audio projection weights are a required component for evaluation.
+    projection_path = f"{checkpoint_path}/audio_projection.bin"
+    print(f"Loading audio projection weights from {projection_path}...")
 
-            model.audio_projection.load_state_dict(
-                torch.load(projection_path, map_location=map_location),
-                strict=cfg.evaluation.model_loading.strict_loading,
-            )
-        else:
-            print(
-                "Warning: Audio projection weights not found, using random initialization"
-            )
+    map_location = cfg.evaluation.model_loading.map_location
+    if map_location == "auto":
+        map_location = "cuda" if torch.cuda.is_available() else "cpu"
+
+    state_dict = torch.load(projection_path, map_location=map_location)
+    model.audio_projection.load_state_dict(
+        state_dict,
+        strict=cfg.evaluation.model_loading.strict_loading,
+    )
+
+    # Freeze all parameters for evaluation
+    model.eval()
+    for param in model.parameters():
+        param.requires_grad = False
 
     print("Model loaded for evaluation.")
     model.print_trainable_parameters()
@@ -135,83 +133,6 @@ def load_test_dataset(cfg: DictConfig, model):
     return load_dataset(cfg, model, "test", limit)
 
 
-def evaluate_model_directly(model, test_dataset, cfg):
-    """Evaluate model directly without HuggingFace Trainer to save memory."""
-    import math
-    from torch.utils.data import DataLoader
-    from src.data.collator import MultimodalDataCollator
-
-    print("Setting up direct evaluation...")
-
-    # Set model to evaluation mode
-    model.eval()
-
-    # Create data collator
-    data_collator = MultimodalDataCollator(
-        tokenizer=model.tokenizer,
-        pad_to_multiple_of=8,
-    )
-
-    # Create dataloader with small batch size
-    eval_batch_size = cfg.evaluation.batch_size
-    dataloader = DataLoader(
-        test_dataset,
-        batch_size=eval_batch_size,
-        collate_fn=data_collator,
-        pin_memory=False,
-        num_workers=0,
-    )
-
-    total_loss = 0.0
-    total_samples = 0
-
-    print(
-        f"Evaluating on {len(test_dataset)} samples with batch size {eval_batch_size}"
-    )
-
-    with torch.no_grad():
-        for batch_idx, batch in enumerate(dataloader):
-            try:
-                # Move batch to device
-                if torch.cuda.is_available():
-                    # Get device from model parameters
-                    device = next(model.parameters()).device
-                    batch = {
-                        k: v.to(device) if isinstance(v, torch.Tensor) else v
-                        for k, v in batch.items()
-                    }
-
-                # Forward pass
-                outputs = model(**batch)
-                loss = outputs.loss
-
-                total_loss += loss.item()
-                total_samples += batch["input_ids"].size(0)
-
-                # Memory cleanup after each batch
-                del outputs, loss
-                if batch_idx % 10 == 0:
-                    torch.cuda.empty_cache()
-                    print(f"Processed {batch_idx + 1}/{len(dataloader)} batches")
-
-            except Exception as e:
-                print(f"Error processing batch {batch_idx}: {e}")
-                continue
-
-    # Calculate metrics
-    avg_loss = total_loss / len(dataloader) if len(dataloader) > 0 else float("inf")
-    perplexity = math.exp(avg_loss) if avg_loss < 10 else float("inf")
-
-    results = {
-        "eval_loss": avg_loss,
-        "eval_perplexity": perplexity,
-        "eval_samples": total_samples,
-    }
-
-    print(f"Direct evaluation completed: {results}")
-    return results
-
-
 def run_evaluation(cfg: DictConfig):
     """Run evaluation on the test dataset."""
     print("Starting evaluation...")
@@ -219,57 +140,48 @@ def run_evaluation(cfg: DictConfig):
     # Initialize model
     model = load_trained_model(cfg)
 
-    # No experiment tracker needed for evaluation
-
     # Load test dataset
     test_dataset = load_test_dataset(cfg, model)
 
-    # Skip trainer initialization for memory efficiency
+    print("Setting up evaluation with MemorySafeTrainer...")
 
-    # Memory cleanup before evaluation if configured
-    if cfg.evaluation.memory.cleanup_before_eval:
-        print("Cleaning up memory before evaluation...")
-        gc.collect()
-        torch.cuda.empty_cache()
-        gc.collect()
+    # A temporary output dir is required by the Trainer, but it won't be used for much.
+    output_dir = Path(cfg.evaluation.get("output_dir", "temp_eval_outputs"))
+    output_dir.mkdir(exist_ok=True, parents=True)
 
-    # Set memory management environment variable
-    import os
+    eval_args = TrainingArguments(
+        output_dir=str(output_dir),
+        per_device_eval_batch_size=cfg.evaluation.batch_size,
+        dataloader_pin_memory=False,
+        dataloader_num_workers=0,
+        remove_unused_columns=False,  # Keep all columns for our model
+    )
 
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+    # Create data collator
+    data_collator = MultimodalDataCollator(
+        tokenizer=model.tokenizer,
+        pad_to_multiple_of=8,
+    )
 
-    print(f"GPU memory before evaluation: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
-    print(f"GPU memory reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
+    # Initialize the trainer
+    trainer = MemorySafeTrainer(
+        model=model,
+        args=eval_args,
+        eval_dataset=test_dataset,
+        data_collator=data_collator,
+        tokenizer=model.tokenizer,
+    )
 
-    # Check if we have enough memory for evaluation
-    total_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-    allocated_memory = torch.cuda.memory_allocated() / 1e9
-    free_memory = total_memory - allocated_memory
+    # Run evaluation
+    print("Running evaluation on test dataset...")
+    test_results = trainer.evaluate()
+    print(f"Evaluation results: {test_results}")
 
-    print(f"Total GPU memory: {total_memory:.2f} GB")
-    print(f"Free GPU memory: {free_memory:.2f} GB")
+    # Save predictions if configured
+    if cfg.evaluation.save_predictions:
+        save_predictions(cfg, test_results)
 
-    if free_memory < 2.0:  # Need at least 2GB for evaluation
-        print(
-            "Warning: Low GPU memory available. Consider reducing batch size or using CPU for some operations."
-        )
-
-    try:
-        # Run direct evaluation without trainer
-        print("Running direct evaluation on test dataset...")
-        test_results = evaluate_model_directly(model, test_dataset, cfg)
-        print(f"Evaluation results: {test_results}")
-
-        # Save predictions if configured
-        if cfg.evaluation.save_predictions:
-            save_predictions(cfg, test_results)
-
-        return test_results
-
-    except Exception as e:
-        print(f"Evaluation failed: {e}")
-        print("Evaluation failed.")
-        return {"eval_loss": "N/A", "eval_perplexity": "N/A"}
+    return test_results
 
 
 def save_predictions(cfg: DictConfig, results: dict):

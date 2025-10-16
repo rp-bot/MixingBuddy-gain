@@ -16,24 +16,21 @@ from src.utils.model_utils import (  # noqa: E402
     create_lora_config,
     initialize_lora_model,
     initialize_qlora_model,
-    initialize_experiment_tracker,
+    initialize_tokenizer,
     load_dataset,
+    initialize_experiment_tracker
 )
 
 
 def initialize_model(cfg: DictConfig):
     """Initialize model with LoRA/QLoRA setup."""
-    from transformers import AutoTokenizer
-
     print("Initializing model...")
 
     # Create LoRA configuration
     lora_config = create_lora_config(cfg)
 
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(cfg.model.model_name)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer = initialize_tokenizer(cfg.model.model_name)
 
     # Initialize model based on configuration
     if cfg.model.use_qlora:
@@ -93,11 +90,11 @@ def main(cfg: DictConfig):
     """
     Main training function.
     """
-    # --- 1. Initialize Model ---
-    model = initialize_model(cfg)
-
-    # --- 2. Initialize Experiment Tracker ---
+    # --- 1. Initialize Experiment Tracker ---
     tracker = initialize_experiment_tracker(cfg)
+
+    # --- 2. Initialize Model ---
+    model = initialize_model(cfg)
 
     # --- 3. Load Data ---
     train_dataset, val_dataset, test_dataset = load_datasets(cfg, model)

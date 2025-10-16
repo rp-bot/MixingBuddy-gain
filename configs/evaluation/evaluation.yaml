@@ -1,7 +1,7 @@
 # Evaluation-specific settings
 
 # Evaluation batch size (usually smaller than training)
-batch_size: 1
+batch_size: 4
 
 # Maximum number of samples to evaluate (null for all samples)
 max_samples: null
@@ -11,6 +11,10 @@ save_predictions: true
 
 # Output directory for predictions
 predictions_output_dir: "${env.output_dir}/predictions"
+
+# Parameters for the generation script (08_generate_samples.py)
+num_generation_samples: 20
+max_new_tokens: 1024
 
 # Evaluation metrics to compute
 metrics:
@@ -30,4 +34,4 @@ memory:
 model_loading:
   load_audio_projection: true
   strict_loading: false # Allow missing keys
-  map_location: "auto" # "cpu", "cuda", or "auto"
+  map_location: "cuda" # "cpu", "cuda", or "auto"

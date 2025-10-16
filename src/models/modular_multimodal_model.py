@@ -99,9 +99,6 @@ class ModularMultimodalModel(nn.Module):
         if audio.dim() == 1:
             # Single sample: [samples] → add batch dim
             audio = audio.unsqueeze(0)
-            squeeze_output = True
-        else:
-            squeeze_output = False
 
         # Now audio is [batch_size, samples]
         # Process each sample in the batch individually (EnCodec expects 1D input)
@@ -122,10 +119,6 @@ class ModularMultimodalModel(nn.Module):
 
         # Stack into batch: [batch_size, seq_len, hidden_dim]
         batched_features = torch.stack(encoded_list, dim=0)
-
-        # If input was unbatched, remove batch dimension
-        if squeeze_output:
-            batched_features = batched_features.squeeze(0)
 
         return batched_features
 
@@ -168,10 +161,8 @@ class ModularMultimodalModel(nn.Module):
         # 7. Concatenate attention masks
         attention_mask = torch.cat((audio_attention_mask, attention_mask), dim=1)
 
-        # 8. Adjust labels for audio part (ignore in loss)
-        if labels is None:
-            raise ValueError("labels cannot be None")
-
+        # 8. Prepend ignore tokens to labels for the audio part
+        # This is necessary to make the labels tensor match the sequence length of the inputs_embeds.
         audio_labels = torch.full(
             projected_audio_embeds.shape[:2],
             -100,
@@ -193,8 +184,8 @@ class ModularMultimodalModel(nn.Module):
     def generate(
         self,
         text_input: str,
-        audio: Optional[torch.Tensor] = None,
-        max_new_tokens: int = 128,
+        max_new_tokens: int,
+        audio: torch.Tensor,
     ) -> str:
         """
         Generates text based on a given prompt using the underlying model's
@@ -209,46 +200,40 @@ class ModularMultimodalModel(nn.Module):
             str: The generated text.
         """
         device = self.llm.device
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": text_input},
-        ]
-        prompt = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+
+        # Format the prompt to match the training format: instruction + EOS token
+        prompt = text_input + self.tokenizer.eos_token
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(device)
 
-        if audio is not None:
-            audio = audio.to(device)
+        audio = audio.to(device)
 
-            audio_features = self.encode_audio(audio)
-            projected_audio_embeds = self.audio_projection(audio_features)
-            text_embeds = self.llm.get_input_embeddings()(model_inputs.input_ids)
+        audio_features = self.encode_audio(audio)
+        projected_audio_embeds = self.audio_projection(audio_features)
+        text_embeds = self.llm.get_input_embeddings()(model_inputs.input_ids)
 
-            # Ensure projected audio embeddings match the LLM's dtype
-            projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
+        # Ensure projected audio embeddings match the LLM's dtype
+        projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
 
-            inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
-            audio_attention_mask = torch.ones(
-                projected_audio_embeds.shape[:2],
-                dtype=torch.long,
-                device=device,
-            )
-            attention_mask = torch.cat(
-                (audio_attention_mask, model_inputs.attention_mask), dim=1
-            )
+        inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
+        audio_attention_mask = torch.ones(
+            projected_audio_embeds.shape[:2],
+            dtype=torch.long,
+            device=device,
+        )
+        attention_mask = torch.cat(
+            (audio_attention_mask, model_inputs.attention_mask), dim=1
+        )
 
-            generate_kwargs = {
-                "inputs_embeds": inputs_embeds,
-                "attention_mask": attention_mask,
-            }
-        else:
-            generate_kwargs = {"input_ids": model_inputs.input_ids}
+        generate_kwargs = {
+            "inputs_embeds": inputs_embeds,
+            "attention_mask": attention_mask,
+        }
 
         generated_ids = self.llm.generate(
             **generate_kwargs,
             max_new_tokens=max_new_tokens,
+            
         )
 
         response = self.tokenizer.batch_decode(

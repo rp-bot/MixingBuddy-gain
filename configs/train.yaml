@@ -3,7 +3,7 @@
 # Default configurations
 defaults:
   - data: synthesis
-  - model: qwen2_7b
+  - model: qwen2_7b_all_linear
   - training: training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming

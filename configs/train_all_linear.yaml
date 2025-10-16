@@ -1,22 +1,19 @@
 # @package _global_
 
-# QLoRA Experiment Configuration
+# Default configurations
 defaults:
   - data: synthesis
-  - model: qwen2_7b
-  - training: qlora
+  - model: qwen2_7b_all_linear
+  - training: training
   - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
   - _self_
-
-# Override model settings for QLoRA
-model:
-  use_qlora: true
 
 # Environment settings
 env:
   seed: 42
-  project_name: "automatic-mixing-qlora-experiments"
-  output_dir: "outputs/qlora/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Experiment tracking settings
 experiment_tracking:

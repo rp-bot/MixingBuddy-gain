@@ -7,9 +7,25 @@ import logging
 from typing import Optional
 from omegaconf import DictConfig
 
+import torch
+from omegaconf import DictConfig
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+from src.data.dataset import MixingDataset
+from src.utils.experiment_tracking import ExperimentTracker
+
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 logging.getLogger("transformers").setLevel(logging.ERROR)
+
+
+def initialize_tokenizer(model_name: str):
+    """Initializes and configures the tokenizer."""
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
 
 
 def create_lora_config(cfg: DictConfig):
