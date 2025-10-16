@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Union
 import torch
 import librosa
 from torch.utils.data import Dataset
-from transformers import PreTrainedTokenizer
 
 
 def load_jsonl(file_path: Union[str, Path]) -> List[Dict]:
@@ -31,28 +30,25 @@ class MixingDataset(Dataset):
         self,
         jsonl_path: Union[str, Path],
         audio_root: Union[str, Path],
-        tokenizer: PreTrainedTokenizer,
         sample_rate: int,
-        max_length: int = 512,
+        system_message: str,
+        use_instructions: bool,
         limit: Optional[int] = None,
-        use_instruction: bool = True,
     ):
         """
         Args:
             jsonl_path: Path to JSONL file with training samples
             audio_root: Root directory for audio files
-            tokenizer: HuggingFace tokenizer
             sample_rate: Target sample rate for audio (required)
-            max_length: Maximum sequence length for tokenization
+            system_message: The system message to prepend to the conversation
+            use_instructions: Whether to include instruction text in training
             limit: Optional limit on number of samples to load
-            use_instruction: Whether to include instruction text in training
         """
         self.jsonl_path = Path(jsonl_path)
         self.audio_root = Path(audio_root)
-        self.tokenizer = tokenizer
         self.sample_rate = sample_rate
-        self.max_length = max_length
-        self.use_instruction = use_instruction
+        self.use_instructions = use_instructions
+        self.system_message = system_message
 
         # Load data
         self.data = load_jsonl(self.jsonl_path)
@@ -64,7 +60,7 @@ class MixingDataset(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Dict[str, Union[torch.Tensor, List[Dict]]]:
         """Get a single training sample."""
         item = self.data[idx]
 
@@ -75,55 +71,19 @@ class MixingDataset(Dataset):
         ]
 
         # Get instruction and response
-        instruction = item["instruction"]
+        instruction = item["instruction"] if self.use_instructions else ""
         response = item["response"]
 
-        # Tokenize based on whether we use instructions
-        if self.use_instruction:
-            # Current behavior: instruction + separator + response
-            full_text = instruction + self.tokenizer.eos_token + response
-            # Calculate instruction length for masking
-            instruction_tokenized = self.tokenizer(
-                instruction + self.tokenizer.eos_token,
-                return_tensors="pt",
-                padding=False,
-                truncation=True,
-                max_length=self.max_length,
-            )
-            instruction_len = instruction_tokenized["input_ids"].shape[1]
-        else:
-            # New behavior: separator + response (maintains separator pattern)
-            full_text = self.tokenizer.eos_token + response
-            # Calculate eos_token length for masking (same as instruction case)
-            eos_tokenized = self.tokenizer(
-                self.tokenizer.eos_token,
-                return_tensors="pt",
-                padding=False,
-                truncation=True,
-                max_length=self.max_length,
-            )
-            instruction_len = eos_tokenized["input_ids"].shape[1]  # Mask the eos_token
-
-        tokenized = self.tokenizer(
-            full_text,
-            return_tensors="pt",
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_length,
-        )
-        input_ids = tokenized["input_ids"].squeeze(0)
-        attention_mask = tokenized["attention_mask"].squeeze(0)
-
-        # Create labels, ignoring the instruction part (if any)
-        labels = input_ids.clone()
-        labels[:instruction_len] = -100  # -100 is the ignore index for CrossEntropyLoss
+        # Create messages in conversational format
+        messages = []
+        messages.append({"role": "system", "content": self.system_message})
+        messages.append({"role": "user", "content": instruction})
+        messages.append({"role": "assistant", "content": response})
 
         return {
             "audio": torch.from_numpy(flawed_mix).float(),
+            "messages": messages,
             "sample_rate": self.sample_rate,
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            "labels": labels,
             "instruction": instruction,
             "response": response,
             "reference_mix_path": item["reference_mix_path"],

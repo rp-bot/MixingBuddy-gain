@@ -39,6 +39,7 @@ class ModularMultimodalModel(nn.Module):
         # Use pre-configured LLM and tokenizer (always provided by training script)
         self.llm = llm
         self.tokenizer = tokenizer
+        self.config = llm.config  # Expose the llm's config for SFTTrainer
 
         # Note: QLoRA and LoRA setup is now handled by the training script
         # This keeps the model constructor focused on basic model initialization
@@ -184,61 +185,66 @@ class ModularMultimodalModel(nn.Module):
     def generate(
         self,
         text_input: str,
-        max_new_tokens: int,
         audio: torch.Tensor,
+        max_new_tokens: int,
+        system_message: str,
     ) -> str:
         """
         Generates text based on a given prompt using the underlying model's
         generate method. This is for inference only.
 
         Args:
-            text_input (str): The prompt to generate text from.
-            audio (torch.Tensor, optional): Audio input to be processed.
+            text_input (str): The user's instruction or prompt.
+            audio (torch.Tensor): Audio input to be processed.
             max_new_tokens (int): The maximum number of new tokens to generate.
+            system_message (str, optional): The system message to guide the model.
 
         Returns:
             str: The generated text.
         """
         device = self.llm.device
 
-        # Format the prompt to match the training format: instruction + EOS token
-        prompt = text_input + self.tokenizer.eos_token
+        # Create messages in conversational format
+        messages = []
+        messages.append({"role": "system", "content": system_message})
+        messages.append({"role": "user", "content": text_input})
+
+        # Apply chat template
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(device)
-
         audio = audio.to(device)
 
+        # Encode and project audio
         audio_features = self.encode_audio(audio)
         projected_audio_embeds = self.audio_projection(audio_features)
+
+        # Get text embeddings and combine with audio
         text_embeds = self.llm.get_input_embeddings()(model_inputs.input_ids)
-
-        # Ensure projected audio embeddings match the LLM's dtype
         projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
-
         inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
+
+        # Create combined attention mask
         audio_attention_mask = torch.ones(
-            projected_audio_embeds.shape[:2],
-            dtype=torch.long,
-            device=device,
+            projected_audio_embeds.shape[:2], dtype=torch.long, device=device
         )
         attention_mask = torch.cat(
             (audio_attention_mask, model_inputs.attention_mask), dim=1
         )
 
-        generate_kwargs = {
-            "inputs_embeds": inputs_embeds,
-            "attention_mask": attention_mask,
-        }
-
+        # Generate response
         generated_ids = self.llm.generate(
-            **generate_kwargs,
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
             max_new_tokens=max_new_tokens,
-            
         )
 
-        response = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=False
-        )[0]
+        # Decode and return the full response
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
+            0
+        ]
         return response
 
 
@@ -300,7 +306,10 @@ if __name__ == "__main__":
     mix_audio = sample["audio"]
 
     generated_text_with_audio = model.generate(
-        text_input=instruction, audio=mix_audio, max_new_tokens=150
+        text_input=instruction,
+        audio=mix_audio,
+        max_new_tokens=150,
+        system_message="You are a helpful mixing assistant.",
     )
     print(f"Instruction: {instruction}")
     print(f"Generated response (with audio): {generated_text_with_audio}")
@@ -340,7 +349,12 @@ if __name__ == "__main__":
     print("\n--- Testing generation without audio ---")
     prompt_text = "What are the benefits of using a modular approach in deep learning?"
     print(f"Generating response for prompt: '{prompt_text}'")
-    generated_text_no_audio = model.generate(prompt_text, max_new_tokens=150)
+    generated_text_no_audio = model.generate(
+        text_input=prompt_text,
+        audio=torch.randn(24000 * 2),  # Dummy audio
+        max_new_tokens=150,
+        system_message="You are a helpful AI assistant.",
+    )
 
     # Print the response
     print("\n--- Model Response (no audio) ---")

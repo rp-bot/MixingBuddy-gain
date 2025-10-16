@@ -7,13 +7,8 @@ import logging
 from typing import Optional
 from omegaconf import DictConfig
 
-import torch
-from omegaconf import DictConfig
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoTokenizer
 
-from src.data.dataset import MixingDataset
-from src.utils.experiment_tracking import ExperimentTracker
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -160,7 +155,6 @@ def initialize_experiment_tracker(cfg: DictConfig, required: bool = True):
 
 def load_dataset(
     cfg: DictConfig,
-    model,
     dataset_type: str = "train",
     limit: Optional[int] = None,
 ):
@@ -186,10 +180,10 @@ def load_dataset(
     dataset = MixingDataset(
         jsonl_path=jsonl_path,
         audio_root=audio_root,
-        tokenizer=model.tokenizer,
         sample_rate=cfg.data.audio.sample_rate,
         limit=limit,
-        use_instruction=cfg.data.use_instruction,
+        use_instructions=cfg.data.use_instructions,
+        system_message=cfg.data.system_message,
     )
 
     print(f"{dataset_type.title()} dataset size: {len(dataset)} samples")

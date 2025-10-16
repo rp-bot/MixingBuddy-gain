@@ -117,6 +117,7 @@ def generate_and_compare(
     num_samples: int,
     max_new_tokens: int,
     use_instruction: bool,
+    system_message: str,
 ):
     """Generate responses for a few samples and compare with ground truth."""
     print("\n" + "=" * 50)
@@ -140,6 +141,7 @@ def generate_and_compare(
             text_input=text_for_generation,
             audio=audio,
             max_new_tokens=max_new_tokens,
+            system_message=system_message,
         )
 
         print(f"\nModel Generated Response:\n{generated_text}")
@@ -156,11 +158,12 @@ def main(cfg: DictConfig):
 
     # Load test dataset
     limit = cfg.evaluation.num_generation_samples
-    use_instruction = cfg.data.use_instruction
-    test_dataset = load_dataset(cfg, model, "test", limit=limit)
+    test_dataset = load_dataset(cfg, "test", limit=limit)
 
     # Get generation parameters from config
     max_new_tokens = cfg.evaluation.max_new_tokens
+    use_instruction = cfg.data.use_instructions
+    system_message = cfg.data.system_message
 
     # Generate and compare
     generate_and_compare(
@@ -169,6 +172,7 @@ def main(cfg: DictConfig):
         num_samples=limit,
         max_new_tokens=max_new_tokens,
         use_instruction=use_instruction,
+        system_message=system_message,
     )
 
 

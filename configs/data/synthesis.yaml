@@ -52,9 +52,8 @@ audio:
   # peak_normalize: false  # Removed - let audio clip naturally to preserve relative levels
 
 limit: null # Set to a number to limit dataset size for testing
-
-# Training mode settings
-use_instruction: false # Set to false for audio-only training (no instruction text)
+system_message: ""
+use_instructions: false
 
 splits:
   - train

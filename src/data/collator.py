@@ -13,11 +13,15 @@ from transformers import PreTrainedTokenizerBase
 class MultimodalDataCollator:
     """
     Data collator that handles both text and audio inputs.
+    This collator is designed to work with SFTTrainer and expects the dataset
+    to return a 'messages' field in conversational format and an 'audio' field.
 
     This collator:
-    - Pads text sequences (input_ids, attention_mask, labels) to the same length
-    - Stacks audio tensors (assumes all audio has the same length)
-    - Preserves other metadata fields
+    - Applies the chat template to the 'messages' field.
+    - Tokenizes the formatted text.
+    - Creates labels for language modeling, masking the prompt part.
+    - Pads text sequences (input_ids, attention_mask, labels) to the same length.
+    - Pads and stacks audio tensors.
     """
 
     tokenizer: PreTrainedTokenizerBase
@@ -25,67 +29,47 @@ class MultimodalDataCollator:
     return_tensors: str = "pt"
 
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Collate a batch of samples.
+        # Extract messages and audio from features
+        all_messages = [f["messages"] for f in features]
+        audio_list = [f["audio"] for f in features]
 
-        Args:
-            features: List of samples from the dataset, each containing:
-                - input_ids: Token IDs
-                - attention_mask: Attention mask
-                - labels: Labels for language modeling
-                - audio: Audio tensor (all same length)
-                - Other metadata fields
-
-        Returns:
-            Batched dictionary with padded text and stacked audio
-        """
-        # Separate text and audio/metadata fields
-        text_keys = ["input_ids", "attention_mask", "labels"]
-        metadata_keys = [
-            "sample_rate",
-            "instruction",
-            "response",
-            "reference_mix_path",
-            "target_stem",
-            "error_category",
-            "global_uid",
+        # Apply chat template and tokenize
+        formatted_texts = [
+            self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=False
+            )
+            for messages in all_messages
         ]
-
-        # Extract text features for padding
-        text_features = [
-            {key: feature[key] for key in text_keys if key in feature}
-            for feature in features
-        ]
-
-        # Pad text sequences using the tokenizer's pad method
-        batch = self.tokenizer.pad(
-            text_features,
+        tokenized_batch = self.tokenizer(
+            formatted_texts,
             padding=True,
-            pad_to_multiple_of=self.pad_to_multiple_of,
+            truncation=True,
             return_tensors=self.return_tensors,
+            pad_to_multiple_of=self.pad_to_multiple_of,
         )
 
-        # Stack audio tensors (pad to same length if needed)
-        if "audio" not in features[0]:
-            raise KeyError("Expected 'audio' key in features[0]")
-        audio_list = [feature["audio"] for feature in features]
+        # Create labels, setting prompt tokens to ignore index
+        labels = tokenized_batch["input_ids"].clone()
+        for i, messages in enumerate(all_messages):
+            # To properly calculate the loss, we need to determine where the
+            # prompt ends and the response begins. We do this by applying the chat
+            # template to the prompt part only (all messages except the last one).
+            user_part = self.tokenizer.apply_chat_template(
+                messages[:-1], tokenize=False, add_generation_prompt=True
+            )
+            user_tokens_len = len(
+                self.tokenizer(user_part, add_special_tokens=False)["input_ids"]
+            )
+
+            # Set the ignore index for tokens up to the start of the assistant's response
+            labels[i, :user_tokens_len] = -100
+
+        tokenized_batch["labels"] = labels
 
         # Pad audio tensors to the same length
-        batch["audio"] = self._pad_audio_tensors(audio_list)
+        tokenized_batch["audio"] = self._pad_audio_tensors(audio_list)
 
-        # Preserve metadata (take from first sample or collect all)
-        for meta_key in metadata_keys:
-            if meta_key in features[0]:
-                # For scalar values, collect all
-                if isinstance(features[0][meta_key], (int, float)):
-                    batch[meta_key] = torch.tensor(
-                        [feature[meta_key] for feature in features]
-                    )
-                # For strings, keep as list
-                else:
-                    batch[meta_key] = [feature[meta_key] for feature in features]
-
-        return batch
+        return tokenized_batch
 
     def _pad_audio_tensors(self, audio_list: List[torch.Tensor]) -> torch.Tensor:
         """Pad audio tensors to the same length."""
