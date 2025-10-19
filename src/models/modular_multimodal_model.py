@@ -123,20 +123,25 @@ class ModularMultimodalModel(nn.Module):
 
         return batched_features
 
-    def forward(self, input_ids, attention_mask, audio, labels, **kwargs):
+    def forward(self, **kwargs):
         """
         Defines the forward pass of the model.
 
         Args:
-            input_ids (torch.Tensor): The input IDs for the language model.
-            attention_mask (torch.Tensor): The attention mask for the language model.
-            audio (torch.Tensor, optional): Audio input to be processed.
-            labels (torch.Tensor, optional): The labels for computing the loss. Defaults to None.
-            **kwargs: Additional arguments (metadata) that are ignored.
+            **kwargs: A dictionary of arguments that must contain:
+                - input_ids (torch.Tensor): The input IDs for the language model.
+                - attention_mask (torch.Tensor): The attention mask for the language model.
+                - audio (torch.Tensor): Audio input to be processed.
+                - labels (torch.Tensor): The labels for computing the loss.
 
         Returns:
             transformers.modeling_outputs.CausalLMOutputWithPast: The output from the language model.
         """
+        input_ids = kwargs.get("input_ids")
+        attention_mask = kwargs.get("attention_mask")
+        audio = kwargs.get("audio")
+        labels = kwargs.get("labels")
+
         # 1. Encode audio
         audio_features = self.encode_audio(audio)
 
@@ -146,32 +151,20 @@ class ModularMultimodalModel(nn.Module):
         # 3. Get text embeddings
         text_embeds = self.llm.get_input_embeddings()(input_ids)
 
-        # 4. Ensure dtypes match
+        # 4. Replace the dummy audio token embeddings with the projected audio embeddings
+        num_audio_tokens = projected_audio_embeds.shape[1]
+
+        # Ensure dtypes match before concatenation
         projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
 
-        # 5. Concatenate audio and text embeddings
-        inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
-
-        # 6. Create attention mask for audio
-        audio_attention_mask = torch.ones(
-            projected_audio_embeds.shape[:2],
-            dtype=torch.long,
-            device=input_ids.device,
+        # Concatenate the projected audio embeddings with the actual text embeddings
+        inputs_embeds = torch.cat(
+            [projected_audio_embeds, text_embeds[:, num_audio_tokens:]], dim=1
         )
 
-        # 7. Concatenate attention masks
-        attention_mask = torch.cat((audio_attention_mask, attention_mask), dim=1)
-
-        # 8. Prepend ignore tokens to labels for the audio part
-        # This is necessary to make the labels tensor match the sequence length of the inputs_embeds.
-        audio_labels = torch.full(
-            projected_audio_embeds.shape[:2],
-            -100,
-            dtype=torch.long,
-            device=labels.device,
-        )
-        labels = torch.cat((audio_labels, labels), dim=1)
-
+        # The collator now prepares the correct attention_mask and labels,
+        # so we no longer need to modify them here. The SFTTrainer will receive
+        # inputs with consistent sequence lengths.
         output = self.llm(
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,

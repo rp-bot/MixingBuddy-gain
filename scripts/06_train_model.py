@@ -6,8 +6,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import sys
 from pathlib import Path
-import torch
-from torch.utils.data import random_split
+from datasets import Dataset
 from transformers import TrainingArguments, EarlyStoppingCallback
 from trl import SFTTrainer
 
@@ -52,7 +51,7 @@ def initialize_model_and_tokenizer(cfg: DictConfig):
 def load_datasets(cfg: DictConfig, tokenizer):
     """Load and split train, validation, and test datasets."""
     print("Loading data...")
-    full_train_dataset = MixingDataset(
+    full_train_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.train_jsonl_path,
         audio_root=cfg.data.train_audio_root,
         sample_rate=cfg.data.audio.sample_rate,
@@ -60,7 +59,11 @@ def load_datasets(cfg: DictConfig, tokenizer):
         use_instructions=cfg.data.use_instructions,
         system_message=cfg.data.system_message,
     )
-    test_dataset = MixingDataset(
+    full_train_dataset = Dataset.from_list(
+        [full_train_pytorch_dataset[i] for i in range(len(full_train_pytorch_dataset))]
+    )
+
+    test_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.test_jsonl_path,
         audio_root=cfg.data.test_audio_root,
         sample_rate=cfg.data.audio.sample_rate,
@@ -68,14 +71,15 @@ def load_datasets(cfg: DictConfig, tokenizer):
         use_instructions=cfg.data.use_instructions,
         system_message=cfg.data.system_message,
     )
-
-    train_size = int(0.8 * len(full_train_dataset))
-    val_size = len(full_train_dataset) - train_size
-    train_dataset, val_dataset = random_split(
-        full_train_dataset,
-        [train_size, val_size],
-        generator=torch.Generator().manual_seed(cfg.env.seed),
+    test_dataset = Dataset.from_list(
+        [test_pytorch_dataset[i] for i in range(len(test_pytorch_dataset))]
     )
+
+    train_val_split = full_train_dataset.train_test_split(
+        test_size=0.2, seed=cfg.env.seed
+    )
+    train_dataset = train_val_split["train"]
+    val_dataset = train_val_split["test"]
 
     print(
         f"Dataset sizes: Train={len(train_dataset)}, Val={len(val_dataset)}, Test={len(test_dataset)}"
@@ -96,6 +100,8 @@ def main(cfg: DictConfig):
     )
     # Prevent SFTTrainer from removing custom columns like 'audio' and 'messages'
     training_args_dict["remove_unused_columns"] = False
+    # Specify that 'labels' is a label field so the Trainer properly computes loss during evaluation
+    training_args_dict["label_names"] = ["labels"]
     training_args = TrainingArguments(**training_args_dict)
 
     callbacks = [ExperimentTrackingCallback(tracker, model)]
@@ -106,9 +112,13 @@ def main(cfg: DictConfig):
             )
         )
 
+    # The stride of the audio encoder is needed to correctly pad the text tokens
+    # so that the sequence length is consistent for the trainer.
+    audio_encoder_stride = model.audio_encoder.model.config.hop_length
     data_collator = MultimodalDataCollator(
         tokenizer=tokenizer,
         pad_to_multiple_of=8,
+        audio_encoder_stride=audio_encoder_stride,
     )
 
     trainer = SFTTrainer(
@@ -116,6 +126,7 @@ def main(cfg: DictConfig):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
+        processing_class=tokenizer,  # Pass tokenizer to SFTTrainer
         # dataset_text_field is removed as the collator now handles all formatting.
         data_collator=data_collator,
         callbacks=callbacks,
