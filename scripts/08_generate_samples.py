@@ -162,11 +162,13 @@ def generate_and_compare(
         target_stem = sample["target_stem"]
         error_category = sample["error_category"]
 
-        # Get intended gain from the dataset item if available
+        # Get intended gain and timing info from the dataset item if available
         # Note: This field might not be directly in the sample, but in metadata
         # We'll extract it from the dataset's underlying data
         item_data = dataset.data[i]
         intended_gain_db = item_data["meta"].get("intended_gain_db", 0.0)
+        start_sec = item_data["meta"].get("time_ref", {}).get("start_sec", 0.0)
+        end_sec = item_data["meta"].get("time_ref", {}).get("end_sec", 0.0)
 
         # Get expected magnitude range
         expected_min_db, expected_max_db = get_expected_magnitude_range(error_category)
@@ -190,6 +192,8 @@ def generate_and_compare(
             "target_stem": target_stem,
             "error_category": error_category,
             "intended_gain_db": intended_gain_db,
+            "start_sec": start_sec,
+            "end_sec": end_sec,
             "expected_magnitude_min_db": expected_min_db,
             "expected_magnitude_max_db": expected_max_db,
         }
@@ -200,6 +204,7 @@ def generate_and_compare(
             print(f"\n--- Sample {i + 1}/{total_samples} ---")
             print(f"Global UID: {global_uid}")
             print(f"Target Stem: {target_stem} | Error: {error_category}")
+            print(f"Timing: {start_sec:.1f}s - {end_sec:.1f}s")
             print(
                 f"Instruction: {text_for_generation[:100]}..."
                 if len(text_for_generation) > 100
@@ -240,8 +245,23 @@ def main(cfg: DictConfig):
     use_instruction = cfg.data.use_instructions
     system_message = cfg.data.system_message
 
-    # Get output directory from config
-    output_dir = Path(cfg.env.output_dir)
+    # Get output directory from config - use the same run name as the checkpoint
+    # Extract run name from checkpoint path
+    checkpoint_path = cfg.checkpoint_path
+    if checkpoint_path == "latest":
+        checkpoint_path = find_latest_checkpoint()
+        if checkpoint_path is None:
+            raise ValueError(
+                "No checkpoint found when checkpoint_path is set to 'latest'"
+            )
+
+    # Extract run name from checkpoint path
+    # Expected format: outputs/checkpoints/mixing_buddy_milestone_0/{run_name}/checkpoint-{step}
+    checkpoint_path = Path(checkpoint_path)
+    run_name = checkpoint_path.parent.name  # Get the run name from the parent directory
+
+    # Create evaluation directory structure
+    output_dir = Path("outputs/evaluation") / run_name
 
     # Generate and compare (limit can be None to generate for all samples)
     predictions_file = generate_and_compare(

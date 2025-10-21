@@ -10,7 +10,8 @@ max_samples: null
 save_predictions: true
 
 # Output directory for predictions
-predictions_output_dir: "${env.output_dir}/predictions"
+# Note: Output directory is now determined by checkpoint run name
+# predictions_output_dir: "${env.output_dir}/predictions"
 
 # Parameters for the generation script (08_generate_samples.py)
 num_generation_samples: 20 # Set to null to generate for all samples
@@ -23,7 +24,8 @@ metrics:
   - "accuracy" # If applicable
 
 # Checkpoint settings
-use_latest_checkpoint: true # Automatically use latest checkpoint if no specific path is set
+# Note: Checkpoint path is now handled in the main evaluate.yaml config
+# use_latest_checkpoint: true # Automatically use latest checkpoint if no specific path is set
 
 # Memory management
 memory:
@@ -38,8 +40,5 @@ model_loading:
 
 # Custom metrics configuration (for 09_compute_metrics.py)
 custom_metrics:
-  compute_semantic_similarity: true
-  compute_label_metrics: true
   semantic_model: "sentence-transformers/all-mpnet-base-v2"
-  extraction_model: "Qwen/Qwen2.5-1.5B-Instruct"
-  extraction_device: "cuda" # "cuda" or "cpu"
+  classifier_model: "MoritzLaurer/deberta-v3-base-zeroshot-v1"

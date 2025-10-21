@@ -14,7 +14,8 @@ defaults:
 env:
   seed: 42
   project_name: "automatic-mixing-milestone-0"
-  output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+  # Output directory will be determined by checkpoint run name
+  # output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Model checkpoint settings
 checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-all-linear-r8a16-musdb-1020-2051/checkpoint-500
@@ -24,13 +25,23 @@ checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-all
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
 # Example: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-r8a16-musdb-1012-1301"
+#
+# IMPORTANT: The evaluation output directory will be automatically determined
+# from the checkpoint path. For example, if checkpoint is:
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-r8a16-musdb-1020-2051/checkpoint-500"
+# Then evaluation will be saved to:
+# "outputs/evaluation/qlora-qwen2-7b-r8a16-musdb-1020-2051/predictions/"
+
+# Predictions file path for metrics computation
+# If not specified, the script will use the new evaluation structure
+# predictions_path: "outputs/evaluation/2025-10-20/22-35-08/predictions/predictions.jsonl"
 
 # Experiment tracking settings
 experiment_tracking:
   use_wandb: true
   use_mlflow: false
-
 # Hydra configuration
-hydra:
-  run:
-    dir: ${env.output_dir}
+# Note: Output directory is now determined by checkpoint run name in the scripts
+# hydra:
+#   run:
+#     dir: ${env.output_dir}

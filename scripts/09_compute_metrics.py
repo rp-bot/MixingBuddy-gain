@@ -22,11 +22,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation.metrics import (  # noqa: E402
-    SemanticSimilarityMetric,
-    LabelExtractor,
-    LabelChecker,
-)
+from src.evaluation.semantic_similarity import SemanticSimilarityMetric  # noqa: E402
+from src.evaluation.label_extraction import LabelExtractionMetric  # noqa: E402
 
 
 def load_predictions(predictions_path: Path) -> List[Dict]:
@@ -74,7 +71,7 @@ def compute_semantic_similarity(
         "per_sample": similarities,
     }
 
-    print(f"\nSemantic Similarity Results:")
+    print("\nSemantic Similarity Results:")
     print(f"  Mean: {results['mean']:.4f}")
     print(f"  Std:  {results['std']:.4f}")
     print(f"  Median: {results['median']:.4f}")
@@ -90,105 +87,35 @@ def compute_semantic_similarity(
     return results
 
 
-def compute_label_metrics(
+def compute_label_extraction(
     predictions: List[Dict],
-    extraction_model_name: str,
-    extraction_device: str,
+    classifier_model: str,
+    device: str,
 ) -> Dict:
     """
-    Extract labels and compute accuracy metrics.
+    Compute label extraction metrics on predictions.
 
     Args:
         predictions: List of prediction dictionaries
-        extraction_model_name: Name of the LLM for extraction
-        extraction_device: Device to run extraction model on
+        classifier_model: Name of the zero-shot classification model
+        device: Device to run model on (cuda/cpu)
 
     Returns:
-        Dictionary with extraction results and accuracy metrics
+        Dictionary with label extraction metrics
     """
-    print("\n" + "=" * 50)
-    print("COMPUTING LABEL METRICS")
-    print("=" * 50)
-
-    # Initialize extractors
-    extractor = LabelExtractor(
-        model_name=extraction_model_name,
-        device=extraction_device,
+    print(f"\nInitializing label extraction with classifier: {classifier_model}")
+    label_metric = LabelExtractionMetric(
+        classifier_model=classifier_model, device=device
     )
-    checker = LabelChecker()
+    label_results = label_metric.compute(predictions)
 
-    # Extract labels from generated responses
-    extracted_labels = []
-    for pred in tqdm(predictions, desc="Extracting labels"):
-        extracted = extractor.extract(pred["generated"])
-        extracted_labels.append(extracted)
-
-    # Clean up extractor to free memory
-    del extractor
+    # Clean up
+    del label_metric
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    # Prepare ground truth data
-    ground_truth_stems = [pred["target_stem"] for pred in predictions]
-    ground_truth_error_categories = [pred["error_category"] for pred in predictions]
-    ground_truth_intended_gains = [pred["intended_gain_db"] for pred in predictions]
-
-    # Compute accuracy
-    accuracy = checker.compute_accuracy(
-        extracted_labels=extracted_labels,
-        ground_truth_stems=ground_truth_stems,
-        ground_truth_error_categories=ground_truth_error_categories,
-        ground_truth_intended_gains_db=ground_truth_intended_gains,
-    )
-
-    print(f"\nLabel Accuracy Results:")
-    print(f"  Stem Name:  {accuracy['stem_name']:.4f}")
-    print(f"  Direction:  {accuracy['direction']:.4f}")
-    print(f"  Magnitude:  {accuracy['magnitude']:.4f}")
-    print(f"  Overall:    {accuracy['overall']:.4f}")
-
-    # Combine extracted labels with predictions for detailed output
-    detailed_results = []
-    for i, pred in enumerate(predictions):
-        # Get expected magnitude range from prediction if available
-        expected_min = pred.get("expected_magnitude_min_db")
-        expected_max = pred.get("expected_magnitude_max_db")
-
-        detailed_results.append(
-            {
-                "global_uid": pred["global_uid"],
-                "ground_truth": {
-                    "stem_name": ground_truth_stems[i],
-                    "direction": checker._get_ground_truth_direction(
-                        ground_truth_error_categories[i]
-                    ),
-                    "error_category": ground_truth_error_categories[i],
-                    "intended_gain_db": ground_truth_intended_gains[i],
-                    "expected_magnitude_min_db": expected_min,
-                    "expected_magnitude_max_db": expected_max,
-                },
-                "extracted": extracted_labels[i],
-                "correct": {
-                    "stem_name": checker.check_stem_name(
-                        extracted_labels[i], ground_truth_stems[i]
-                    ),
-                    "direction": checker.check_direction(
-                        extracted_labels[i], ground_truth_error_categories[i]
-                    ),
-                    "magnitude": checker.check_magnitude(
-                        extracted_labels[i],
-                        ground_truth_error_categories[i],
-                        ground_truth_intended_gains[i],
-                    ),
-                },
-            }
-        )
-
-    return {
-        "accuracy": accuracy,
-        "detailed_results": detailed_results,
-    }
+    return label_results
 
 
 @hydra.main(config_path="../configs", config_name="evaluate", version_base=None)
@@ -200,49 +127,58 @@ def main(cfg: DictConfig):
     print("CUSTOM METRICS COMPUTATION")
     print("=" * 50)
 
-    # Get predictions path
+    
+
+    # Get predictions path - use the same run name as the checkpoint
+    # If predictions_path is provided in config, use it; otherwise extract from checkpoint
     if hasattr(cfg, "predictions_path") and cfg.predictions_path:
         predictions_path = Path(cfg.predictions_path)
     else:
-        # Default: use the predictions from the current output directory
-        predictions_path = (
-            Path(cfg.env.output_dir) / "predictions" / "predictions.jsonl"
-        )
+        # Extract run name from checkpoint path
+        from src.utils.model_utils import find_latest_checkpoint
 
-    if not predictions_path.exists():
-        raise FileNotFoundError(
-            f"Predictions file not found: {predictions_path}\n"
-            "Please run 08_generate_samples.py first or specify predictions_path in config."
+        checkpoint_path = cfg.checkpoint_path
+        if checkpoint_path == "latest":
+            checkpoint_path = find_latest_checkpoint()
+            if checkpoint_path is None:
+                raise ValueError(
+                    "No checkpoint found when checkpoint_path is set to 'latest'"
+                )
+
+        # Extract run name from checkpoint path
+        # Expected format: outputs/checkpoints/mixing_buddy_milestone_0/{run_name}/checkpoint-{step}
+        checkpoint_path = Path(checkpoint_path)
+        run_name = (
+            checkpoint_path.parent.name
+        )  # Get the run name from the parent directory
+
+        # Use the new evaluation structure
+        predictions_path = (
+            Path("outputs/evaluation") / run_name / "predictions" / "predictions.jsonl"
         )
 
     # Load predictions
     predictions = load_predictions(predictions_path)
 
-    # Get metrics configuration
+    # Get semantic model from config
     metrics_config = cfg.evaluation.get("custom_metrics", {})
-    compute_semantic = metrics_config.get("compute_semantic_similarity", True)
-    compute_labels = metrics_config.get("compute_label_metrics", True)
-
-    results = {}
+    semantic_model = metrics_config.get(
+        "semantic_model", "sentence-transformers/all-mpnet-base-v2"
+    )
 
     # Compute semantic similarity
-    if compute_semantic:
-        semantic_model = metrics_config.get(
-            "semantic_model", "sentence-transformers/all-mpnet-base-v2"
-        )
-        results["semantic_similarity"] = compute_semantic_similarity(
-            predictions, semantic_model
-        )
+    results = {
+        "semantic_similarity": compute_semantic_similarity(predictions, semantic_model)
+    }
 
-    # Compute label metrics
-    if compute_labels:
-        extraction_model = metrics_config.get(
-            "extraction_model", "Qwen/Qwen2.5-1.5B-Instruct"
-        )
-        extraction_device = metrics_config.get("extraction_device", "cuda")
-        results["label_metrics"] = compute_label_metrics(
-            predictions, extraction_model, extraction_device
-        )
+    # Compute label extraction metrics with classifier
+    classifier_model = metrics_config.get(
+        "classifier_model", "MoritzLaurer/deberta-v3-base-zeroshot-v1"
+    )
+    device = "cuda"
+    results["label_extraction"] = compute_label_extraction(
+        predictions, classifier_model, device
+    )
 
     # Save results
     output_dir = predictions_path.parent
@@ -255,11 +191,17 @@ def main(cfg: DictConfig):
     summary_results = {
         "semantic_similarity": {
             k: v
-            for k, v in results.get("semantic_similarity", {}).items()
+            for k, v in results["semantic_similarity"].items()
             if k != "per_sample"  # Exclude large per-sample list from summary
         },
-        "label_metrics": {
-            "accuracy": results.get("label_metrics", {}).get("accuracy", {}),
+        "label_extraction": {
+            k: v
+            for k, v in results["label_extraction"].items()
+            if k
+            not in [
+                "extracted_labels",
+                "ground_truth_labels",
+            ]  # Exclude large per-sample lists
         },
     }
 
@@ -278,16 +220,24 @@ def main(cfg: DictConfig):
 
     # Print final summary
     print("\nFINAL SUMMARY:")
-    if "semantic_similarity" in results:
+    print(f"  Semantic Similarity (mean): {results['semantic_similarity']['mean']:.4f}")
+
+    if "label_extraction" in results:
+        lex = results["label_extraction"]
+        print(f"  Label Extraction (overall accuracy): {lex['overall_accuracy']:.4f}")
+        print(f"    - Stem name: {lex['stem_name_accuracy']:.4f}")
+        print(f"    - Magnitude range: {lex['magnitude_range_accuracy']:.4f}")
         print(
-            f"  Semantic Similarity (mean): {results['semantic_similarity']['mean']:.4f}"
+            f"    - Error detection: {lex['error_detection']['accuracy']:.4f} (F1: {lex['error_detection']['f1']:.4f})"
         )
-    if "label_metrics" in results:
-        acc = results["label_metrics"]["accuracy"]
-        print(f"  Label Accuracy (overall): {acc['overall']:.4f}")
-        print(f"    - Stem Name: {acc['stem_name']:.4f}")
-        print(f"    - Direction: {acc['direction']:.4f}")
-        print(f"    - Magnitude: {acc['magnitude']:.4f}")
+        print(
+            f"    - Problem severity: {lex['problem_severity']['accuracy']:.4f} (F1: {lex['problem_severity'].get('f1_macro', 0.0):.4f})"
+        )
+        print(
+            f"    - Direction: {lex['direction']['accuracy']:.4f} (F1: {lex['direction'].get('f1_macro', 0.0):.4f})"
+        )
+
+    print("=" * 50)
 
 
 if __name__ == "__main__":
