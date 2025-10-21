@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 import gc
 import torch
-from datasets import Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -21,6 +20,7 @@ from src.utils.model_utils import (  # noqa: E402
     find_latest_checkpoint,
     initialize_tokenizer,
     load_dataset,
+    IterableDatasetWrapper,
 )
 
 
@@ -134,10 +134,15 @@ def load_test_dataset(cfg: DictConfig):
     # Load the PyTorch dataset
     pytorch_dataset = load_dataset(cfg, dataset_type="test", limit=limit)
 
-    # Convert to HuggingFace Dataset for SFTTrainer
-    test_dataset = Dataset.from_list(
-        [pytorch_dataset[i] for i in range(len(pytorch_dataset))]
+    # Expected audio length: 10 seconds at 32kHz = 320,000 samples
+    audio_length = int(cfg.data.chunk.sec * cfg.data.audio.sample_rate)
+    print(
+        f"Expected audio length: {audio_length} samples ({cfg.data.chunk.sec}s at {cfg.data.audio.sample_rate}Hz)"
     )
+
+    # Wrap in our custom wrapper to avoid HuggingFace Dataset truncation
+    # This keeps data in PyTorch format and loads audio on-demand
+    test_dataset = IterableDatasetWrapper(pytorch_dataset)
 
     return test_dataset
 
@@ -167,6 +172,9 @@ def run_evaluation(cfg: DictConfig):
         label_names=[
             "labels"
         ],  # Specify that 'labels' is a label field for loss computation
+        disable_tqdm=False,  # Explicitly enable progress bars
+        logging_steps=1,  # Log every step to see progress
+        report_to="none",  # Don't report to wandb/mlflow during eval
     )
 
     # The stride of the audio encoder is needed to correctly pad the text tokens

@@ -44,15 +44,9 @@ class ExperimentTrackingCallback(TrainerCallback):
         if not logs:
             return
 
-        is_eval = any(key.startswith("eval_") for key in logs.keys())
-        if is_eval:
-            # For evaluation, don't pass a step to use wandb's internal step counter
-            # This creates a separate x-axis for evaluation metrics
-            self.experiment_tracker.log_metrics(logs)
-        else:
-            # For training, log with the global step
-            self.step = state.global_step
-            self.experiment_tracker.log_metrics(logs, step=self.step)
+        # Always use the global step for consistent logging
+        self.step = state.global_step
+        self.experiment_tracker.log_metrics(logs, step=self.step)
 
     def on_save(self, args, state, control, **kwargs):
         if not self.experiment_tracker:

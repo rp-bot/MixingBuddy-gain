@@ -6,7 +6,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import sys
 from pathlib import Path
-from datasets import Dataset
+import torch
 from transformers import TrainingArguments, EarlyStoppingCallback
 from trl import SFTTrainer
 
@@ -24,6 +24,7 @@ from src.utils.model_utils import (  # noqa: E402
     initialize_qlora_model,
     initialize_tokenizer,
     initialize_experiment_tracker,
+    IterableDatasetWrapper,
 )
 
 
@@ -51,6 +52,13 @@ def initialize_model_and_tokenizer(cfg: DictConfig):
 def load_datasets(cfg: DictConfig, tokenizer):
     """Load and split train, validation, and test datasets."""
     print("Loading data...")
+
+    # Expected audio length: 10 seconds at 32kHz = 320,000 samples
+    audio_length = int(cfg.data.chunk.sec * cfg.data.audio.sample_rate)
+    print(
+        f"Expected audio length: {audio_length} samples ({cfg.data.chunk.sec}s at {cfg.data.audio.sample_rate}Hz)"
+    )
+
     full_train_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.train_jsonl_path,
         audio_root=cfg.data.train_audio_root,
@@ -59,9 +67,9 @@ def load_datasets(cfg: DictConfig, tokenizer):
         use_instructions=cfg.data.use_instructions,
         system_message=cfg.data.system_message,
     )
-    full_train_dataset = Dataset.from_list(
-        [full_train_pytorch_dataset[i] for i in range(len(full_train_pytorch_dataset))]
-    )
+    # Wrap in our custom wrapper to avoid HuggingFace Dataset truncation
+    # This keeps data in PyTorch format and loads audio on-demand
+    full_train_dataset = IterableDatasetWrapper(full_train_pytorch_dataset)
 
     test_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.test_jsonl_path,
@@ -71,9 +79,8 @@ def load_datasets(cfg: DictConfig, tokenizer):
         use_instructions=cfg.data.use_instructions,
         system_message=cfg.data.system_message,
     )
-    test_dataset = Dataset.from_list(
-        [test_pytorch_dataset[i] for i in range(len(test_pytorch_dataset))]
-    )
+    # Wrap in our custom wrapper
+    test_dataset = IterableDatasetWrapper(test_pytorch_dataset)
 
     train_val_split = full_train_dataset.train_test_split(
         test_size=0.2, seed=cfg.env.seed
@@ -87,7 +94,7 @@ def load_datasets(cfg: DictConfig, tokenizer):
     return train_dataset, val_dataset, test_dataset
 
 
-@hydra.main(config_path="../configs", config_name="train", version_base=None)
+@hydra.main(config_path="../configs", config_name="train_all_linear", version_base=None)
 def main(cfg: DictConfig):
     """Main training function."""
     tracker = initialize_experiment_tracker(cfg)
@@ -102,6 +109,13 @@ def main(cfg: DictConfig):
     training_args_dict["remove_unused_columns"] = False
     # Specify that 'labels' is a label field so the Trainer properly computes loss during evaluation
     training_args_dict["label_names"] = ["labels"]
+
+    # Update output_dir to include run name for better organization
+    run_name = tracker._current_run_name if tracker else "default"
+    base_output_dir = training_args_dict["output_dir"]
+    training_args_dict["output_dir"] = f"{base_output_dir}/{run_name}"
+    print(f"Checkpoints will be saved to: {training_args_dict['output_dir']}")
+
     training_args = TrainingArguments(**training_args_dict)
 
     callbacks = [ExperimentTrackingCallback(tracker, model)]
@@ -136,9 +150,22 @@ def main(cfg: DictConfig):
     trainer.train()
     print("Training finished.")
 
-    print("Saving model...")
-    trainer.save_model(training_args.output_dir)
-    print("Model saved.")
+    print("Saving final model...")
+    final_model_dir = training_args.output_dir
+    trainer.save_model(final_model_dir)
+
+    # Save custom components (audio projection weights) with the final model
+    print("Saving custom model components (audio projection)...")
+    torch.save(
+        model.audio_projection.state_dict(),
+        f"{final_model_dir}/audio_projection.bin",
+    )
+
+    # Save PEFT adapter files to the final model directory
+    print("Saving PEFT adapter files to final model directory...")
+    model.llm.save_pretrained(final_model_dir)
+
+    print(f"Model and custom components saved to {final_model_dir}")
 
     tracker.finish()
 

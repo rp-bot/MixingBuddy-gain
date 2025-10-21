@@ -153,6 +153,83 @@ def initialize_experiment_tracker(cfg: DictConfig, required: bool = True):
     return tracker
 
 
+class IterableDatasetWrapper:
+    """Wrapper to make PyTorch Dataset compatible with HuggingFace Trainer.
+
+    This wrapper prevents audio truncation by keeping data in PyTorch format
+    and avoiding HuggingFace Dataset's default 1,024 sequence length limit.
+    The audio data is only loaded when accessed via __getitem__, not materialized
+    in memory all at once.
+    """
+
+    def __init__(self, pytorch_dataset):
+        self.pytorch_dataset = pytorch_dataset
+        # Store the underlying data for train_test_split compatibility
+        self.data = pytorch_dataset
+
+        # Add HuggingFace Dataset attributes for compatibility with SFTTrainer
+        # Get column names from a sample item
+        if len(pytorch_dataset) > 0:
+            sample = pytorch_dataset[0]
+            self.column_names = list(sample.keys())
+        else:
+            self.column_names = []
+
+    def __len__(self):
+        return len(self.pytorch_dataset)
+
+    def __getitem__(self, idx):
+        return self.pytorch_dataset[idx]
+
+    def map(self, function, **kwargs):
+        """
+        Apply a function to all elements in the dataset.
+        For compatibility with SFTTrainer, we return self since our collator
+        handles all the necessary transformations.
+        """
+        # SFTTrainer uses map to apply tokenization, but we handle this in the collator
+        # So we just return self unchanged
+        return self
+
+    def select(self, indices):
+        """Select a subset of the dataset by indices."""
+        from torch.utils.data import Subset
+
+        subset = Subset(self.pytorch_dataset, indices)
+        return IterableDatasetWrapper(subset)
+
+    def filter(self, function, **kwargs):
+        """Filter dataset based on a condition."""
+        # For now, return self - add filtering logic if needed
+        return self
+
+    def train_test_split(self, test_size, seed):
+        """Split dataset into train and test sets."""
+        from torch.utils.data import Subset
+        import random
+
+        # Set seed for reproducibility
+        random.seed(seed)
+
+        # Create indices and shuffle
+        indices = list(range(len(self.pytorch_dataset)))
+        random.shuffle(indices)
+
+        # Split indices
+        split_idx = int(len(indices) * (1 - test_size))
+        train_indices = indices[:split_idx]
+        test_indices = indices[split_idx:]
+
+        # Create subset datasets wrapped in our wrapper
+        train_subset = Subset(self.pytorch_dataset, train_indices)
+        test_subset = Subset(self.pytorch_dataset, test_indices)
+
+        return {
+            "train": IterableDatasetWrapper(train_subset),
+            "test": IterableDatasetWrapper(test_subset),
+        }
+
+
 def load_dataset(
     cfg: DictConfig,
     dataset_type: str = "train",

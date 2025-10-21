@@ -17,7 +17,8 @@ env:
   output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Model checkpoint settings
-checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/checkpoint-600 # Set this to the path of your trained model checkpoint
+checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-all-linear-r8a16-musdb-1020-2051/checkpoint-500
+# Set this to the path of your trained model checkpoint
 # Options:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint

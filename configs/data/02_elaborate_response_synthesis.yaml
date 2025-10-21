@@ -63,6 +63,7 @@ output:
   flawed_mix_subdir: flawed_mixes
   train_samples: training_samples.jsonl
   test_samples: test_samples.jsonl
+  output_suffix: "elaborate_responses"
 
 instruction_templates:
   - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. Please analyze the mix and provide mixing advice."

@@ -115,7 +115,7 @@ def process_split(
         ):
             # Apply gating
             if not apply_gating(chunk_stems, config):
-                print(f"Chunk skipped: failed gating, path: {track_dir.name} chunk_idx: {chunk_idx}")
+                # print(f"Chunk skipped: failed gating, path: {track_dir.name} chunk_idx: {chunk_idx}")
                 continue
 
             # Sample error category and target stem
@@ -157,7 +157,7 @@ def process_split(
                 config.response_templates,
                 error_category,
                 target_stem,
-                metadata["intended_gain_db"],
+                config.error.ranges_db,
                 rng,
             )
 

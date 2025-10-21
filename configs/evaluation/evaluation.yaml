@@ -13,7 +13,7 @@ save_predictions: true
 predictions_output_dir: "${env.output_dir}/predictions"
 
 # Parameters for the generation script (08_generate_samples.py)
-num_generation_samples: 20
+num_generation_samples: 20 # Set to null to generate for all samples
 max_new_tokens: 1024
 
 # Evaluation metrics to compute
@@ -35,3 +35,11 @@ model_loading:
   load_audio_projection: true
   strict_loading: false # Allow missing keys
   map_location: "cuda" # "cpu", "cuda", or "auto"
+
+# Custom metrics configuration (for 09_compute_metrics.py)
+custom_metrics:
+  compute_semantic_similarity: true
+  compute_label_metrics: true
+  semantic_model: "sentence-transformers/all-mpnet-base-v2"
+  extraction_model: "Qwen/Qwen2.5-1.5B-Instruct"
+  extraction_device: "cuda" # "cuda" or "cpu"

@@ -114,8 +114,14 @@ class MultimodalDataCollator:
         if not audio_list:
             return torch.empty(0)
 
-        # HF datasets can convert tensors to lists. We need to convert them back.
-        audio_list = [torch.tensor(audio, dtype=torch.float32) for audio in audio_list]
+        # Convert to tensors if needed (HF datasets can convert tensors to lists)
+        # Use .clone() for existing tensors to avoid warnings
+        audio_list = [
+            audio.clone().float()
+            if isinstance(audio, torch.Tensor)
+            else torch.tensor(audio, dtype=torch.float32)
+            for audio in audio_list
+        ]
 
         # Find the maximum length
         max_length = max(audio.shape[-1] for audio in audio_list)
