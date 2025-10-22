@@ -6,6 +6,7 @@ Extracts and evaluates labels from generated text using:
 2. Magnitude range (regex extraction with normalization)
 3. Error detection (zero-shot classifier)
 4. Problem severity (zero-shot classifier: quiet/very_quiet/loud/very_loud)
+5. Direction (zero-shot classifier: increase/decrease, with severity fallback)
 """
 
 import re
@@ -68,6 +69,19 @@ class LabelExtractionMetric:
             "the stem is much too quiet and barely audible": "very_quiet",
             "the stem is too loud and overpowering": "loud",
             "the stem is way too loud and dominating the mix": "very_loud",
+        }
+
+        self.direction_labels = [
+            "increase the volume",
+            "decrease the volume",
+            "no volume adjustment needed",
+        ]
+
+        # Mapping from classifier labels to direction categories
+        self.direction_label_map = {
+            "increase the volume": "increase",
+            "decrease the volume": "decrease",
+            "no volume adjustment needed": None,
         }
 
     def extract_stem_name(self, text: str) -> Optional[str]:
@@ -171,6 +185,48 @@ class LabelExtractionMetric:
         # Map to severity category
         return self.severity_label_map.get(top_label)
 
+    def classify_direction(
+        self, text: str, problem_severity: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Classify the direction of volume adjustment using zero-shot classifier.
+        Falls back to severity-based inference if classification is uncertain.
+
+        Args:
+            text: Input text to classify
+            problem_severity: Optional severity to use as fallback
+
+        Returns:
+            One of: "increase", "decrease", or None
+        """
+        if not text:
+            # Fallback to severity if no text
+            if problem_severity:
+                if problem_severity in ["quiet", "very_quiet"]:
+                    return "increase"
+                elif problem_severity in ["loud", "very_loud"]:
+                    return "decrease"
+            return None
+
+        result = self.classifier(
+            text, candidate_labels=self.direction_labels, multi_label=False
+        )
+
+        # Get the highest scoring label
+        top_label = result["labels"][0]
+
+        # Map to direction category
+        direction = self.direction_label_map.get(top_label)
+
+        # If classification returns None or is uncertain, fallback to severity
+        if direction is None and problem_severity:
+            if problem_severity in ["quiet", "very_quiet"]:
+                return "increase"
+            elif problem_severity in ["loud", "very_loud"]:
+                return "decrease"
+
+        return direction
+
     def extract_labels(self, text: str) -> Dict[str, Any]:
         """
         Extract all labels from text.
@@ -193,11 +249,16 @@ class LabelExtractionMetric:
         if error_detected:
             problem_severity = self.classify_problem_severity(text)
 
+        # Classify direction (regardless of error_detected to capture false positives/negatives)
+        # Use severity as fallback if available
+        direction = self.classify_direction(text, problem_severity=problem_severity)
+
         return {
             "stem_name": stem_name,
             "magnitude_range": magnitude_range,
             "error_detected": error_detected,
             "problem_severity": problem_severity,
+            "direction": direction,
         }
 
     def get_ground_truth_labels(self, prediction: Dict[str, Any]) -> Dict[str, Any]:
@@ -222,6 +283,7 @@ class LabelExtractionMetric:
                 "magnitude_range": None,
                 "error_detected": False,
                 "problem_severity": None,
+                "direction": None,
             }
 
         # Handle magnitude range (already in correct order from ground truth)
@@ -229,11 +291,19 @@ class LabelExtractionMetric:
         if min_db is not None and max_db is not None:
             magnitude_range = (float(min_db), float(max_db))
 
+        # Determine direction from error category
+        direction = None
+        if error_category in ["quiet", "very_quiet"]:
+            direction = "increase"
+        elif error_category in ["loud", "very_loud"]:
+            direction = "decrease"
+
         return {
             "stem_name": target_stem if target_stem else None,
             "magnitude_range": magnitude_range,
             "error_detected": True,
             "problem_severity": error_category,  # quiet, very_quiet, loud, very_loud
+            "direction": direction,
         }
 
     def compute_binary_metrics(
@@ -424,34 +494,19 @@ class LabelExtractionMetric:
         else:
             severity_metrics = {"accuracy": 0.0, "f1_macro": 0.0, "f1_weighted": 0.0}
 
-        # Derive direction accuracy from severity
-        if severity_indices:
-            # Map severity to direction
-            def severity_to_direction(sev):
-                if sev in ["quiet", "very_quiet"]:
-                    return "increase"
-                elif sev in ["loud", "very_loud"]:
-                    return "decrease"
-                return "unknown"
+        # Compute direction metrics (on all samples, not just error samples)
+        # This allows us to capture false positives (model suggests direction when none needed)
+        direction_gt = [gt["direction"] for gt in ground_truth_labels]
+        direction_pred = [ex["direction"] for ex in extracted_labels]
 
-            direction_gt = [
-                severity_to_direction(ground_truth_labels[i]["problem_severity"])
-                for i in severity_indices
-            ]
-            direction_pred = [
-                severity_to_direction(extracted_labels[i]["problem_severity"])
-                for i in severity_indices
-            ]
-            # Convert None to "unknown"
-            direction_gt = [d if d is not None else "unknown" for d in direction_gt]
-            direction_pred = [d if d is not None else "unknown" for d in direction_pred]
+        # Convert None to "unknown" for sklearn compatibility
+        direction_gt = [d if d is not None else "unknown" for d in direction_gt]
+        direction_pred = [d if d is not None else "unknown" for d in direction_pred]
 
-            direction_labels = ["increase", "decrease", "unknown"]
-            direction_metrics = self.compute_multiclass_metrics(
-                direction_gt, direction_pred, direction_labels
-            )
-        else:
-            direction_metrics = {"accuracy": 0.0, "f1_macro": 0.0, "f1_weighted": 0.0}
+        direction_labels = ["increase", "decrease", "unknown"]
+        direction_metrics = self.compute_multiclass_metrics(
+            direction_gt, direction_pred, direction_labels
+        )
 
         # Count error categories
         error_counts = {}
@@ -467,6 +522,7 @@ class LabelExtractionMetric:
                 and gt["magnitude_range"] == ex["magnitude_range"]
                 and gt["error_detected"] == ex["error_detected"]
                 and gt["problem_severity"] == ex["problem_severity"]
+                and gt["direction"] == ex["direction"]
             ):
                 overall_correct += 1
         overall_accuracy = overall_correct / len(predictions)
@@ -529,7 +585,7 @@ class LabelExtractionMetric:
         )
         print(f"    Recall (macro): {severity_metrics.get('recall_macro', 0.0):.4f}")
         print(f"    F1 (macro): {severity_metrics.get('f1_macro', 0.0):.4f}")
-        print("\n  Direction (derived from severity):")
+        print("\n  Direction (extracted via zero-shot classification):")
         print(f"    Accuracy: {direction_metrics['accuracy']:.4f}")
         print(
             f"    Precision (macro): {direction_metrics.get('precision_macro', 0.0):.4f}"
