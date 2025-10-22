@@ -1,0 +1,53 @@
+# @package _global_
+
+# Default configurations for plotting
+defaults:
+  - _self_
+
+# Plotting settings
+plotting:
+  # Input/Output paths
+  metrics_file: null # Will be set automatically from evaluation output
+  output_dir: null # Will be set automatically from evaluation output
+
+  # Style configuration
+  style:
+    figure:
+      dpi: 300
+      facecolor: "white"
+    font:
+      size: 12
+      title_size: 14
+      label_size: 12
+      tick_size: 10
+      legend_size: 10
+    grid:
+      enabled: true
+      alpha: 0.3
+      color: "gray"
+
+  # Color palette (colorblind-friendly)
+  colors:
+    primary: "#1f77b4"
+    secondary: "#ff7f0e"
+    success: "#2ca02c"
+    warning: "#d62728"
+    info: "#9467bd"
+    light: "#bcbd22"
+    dark: "#17becf"
+    muted: "#8c564b"
+    accent: "#e377c2"
+
+  # Plot generation settings
+  generate:
+    semantic_similarity: true
+    classification_metrics: true
+    per_class_metrics: true
+    confusion_matrices: true
+    summary_dashboard: false
+
+  # Output formats
+  output:
+    formats: ["png", "pdf"]
+    dpi: 300
+    bbox_inches: "tight"

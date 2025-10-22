@@ -3,11 +3,12 @@
 # Default configurations for evaluation
 defaults:
   - data: synthesis
-  - model: qwen2_7b
+  - model: qwen2_7b_all_linear
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
+  - plotting: plotting
   - _self_
 
 # Environment settings
@@ -35,6 +36,12 @@ checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-all
 # Predictions file path for metrics computation
 # If not specified, the script will use the new evaluation structure
 # predictions_path: "outputs/evaluation/2025-10-20/22-35-08/predictions/predictions.jsonl"
+
+# Plotting configuration
+plotting:
+  # These will be automatically set based on checkpoint path
+  metrics_file: null # Will be set to {output_dir}/predictions/metrics_results_detailed.json
+  output_dir: null # Will be set to {output_dir}/predictions/
 
 # Experiment tracking settings
 experiment_tracking:
