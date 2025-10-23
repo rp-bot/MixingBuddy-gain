@@ -80,6 +80,7 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
         llm=llm,
         tokenizer=tokenizer,
         encoder_config=cfg.model.get("encoder"),
+        projection_config=cfg.model.get("projection"),
     )
 
     # The audio projection weights are a required component for evaluation.
@@ -228,7 +229,11 @@ def generate_and_compare(
     return predictions_file
 
 
-@hydra.main(config_path="../configs", config_name="03_evalutate_synthesis_instructions", version_base=None)
+@hydra.main(
+    config_path="../configs",
+    config_name="04_evaluate_mlp_projection",
+    version_base=None,
+)
 def main(cfg: DictConfig):
     """
     Main generation function.

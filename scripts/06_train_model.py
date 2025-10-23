@@ -43,6 +43,7 @@ def initialize_model_and_tokenizer(cfg: DictConfig):
         llm=llm,
         tokenizer=tokenizer,
         encoder_config=cfg.model.get("encoder"),
+        projection_config=cfg.model.get("projection"),
     )
     print("Model and tokenizer initialized.")
     model.print_trainable_parameters()
@@ -94,7 +95,11 @@ def load_datasets(cfg: DictConfig, tokenizer):
     return train_dataset, val_dataset, test_dataset
 
 
-@hydra.main(config_path="../configs", config_name="03_train_synthesis_instructions", version_base=None)
+@hydra.main(
+    config_path="../configs",
+    config_name="04_train_mlp_projection",
+    version_base=None,
+)
 def main(cfg: DictConfig):
     """Main training function."""
     tracker = initialize_experiment_tracker(cfg)
