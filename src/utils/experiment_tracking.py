@@ -51,12 +51,18 @@ class ExperimentTracker:
             return custom_name
 
         # Extract components for naming convention
-        model_name = self.config.model.model_name
-
-        # Get model abbreviation from config mapping
-        model_abbr = self.config.experiment_naming.naming.components.model_abbr.get(
-            model_name, model_name.lower().replace("-instruct", "").replace("-", "")
-        )
+        # Check if model config has a specific name for experiment naming
+        model_config_name = getattr(self.config.model, "config_name", None)
+        if model_config_name:
+            model_abbr = self.config.experiment_naming.naming.components.model_abbr.get(
+                model_config_name, model_config_name.replace("_", "-")
+            )
+        else:
+            # Fallback to original logic
+            model_name = self.config.model.model_name
+            model_abbr = self.config.experiment_naming.naming.components.model_abbr.get(
+                model_name, model_name.lower().replace("-instruct", "").replace("-", "")
+            )
 
         # LoRA configuration
         lora_config = self.config.model.lora

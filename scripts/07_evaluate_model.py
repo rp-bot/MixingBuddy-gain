@@ -13,13 +13,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from src.models.modular_multimodal_model import ModularMultimodalModel  # noqa: E402
-from src.training.trainer import MemorySafeTrainer  # noqa: E402
 from src.data.collator import MultimodalDataCollator  # noqa: E402
 from transformers import TrainingArguments  # noqa: E402
+from trl import SFTTrainer  # noqa: E402
 from src.utils.model_utils import (  # noqa: E402
     find_latest_checkpoint,
     initialize_tokenizer,
     load_dataset,
+    IterableDatasetWrapper,
 )
 
 
@@ -121,7 +122,7 @@ def load_trained_model(cfg: DictConfig):
     return model
 
 
-def load_test_dataset(cfg: DictConfig, model):
+def load_test_dataset(cfg: DictConfig):
     """Load test dataset for evaluation."""
     # Use evaluation-specific limit if set, otherwise use data limit
     limit = (
@@ -130,7 +131,20 @@ def load_test_dataset(cfg: DictConfig, model):
         else cfg.data.get("limit")
     )
 
-    return load_dataset(cfg, model, "test", limit)
+    # Load the PyTorch dataset
+    pytorch_dataset = load_dataset(cfg, dataset_type="test", limit=limit)
+
+    # Expected audio length: 10 seconds at 32kHz = 320,000 samples
+    audio_length = int(cfg.data.chunk.sec * cfg.data.audio.sample_rate)
+    print(
+        f"Expected audio length: {audio_length} samples ({cfg.data.chunk.sec}s at {cfg.data.audio.sample_rate}Hz)"
+    )
+
+    # Wrap in our custom wrapper to avoid HuggingFace Dataset truncation
+    # This keeps data in PyTorch format and loads audio on-demand
+    test_dataset = IterableDatasetWrapper(pytorch_dataset)
+
+    return test_dataset
 
 
 def run_evaluation(cfg: DictConfig):
@@ -141,9 +155,9 @@ def run_evaluation(cfg: DictConfig):
     model = load_trained_model(cfg)
 
     # Load test dataset
-    test_dataset = load_test_dataset(cfg, model)
+    test_dataset = load_test_dataset(cfg)
 
-    print("Setting up evaluation with MemorySafeTrainer...")
+    print("Setting up evaluation with SFTTrainer...")
 
     # A temporary output dir is required by the Trainer, but it won't be used for much.
     output_dir = Path(cfg.evaluation.get("output_dir", "temp_eval_outputs"))
@@ -155,21 +169,33 @@ def run_evaluation(cfg: DictConfig):
         dataloader_pin_memory=False,
         dataloader_num_workers=0,
         remove_unused_columns=False,  # Keep all columns for our model
+        label_names=[
+            "labels"
+        ],  # Specify that 'labels' is a label field for loss computation
+        disable_tqdm=False,  # Explicitly enable progress bars
+        logging_steps=1,  # Log every step to see progress
+        report_to="none",  # Don't report to wandb/mlflow during eval
     )
+
+    # The stride of the audio encoder is needed to correctly pad the text tokens
+    audio_encoder_stride = model.audio_encoder.model.config.hop_length
 
     # Create data collator
     data_collator = MultimodalDataCollator(
         tokenizer=model.tokenizer,
         pad_to_multiple_of=8,
+        audio_encoder_stride=audio_encoder_stride,
     )
 
-    # Initialize the trainer
-    trainer = MemorySafeTrainer(
+    # Initialize the SFTTrainer for evaluation (provides additional metrics like entropy and token accuracy)
+    # Note: SFTTrainer requires a train_dataset even for eval-only usage, so we pass test_dataset as both
+    trainer = SFTTrainer(
         model=model,
         args=eval_args,
+        train_dataset=test_dataset,  # Required by SFTTrainer even for eval-only
         eval_dataset=test_dataset,
+        processing_class=model.tokenizer,  # Pass tokenizer to SFTTrainer
         data_collator=data_collator,
-        tokenizer=model.tokenizer,
     )
 
     # Run evaluation

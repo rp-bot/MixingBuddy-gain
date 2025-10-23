@@ -39,6 +39,7 @@ class ModularMultimodalModel(nn.Module):
         # Use pre-configured LLM and tokenizer (always provided by training script)
         self.llm = llm
         self.tokenizer = tokenizer
+        self.config = llm.config  # Expose the llm's config for SFTTrainer
 
         # Note: QLoRA and LoRA setup is now handled by the training script
         # This keeps the model constructor focused on basic model initialization
@@ -122,20 +123,25 @@ class ModularMultimodalModel(nn.Module):
 
         return batched_features
 
-    def forward(self, input_ids, attention_mask, audio, labels, **kwargs):
+    def forward(self, **kwargs):
         """
         Defines the forward pass of the model.
 
         Args:
-            input_ids (torch.Tensor): The input IDs for the language model.
-            attention_mask (torch.Tensor): The attention mask for the language model.
-            audio (torch.Tensor, optional): Audio input to be processed.
-            labels (torch.Tensor, optional): The labels for computing the loss. Defaults to None.
-            **kwargs: Additional arguments (metadata) that are ignored.
+            **kwargs: A dictionary of arguments that must contain:
+                - input_ids (torch.Tensor): The input IDs for the language model.
+                - attention_mask (torch.Tensor): The attention mask for the language model.
+                - audio (torch.Tensor): Audio input to be processed.
+                - labels (torch.Tensor): The labels for computing the loss.
 
         Returns:
             transformers.modeling_outputs.CausalLMOutputWithPast: The output from the language model.
         """
+        input_ids = kwargs.get("input_ids")
+        attention_mask = kwargs.get("attention_mask")
+        audio = kwargs.get("audio")
+        labels = kwargs.get("labels")
+
         # 1. Encode audio
         audio_features = self.encode_audio(audio)
 
@@ -145,32 +151,20 @@ class ModularMultimodalModel(nn.Module):
         # 3. Get text embeddings
         text_embeds = self.llm.get_input_embeddings()(input_ids)
 
-        # 4. Ensure dtypes match
+        # 4. Replace the dummy audio token embeddings with the projected audio embeddings
+        num_audio_tokens = projected_audio_embeds.shape[1]
+
+        # Ensure dtypes match before concatenation
         projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
 
-        # 5. Concatenate audio and text embeddings
-        inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
-
-        # 6. Create attention mask for audio
-        audio_attention_mask = torch.ones(
-            projected_audio_embeds.shape[:2],
-            dtype=torch.long,
-            device=input_ids.device,
+        # Concatenate the projected audio embeddings with the actual text embeddings
+        inputs_embeds = torch.cat(
+            [projected_audio_embeds, text_embeds[:, num_audio_tokens:]], dim=1
         )
 
-        # 7. Concatenate attention masks
-        attention_mask = torch.cat((audio_attention_mask, attention_mask), dim=1)
-
-        # 8. Prepend ignore tokens to labels for the audio part
-        # This is necessary to make the labels tensor match the sequence length of the inputs_embeds.
-        audio_labels = torch.full(
-            projected_audio_embeds.shape[:2],
-            -100,
-            dtype=torch.long,
-            device=labels.device,
-        )
-        labels = torch.cat((audio_labels, labels), dim=1)
-
+        # The collator now prepares the correct attention_mask and labels,
+        # so we no longer need to modify them here. The SFTTrainer will receive
+        # inputs with consistent sequence lengths.
         output = self.llm(
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
@@ -184,61 +178,66 @@ class ModularMultimodalModel(nn.Module):
     def generate(
         self,
         text_input: str,
-        max_new_tokens: int,
         audio: torch.Tensor,
+        max_new_tokens: int,
+        system_message: str,
     ) -> str:
         """
         Generates text based on a given prompt using the underlying model's
         generate method. This is for inference only.
 
         Args:
-            text_input (str): The prompt to generate text from.
-            audio (torch.Tensor, optional): Audio input to be processed.
+            text_input (str): The user's instruction or prompt.
+            audio (torch.Tensor): Audio input to be processed.
             max_new_tokens (int): The maximum number of new tokens to generate.
+            system_message (str, optional): The system message to guide the model.
 
         Returns:
             str: The generated text.
         """
         device = self.llm.device
 
-        # Format the prompt to match the training format: instruction + EOS token
-        prompt = text_input + self.tokenizer.eos_token
+        # Create messages in conversational format
+        messages = []
+        messages.append({"role": "system", "content": system_message})
+        messages.append({"role": "user", "content": text_input})
+
+        # Apply chat template
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(device)
-
         audio = audio.to(device)
 
+        # Encode and project audio
         audio_features = self.encode_audio(audio)
         projected_audio_embeds = self.audio_projection(audio_features)
+
+        # Get text embeddings and combine with audio
         text_embeds = self.llm.get_input_embeddings()(model_inputs.input_ids)
-
-        # Ensure projected audio embeddings match the LLM's dtype
         projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
-
         inputs_embeds = torch.cat((projected_audio_embeds, text_embeds), dim=1)
+
+        # Create combined attention mask
         audio_attention_mask = torch.ones(
-            projected_audio_embeds.shape[:2],
-            dtype=torch.long,
-            device=device,
+            projected_audio_embeds.shape[:2], dtype=torch.long, device=device
         )
         attention_mask = torch.cat(
             (audio_attention_mask, model_inputs.attention_mask), dim=1
         )
 
-        generate_kwargs = {
-            "inputs_embeds": inputs_embeds,
-            "attention_mask": attention_mask,
-        }
-
+        # Generate response
         generated_ids = self.llm.generate(
-            **generate_kwargs,
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
             max_new_tokens=max_new_tokens,
-            
         )
 
-        response = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=False
-        )[0]
+        # Decode and return the full response
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
+            0
+        ]
         return response
 
 
@@ -300,7 +299,10 @@ if __name__ == "__main__":
     mix_audio = sample["audio"]
 
     generated_text_with_audio = model.generate(
-        text_input=instruction, audio=mix_audio, max_new_tokens=150
+        text_input=instruction,
+        audio=mix_audio,
+        max_new_tokens=150,
+        system_message="You are a helpful mixing assistant.",
     )
     print(f"Instruction: {instruction}")
     print(f"Generated response (with audio): {generated_text_with_audio}")
@@ -340,7 +342,12 @@ if __name__ == "__main__":
     print("\n--- Testing generation without audio ---")
     prompt_text = "What are the benefits of using a modular approach in deep learning?"
     print(f"Generating response for prompt: '{prompt_text}'")
-    generated_text_no_audio = model.generate(prompt_text, max_new_tokens=150)
+    generated_text_no_audio = model.generate(
+        text_input=prompt_text,
+        audio=torch.randn(24000 * 2),  # Dummy audio
+        max_new_tokens=150,
+        system_message="You are a helpful AI assistant.",
+    )
 
     # Print the response
     print("\n--- Model Response (no audio) ---")

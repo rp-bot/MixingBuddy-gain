@@ -2,7 +2,7 @@
 
 # Default configurations for evaluation
 defaults:
-  - data: 02_elaborate_response_synthesis
+  - data: 03_synthesis_instructions
   - model: qwen2_7b_all_linear
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility

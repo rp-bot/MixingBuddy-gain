@@ -13,6 +13,7 @@ def create_instruction(
     templates: List[str],
     duration_sec: float,
     stems_present: List[str],
+    anchor_stem: str,
     rng: random.Random,
 ) -> str:
     """Create instruction text from templates.
@@ -21,6 +22,7 @@ def create_instruction(
         templates: List of instruction templates
         duration_sec: Duration of the audio segment
         stems_present: List of available stems
+        anchor_stem: Name of the anchor stem
         rng: Random number generator
 
     Returns:
@@ -29,23 +31,25 @@ def create_instruction(
     template = rng.choice(templates)
     stems_str = ", ".join(stems_present)
 
-    return template.format(duration_sec=duration_sec, stems_present=stems_str)
+    return template.format(
+        duration_sec=duration_sec, stems_present=stems_str, anchor_stem=anchor_stem
+    )
 
 
 def create_response(
     templates: Dict[str, List[str]],
     error_category: str,
     target_stem: str,
-    gain_db: float,
+    error_ranges_db: Dict[str, List[float]],
     rng: random.Random,
 ) -> str:
-    """Create response text from templates.
+    """Create response text from templates using dB ranges.
 
     Args:
         templates: Dict mapping error categories to response templates
         error_category: Type of error
         target_stem: Name of the target stem
-        gain_db: Gain applied in dB
+        error_ranges_db: Dict mapping error categories to [min_db, max_db] ranges
         rng: Random number generator
 
     Returns:
@@ -59,11 +63,12 @@ def create_response(
     category_templates = templates[error_category]
     template = rng.choice(category_templates)
 
-    # Format template with parameters
-    if error_category in ["loud", "very_loud"]:
-        # Use absolute value for loud categories
-        abs_gain_db = abs(gain_db)
-        return template.format(target_stem=target_stem, abs_gain_db=abs_gain_db)
-    else:
-        # Use actual gain for quiet categories
-        return template.format(target_stem=target_stem, intended_gain_db=gain_db)
+    # Extract range values and convert to positive values for response
+    min_db, max_db = error_ranges_db[error_category]
+    min_gain_db = abs(min_db)
+    max_gain_db = abs(max_db)
+
+    # Format template with range parameters
+    return template.format(
+        target_stem=target_stem, min_gain_db=min_gain_db, max_gain_db=max_gain_db
+    )

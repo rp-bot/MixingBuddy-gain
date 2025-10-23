@@ -191,7 +191,8 @@ data/musdb18hq/
 data/the-mix-evaluation-dataset/
 
 # Output directories
-outputs/
+outputs/checkpoints/
+
 logs/
 cache/
 checkpoints/
@@ -250,7 +251,7 @@ config.local.yaml
 *.gpu
 
 # Hydra outputs
-outputs/
+# outputs/
 .hydra/
 
 # Pre-commit
