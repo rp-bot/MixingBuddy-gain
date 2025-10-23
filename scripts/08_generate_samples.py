@@ -228,7 +228,7 @@ def generate_and_compare(
     return predictions_file
 
 
-@hydra.main(config_path="../configs", config_name="evaluate", version_base=None)
+@hydra.main(config_path="../configs", config_name="03_evalutate_synthesis_instructions", version_base=None)
 def main(cfg: DictConfig):
     """
     Main generation function.
@@ -258,7 +258,13 @@ def main(cfg: DictConfig):
     # Extract run name from checkpoint path
     # Expected format: outputs/checkpoints/mixing_buddy_milestone_0/{run_name}/checkpoint-{step}
     checkpoint_path = Path(checkpoint_path)
-    run_name = checkpoint_path.parent.name  # Get the run name from the parent directory
+    # Handle both cases: checkpoint at root or in subdirectory
+    if checkpoint_path.name.startswith("checkpoint-"):
+        # Checkpoint is at root level, use the parent directory name
+        run_name = checkpoint_path.parent.name
+    else:
+        # Checkpoint is in a subdirectory, use the checkpoint directory name
+        run_name = checkpoint_path.name
 
     # Create evaluation directory structure
     output_dir = Path("outputs/evaluation") / run_name

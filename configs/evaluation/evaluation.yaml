@@ -14,7 +14,7 @@ save_predictions: true
 # predictions_output_dir: "${env.output_dir}/predictions"
 
 # Parameters for the generation script (08_generate_samples.py)
-num_generation_samples: null # Set to null to generate for all samples
+num_generation_samples: 20 # Set to null to generate for all samples
 max_new_tokens: 1024
 
 # Evaluation metrics to compute

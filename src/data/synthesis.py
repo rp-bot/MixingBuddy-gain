@@ -20,6 +20,64 @@ from src.data.text_generation import create_instruction, create_response
 from src.utils.audio_utils import save_audio
 
 
+def sample_target_stem(
+    chunk_stems: Dict[str, np.ndarray],
+    priors: Dict[str, float],
+    rng: random.Random,
+) -> str:
+    """Sample target stem based on configured probabilities.
+
+    Only considers stems that are actually present in the chunk.
+    """
+    available_stems = list(chunk_stems.keys())
+    available_priors = {stem: priors.get(stem, 0.0) for stem in available_stems}
+
+    # Normalize probabilities
+    total = sum(available_priors.values())
+    if total == 0:
+        # Fallback to uniform if no valid priors
+        return rng.choice(available_stems)
+
+    normalized_priors = {k: v / total for k, v in available_priors.items()}
+
+    # Sample using weighted choice
+    stems = list(normalized_priors.keys())
+    weights = list(normalized_priors.values())
+    return rng.choices(stems, weights=weights)[0]
+
+
+def select_anchor_stem(
+    chunk_stems: Dict[str, np.ndarray],
+    target_stem: str,
+    fallback_order: list,
+) -> str:
+    """Select anchor stem from fallback order.
+
+    Returns first stem from fallback_order that is:
+    - Present in chunk_stems
+    - NOT the target_stem
+    - NOT "other"
+    """
+    available_stems = set(chunk_stems.keys())
+
+    for stem in fallback_order:
+        if stem in available_stems and stem != target_stem and stem != "other":
+            return stem
+
+    # Fallback: select any available stem that isn't target or "other"
+    candidates = [s for s in available_stems if s != target_stem and s != "other"]
+    if candidates:
+        return candidates[0]
+
+    # Last resort: return any stem that isn't target
+    candidates = [s for s in available_stems if s != target_stem]
+    if candidates:
+        return candidates[0]
+
+    # Edge case: only one stem available (should rarely happen)
+    return list(available_stems)[0]
+
+
 def synthesize_chunk(
     chunk_stems: Dict[str, np.ndarray],
     target_stem: str,
@@ -120,7 +178,14 @@ def process_split(
 
             # Sample error category and target stem
             error_category = sample_error_category(config.error.priors, rng)
-            target_stem = rng.choice(list(chunk_stems.keys()))
+            target_stem = sample_target_stem(
+                chunk_stems, config.target_stem.priors, rng
+            )
+
+            # Select anchor stem
+            anchor_stem = select_anchor_stem(
+                chunk_stems, target_stem, config.anchor.fallback_order
+            )
 
             # Synthesize chunk
             reference_mix, flawed_mix, metadata = synthesize_chunk(
@@ -151,6 +216,7 @@ def process_split(
                 config.instruction_templates,
                 config.chunk.sec,
                 list(chunk_stems.keys()),
+                anchor_stem,
                 rng,
             )
             response = create_response(
@@ -177,6 +243,7 @@ def process_split(
                         "end_sec": (chunk_idx + 1) * config.chunk.sec,
                     },
                     "target_stem": metadata["target_stem"],
+                    "anchor_stem": anchor_stem,
                     "error_category": metadata["error_category"],
                     "intended_gain_db": metadata["intended_gain_db"],
                     "stems_present": metadata["stems_present"],

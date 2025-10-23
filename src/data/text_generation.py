@@ -13,6 +13,7 @@ def create_instruction(
     templates: List[str],
     duration_sec: float,
     stems_present: List[str],
+    anchor_stem: str,
     rng: random.Random,
 ) -> str:
     """Create instruction text from templates.
@@ -21,6 +22,7 @@ def create_instruction(
         templates: List of instruction templates
         duration_sec: Duration of the audio segment
         stems_present: List of available stems
+        anchor_stem: Name of the anchor stem
         rng: Random number generator
 
     Returns:
@@ -29,7 +31,9 @@ def create_instruction(
     template = rng.choice(templates)
     stems_str = ", ".join(stems_present)
 
-    return template.format(duration_sec=duration_sec, stems_present=stems_str)
+    return template.format(
+        duration_sec=duration_sec, stems_present=stems_str, anchor_stem=anchor_stem
+    )
 
 
 def create_response(

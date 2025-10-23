@@ -39,12 +39,21 @@ gating:
   stem_min_rms_dbfs: -40.0 # More lenient - allow quieter individual stems
   min_active_frame_ratio: 0.20 # More lenient - allow more silence
 
+target_stem:
+  priors:
+    bass: 0.33
+    drums: 0.33
+    vocals: 0.34
+    other: 0.0
+
 anchor:
   fallback_order:
     - bass
     - drums
-    - other
-    - vocals
+    - vocals # Reordered: vocals before "other" is removed
+  # Note: "other" excluded from fallback order
+  # Anchor is selected as first available stem from fallback_order
+  # that is NOT the target stem and NOT "other"
 
 audio:
   sample_rate: 32000 # Base sample rate - can be downsampled later for model input

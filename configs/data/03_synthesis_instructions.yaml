@@ -61,8 +61,8 @@ audio:
   # peak_normalize: false  # Removed - let audio clip naturally to preserve relative levels
 
 limit: null # Set to a number to limit dataset size for testing
-system_message: ""
-use_instructions: false
+system_message: "You are a mixing engineer. You are given a segment of a track and you need to provide gain balancing advice."
+use_instructions: true
 
 splits:
   - train
@@ -72,13 +72,13 @@ output:
   flawed_mix_subdir: flawed_mixes
   train_samples: training_samples.jsonl
   test_samples: test_samples.jsonl
-  output_suffix: "elaborate_responses"
+  output_suffix: "synthesis_instructions"
 
 instruction_templates:
-  - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. Please analyze the mix and provide mixing advice."
-  - "This is a {duration_sec}s audio segment with stems: {stems_present}. Evaluate the mix balance and suggest improvements."
-  - "Analyze this {duration_sec}s track segment. Stems present: {stems_present}. What mixing adjustments are needed?"
-  - "Listen to this {duration_sec}s audio clip. Available tracks: {stems_present}. How should the mix be adjusted?"
+  - "You are listening to a {duration_sec}s segment of a track. The available stems are: {stems_present}. The anchor stem is {anchor_stem} is the reference point for the mix. Please analyze the mix, identify the flawed stem and provide mixing advice about the gain of the flawed stem."
+  - "This is a {duration_sec}s audio segment with stems: {stems_present}. The anchor stem is {anchor_stem} is the reference point for the mix. Evaluate the mix, identify the flawed stem and suggest improvements about the gain of the flawed stem."
+  - "Analyze this {duration_sec}s track segment. Stems present: {stems_present}. The anchor stem is {anchor_stem} is the reference point for the mix. Identify the flawed stem and provide mixing advice about the gain of the flawed stem."
+  - "Listen to this {duration_sec}s audio clip. Available tracks: {stems_present}. The anchor stem is {anchor_stem} is the reference point for the mix. Identify the flawed stem and provide mixing advice about the gain of the flawed stem."
 
 response_templates:
   no_error:

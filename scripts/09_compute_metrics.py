@@ -118,7 +118,7 @@ def compute_label_extraction(
     return label_results
 
 
-@hydra.main(config_path="../configs", config_name="evaluate", version_base=None)
+@hydra.main(config_path="../configs", config_name="03_evalutate_synthesis_instructions", version_base=None)
 def main(cfg: DictConfig):
     """
     Main metrics computation function.
@@ -148,9 +148,12 @@ def main(cfg: DictConfig):
         # Extract run name from checkpoint path
         # Expected format: outputs/checkpoints/mixing_buddy_milestone_0/{run_name}/checkpoint-{step}
         checkpoint_path = Path(checkpoint_path)
-        run_name = (
-            checkpoint_path.parent.name
-        )  # Get the run name from the parent directory
+        # Get the run name from the checkpoint path
+        # It could be either the checkpoint path's name or its parent's name
+        if checkpoint_path.name.startswith("checkpoint-"):
+            run_name = checkpoint_path.parent.name
+        else:
+            run_name = checkpoint_path.name
 
         # Use the new evaluation structure
         predictions_path = (
