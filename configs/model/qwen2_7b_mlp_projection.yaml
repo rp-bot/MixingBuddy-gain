@@ -30,7 +30,7 @@ encoder:
 # Audio projection configuration
 projection:
   type: "mlp"
-  hidden_dims: [512, 1024]
+  hidden_dims: [512, 1024, 2048, 1024]
   activation: "relu"
   dropout: 0.1
   use_layer_norm: true

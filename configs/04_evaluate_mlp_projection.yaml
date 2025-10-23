@@ -19,7 +19,7 @@ env:
   # output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Model checkpoint settings
-checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mlp-projection-r8a16-musdb-1023-1457
+checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mlp-projection-r8a16-musdb-1023-1715/checkpoint-200
 # Set this to the path of your trained model checkpoint
 # Options:
 # - null: Use base model (no trained weights)
