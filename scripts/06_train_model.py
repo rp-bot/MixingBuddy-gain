@@ -97,7 +97,7 @@ def load_datasets(cfg: DictConfig, tokenizer):
 
 @hydra.main(
     config_path="../configs",
-    config_name="04_train_mlp_projection",
+    config_name="05_train_extended_lora",
     version_base=None,
 )
 def main(cfg: DictConfig):
