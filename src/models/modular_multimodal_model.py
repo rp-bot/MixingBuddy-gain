@@ -5,7 +5,11 @@ from typing import Optional, Any, Dict
 # Add parent directory to path to access src module
 # sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.models.encoders.encodec import EncodecEncoder
-from src.models.projections import LinearProjection, MLPProjection
+from src.models.projections import (
+    MLPProjection,
+    TransformerProjection,
+    PerceiverResampler,
+)
 
 
 class ModularMultimodalModel(nn.Module):
@@ -80,6 +84,26 @@ class ModularMultimodalModel(nn.Module):
             self.audio_projection = MLPProjection(
                 input_dim=audio_hidden_size, output_dim=llm_hidden_size, **mlp_config
             )
+        elif projection_config.get("type") == "transformer":
+            # Use Transformer projection
+            # Convert DictConfig to regular dict to avoid struct mode issues
+            transformer_config = dict(projection_config)
+            transformer_config.pop("type", None)  # Remove type from config
+            self.audio_projection = TransformerProjection(
+                input_dim=audio_hidden_size,
+                output_dim=llm_hidden_size,
+                **transformer_config,
+            )
+        elif projection_config.get("type") == "perceiver":
+            # Use Perceiver resampler
+            # Convert DictConfig to regular dict to avoid struct mode issues
+            perceiver_config = dict(projection_config)
+            perceiver_config.pop("type", None)  # Remove type from config
+            self.audio_projection = PerceiverResampler(
+                input_dim=audio_hidden_size,
+                output_dim=llm_hidden_size,
+                **perceiver_config,
+            )
         else:
             raise ValueError(
                 f"Unsupported projection type: {projection_config.get('type')}"
@@ -106,6 +130,105 @@ class ModularMultimodalModel(nn.Module):
             f"trainable params: {trainable_params} || all params: {all_param} || "
             f"trainable%: {100 * trainable_params / all_param}"
         )
+
+    def print_detailed_parameter_info(self):
+        """
+        Prints detailed information about parameters in each layer/module.
+        Shows parameter count, trainable status, and device for each component.
+        """
+        print("\n" + "=" * 80)
+        print("DETAILED PARAMETER INFORMATION")
+        print("=" * 80)
+
+        # LLM parameters (PEFT/QLoRA)
+        print("\n--- LLM (Language Model) ---")
+        llm_trainable = 0
+        llm_total = 0
+        for name, param in self.llm.named_parameters():
+            llm_total += param.numel()
+            if param.requires_grad:
+                llm_trainable += param.numel()
+        print(f"Total parameters: {llm_total:,}")
+        print(f"Trainable parameters: {llm_trainable:,}")
+        print(f"Trainable %: {100 * llm_trainable / llm_total:.2f}%")
+        print(f"Device: {next(self.llm.parameters()).device}")
+
+        # Audio encoder parameters
+        print("\n--- Audio Encoder (EnCodec) ---")
+        encoder_trainable = 0
+        encoder_total = 0
+        for name, param in self.audio_encoder.named_parameters():
+            encoder_total += param.numel()
+            if param.requires_grad:
+                encoder_trainable += param.numel()
+        print(f"Total parameters: {encoder_total:,}")
+        print(f"Trainable parameters: {encoder_trainable:,}")
+        print(f"Trainable %: {100 * encoder_trainable / encoder_total:.2f}%")
+        print(f"Device: {next(self.audio_encoder.parameters()).device}")
+        print(
+            f"Frozen: {not any(p.requires_grad for p in self.audio_encoder.parameters())}"
+        )
+
+        # Audio projection parameters
+        print("\n--- Audio Projection ---")
+        projection_trainable = 0
+        projection_total = 0
+        projection_info = []
+
+        for name, param in self.audio_projection.named_parameters():
+            projection_total += param.numel()
+            if param.requires_grad:
+                projection_trainable += param.numel()
+            projection_info.append(
+                {
+                    "name": name,
+                    "shape": list(param.shape),
+                    "numel": param.numel(),
+                    "trainable": param.requires_grad,
+                    "device": str(param.device),
+                }
+            )
+
+        print(f"Total parameters: {projection_total:,}")
+        print(f"Trainable parameters: {projection_trainable:,}")
+        print(f"Trainable %: {100 * projection_trainable / projection_total:.2f}%")
+        print(f"Device: {next(self.audio_projection.parameters()).device}")
+
+        # Show projection layer details
+        print(f"\nProjection type: {type(self.audio_projection).__name__}")
+        if hasattr(self.audio_projection, "get_model_info"):
+            model_info = self.audio_projection.get_model_info()
+            print("Projection configuration:")
+            for key, value in model_info.items():
+                if key != "parameters":
+                    print(f"  {key}: {value}")
+
+        print("\nProjection layer details:")
+        for info in projection_info:
+            status = "TRAINABLE" if info["trainable"] else "FROZEN"
+            print(
+                f"  {info['name']:<30} {str(info['shape']):<20} {info['numel']:>8,} {status:<10} {info['device']}"
+            )
+
+        # Overall summary
+        print("\n--- OVERALL SUMMARY ---")
+        total_trainable = llm_trainable + encoder_trainable + projection_trainable
+        total_all = llm_total + encoder_total + projection_total
+
+        print(
+            f"LLM trainable: {llm_trainable:,} ({100 * llm_trainable / total_all:.2f}% of total)"
+        )
+        print(
+            f"Encoder trainable: {encoder_trainable:,} ({100 * encoder_trainable / total_all:.2f}% of total)"
+        )
+        print(
+            f"Projection trainable: {projection_trainable:,} ({100 * projection_trainable / total_all:.2f}% of total)"
+        )
+        print(f"Total trainable: {total_trainable:,}")
+        print(f"Total parameters: {total_all:,}")
+        print(f"Overall trainable %: {100 * total_trainable / total_all:.2f}%")
+
+        print("=" * 80)
 
     def encode_audio(self, audio: torch.Tensor) -> torch.Tensor:
         """
@@ -290,6 +413,9 @@ if __name__ == "__main__":
     print("\n--- Trainable Parameters ---")
     model.print_trainable_parameters()
     print("--------------------------\n")
+
+    # Print detailed parameter information
+    model.print_detailed_parameter_info()
 
     # To verify target_modules, you can uncomment the following lines:
     # print("\n--- Model Modules ---")

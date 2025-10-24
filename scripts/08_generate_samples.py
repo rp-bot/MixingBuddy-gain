@@ -231,7 +231,7 @@ def generate_and_compare(
 
 @hydra.main(
     config_path="../configs",
-    config_name="05_evaluate_extended_lora",
+    config_name="06_evaluate_transformer_projection",
     version_base=None,
 )
 def main(cfg: DictConfig):

@@ -1,0 +1,25 @@
+# @package _global_
+
+# Default configurations
+defaults:
+  - data: 03_synthesis_instructions
+  - model: qwen2_7b_transformer_projection
+  - training: training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: true
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}

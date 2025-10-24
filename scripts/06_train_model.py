@@ -97,7 +97,7 @@ def load_datasets(cfg: DictConfig, tokenizer):
 
 @hydra.main(
     config_path="../configs",
-    config_name="05_train_extended_lora",
+    config_name="06_train_transformer_projection",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -105,6 +105,12 @@ def main(cfg: DictConfig):
     tracker = initialize_experiment_tracker(cfg)
     model, tokenizer = initialize_model_and_tokenizer(cfg)
     train_dataset, val_dataset, test_dataset = load_datasets(cfg, tokenizer)
+
+    # Print detailed parameter information before training
+    print("\n" + "=" * 80)
+    print("MODEL PARAMETER ANALYSIS")
+    print("=" * 80)
+    model.print_detailed_parameter_info()
 
     # Convert Hydra config to a dictionary to safely modify it
     training_args_dict = OmegaConf.to_container(

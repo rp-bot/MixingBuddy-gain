@@ -2,5 +2,11 @@
 
 from .linear import LinearProjection
 from .mlp import MLPProjection
+from .transformer import TransformerProjection, PerceiverResampler
 
-__all__ = ["LinearProjection", "MLPProjection"]
+__all__ = [
+    "LinearProjection",
+    "MLPProjection",
+    "TransformerProjection",
+    "PerceiverResampler",
+]
