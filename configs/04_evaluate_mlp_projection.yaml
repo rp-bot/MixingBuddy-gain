@@ -3,7 +3,7 @@
 # Default configurations for evaluation
 defaults:
   - data: 03_synthesis_instructions
-  - model: qwen2_7b_all_linear
+  - model: qwen2_7b_mlp_projection
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility
   - experiment_tracking: wandb
@@ -19,7 +19,7 @@ env:
   # output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Model checkpoint settings
-checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-all-linear-r8a16-musdb-1023-1039
+checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mlp-projection-r8a16-musdb-1023-1715/checkpoint-200
 # Set this to the path of your trained model checkpoint
 # Options:
 # - null: Use base model (no trained weights)

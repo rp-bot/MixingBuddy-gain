@@ -3,7 +3,7 @@
 # Default configurations for evaluation
 defaults:
   - data: 03_synthesis_instructions
-  - model: qwen2_7b_all_linear
+  - model: qwen2_7b_extended_lora
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility
   - experiment_tracking: wandb
@@ -19,19 +19,19 @@ env:
   # output_dir: "outputs/evaluation/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Model checkpoint settings
-checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-all-linear-r8a16-musdb-1023-1039
+checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-extended-lora-r16a32-musdb-1023-1822/checkpoint-500
 # Set this to the path of your trained model checkpoint
 # Options:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
-# Example: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-r8a16-musdb-1012-1301"
+# Example: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-extended-lora-r8a16-musdb-1012-1301"
 #
 # IMPORTANT: The evaluation output directory will be automatically determined
 # from the checkpoint path. For example, if checkpoint is:
-# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-r8a16-musdb-1020-2051/checkpoint-500"
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-extended-lora-r8a16-musdb-1020-2051/checkpoint-500"
 # Then evaluation will be saved to:
-# "outputs/evaluation/qlora-qwen2-7b-r8a16-musdb-1020-2051/predictions/"
+# "outputs/evaluation/qlora-qwen2-7b-extended-lora-r8a16-musdb-1020-2051/predictions/"
 
 # Predictions file path for metrics computation
 # If not specified, the script will use the new evaluation structure

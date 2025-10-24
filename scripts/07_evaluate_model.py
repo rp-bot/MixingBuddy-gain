@@ -86,6 +86,7 @@ def load_trained_model(cfg: DictConfig):
         llm=llm,
         tokenizer=tokenizer,
         encoder_config=cfg.model.get("encoder"),  # Pass encoder configuration
+        projection_config=cfg.model.get("projection"),  # Pass projection configuration
     )
 
     # The audio projection weights are a required component for evaluation.

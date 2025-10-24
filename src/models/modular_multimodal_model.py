@@ -5,6 +5,7 @@ from typing import Optional, Any, Dict
 # Add parent directory to path to access src module
 # sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.models.encoders.encodec import EncodecEncoder
+from src.models.projections import LinearProjection, MLPProjection
 
 
 class ModularMultimodalModel(nn.Module):
@@ -21,6 +22,7 @@ class ModularMultimodalModel(nn.Module):
         llm: Any = None,
         tokenizer: Any = None,
         encoder_config: Optional[Dict[str, Any]] = None,
+        projection_config: Optional[Dict[str, Any]] = None,
     ):
         """
         Initializes the model.
@@ -32,6 +34,7 @@ class ModularMultimodalModel(nn.Module):
             llm: Pre-configured language model (required).
             tokenizer: Pre-configured tokenizer (required).
             encoder_config (dict, optional): Configuration for the audio encoder.
+            projection_config (dict, optional): Configuration for the audio projection layer.
         """
         super().__init__()
         self.model_name = model_name
@@ -59,10 +62,28 @@ class ModularMultimodalModel(nn.Module):
 
         self.audio_encoder = EncodecEncoder(**encoder_config)
 
-        # Add projection layer
+        # Initialize projection layer based on configuration
         llm_hidden_size = self.llm.config.hidden_size
         audio_hidden_size = self.audio_encoder.output_dim
-        self.audio_projection = nn.Linear(audio_hidden_size, llm_hidden_size)
+
+        if (
+            projection_config is None
+            or projection_config.get("type", "linear") == "linear"
+        ):
+            # Default to simple linear projection for backward compatibility
+            self.audio_projection = nn.Linear(audio_hidden_size, llm_hidden_size)
+        elif projection_config.get("type") == "mlp":
+            # Use MLP projection
+            # Convert DictConfig to regular dict to avoid struct mode issues
+            mlp_config = dict(projection_config)
+            mlp_config.pop("type", None)  # Remove type from config
+            self.audio_projection = MLPProjection(
+                input_dim=audio_hidden_size, output_dim=llm_hidden_size, **mlp_config
+            )
+        else:
+            raise ValueError(
+                f"Unsupported projection type: {projection_config.get('type')}"
+            )
 
         # Move other modules to the same device as the LLM
         # PEFT with quantization handles the device placement of the LLM,
