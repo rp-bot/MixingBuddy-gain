@@ -40,7 +40,7 @@ class ExperimentTrackingCallback(TrainerCallback):
 
     def on_log(self, args, state, control, logs=None, **kwargs):
         if not self.experiment_tracker:
-            raise ValueError("Experiment tracker is required for logging")
+            return  # Skip logging if no tracker
         if not logs:
             return
 
@@ -49,19 +49,19 @@ class ExperimentTrackingCallback(TrainerCallback):
         self.experiment_tracker.log_metrics(logs, step=self.step)
 
     def on_save(self, args, state, control, **kwargs):
-        if not self.experiment_tracker:
-            raise ValueError("Experiment tracker is required for artifact logging")
-
         checkpoint_dir = f"{args.output_dir}/checkpoint-{state.global_step}"
 
-        # Save custom model components in checkpoint directory
-        # if self.model is not None:
-        self._save_custom_components(checkpoint_dir)
+        # Always save custom model components (LoRA adapters and audio projection)
+        # This is essential for model loading, regardless of experiment tracking
+        if self.model is not None:
+            self._save_custom_components(checkpoint_dir)
 
-        if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
-            self.experiment_tracker.log_artifacts(checkpoint_dir)
-        elif not torch.distributed.is_initialized():
-            self.experiment_tracker.log_artifacts(checkpoint_dir)
+        # Only log artifacts to experiment tracker if tracker exists
+        if self.experiment_tracker:
+            if torch.distributed.is_initialized() and torch.distributed.get_rank() == 0:
+                self.experiment_tracker.log_artifacts(checkpoint_dir)
+            elif not torch.distributed.is_initialized():
+                self.experiment_tracker.log_artifacts(checkpoint_dir)
 
     def _save_custom_components(self, checkpoint_dir: str):
         """Save custom model components that aren't handled by HuggingFace Trainer."""

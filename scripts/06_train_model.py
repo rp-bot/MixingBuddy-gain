@@ -7,8 +7,13 @@ from omegaconf import DictConfig, OmegaConf
 import sys
 from pathlib import Path
 import torch
+import logging
 from transformers import TrainingArguments, EarlyStoppingCallback
 from trl import SFTTrainer
+
+# Configure logging to work better with tqdm
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -97,12 +102,12 @@ def load_datasets(cfg: DictConfig, tokenizer):
 
 @hydra.main(
     config_path="../configs",
-    config_name="05_train_extended_lora",
+    config_name="07_train_all_modules",
     version_base=None,
 )
 def main(cfg: DictConfig):
     """Main training function."""
-    tracker = initialize_experiment_tracker(cfg)
+    tracker = initialize_experiment_tracker(cfg, required=False)
     model, tokenizer = initialize_model_and_tokenizer(cfg)
     train_dataset, val_dataset, test_dataset = load_datasets(cfg, tokenizer)
 
@@ -114,16 +119,27 @@ def main(cfg: DictConfig):
     training_args_dict["remove_unused_columns"] = False
     # Specify that 'labels' is a label field so the Trainer properly computes loss during evaluation
     training_args_dict["label_names"] = ["labels"]
+    # Ensure tqdm progress bars work properly
+    training_args_dict["disable_tqdm"] = False
 
     # Update output_dir to include run name for better organization
-    run_name = tracker._current_run_name if tracker else "default"
+    if tracker:
+        run_name = tracker._current_run_name
+    else:
+        from src.utils.model_utils import generate_run_name
+
+        run_name = generate_run_name(cfg)
+
     base_output_dir = training_args_dict["output_dir"]
     training_args_dict["output_dir"] = f"{base_output_dir}/{run_name}"
     print(f"Checkpoints will be saved to: {training_args_dict['output_dir']}")
 
     training_args = TrainingArguments(**training_args_dict)
 
-    callbacks = [ExperimentTrackingCallback(tracker, model)]
+    callbacks = []
+    # Always add ExperimentTrackingCallback to save LoRA adapters and audio projection
+    # The callback handles None tracker gracefully
+    callbacks.append(ExperimentTrackingCallback(tracker, model))
     if cfg.training.early_stopping.enabled:
         callbacks.append(
             EarlyStoppingCallback(
@@ -172,7 +188,8 @@ def main(cfg: DictConfig):
 
     print(f"Model and custom components saved to {final_model_dir}")
 
-    tracker.finish()
+    if tracker:
+        tracker.finish()
 
 
 if __name__ == "__main__":

@@ -1,17 +1,17 @@
 # Training arguments
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
-  num_train_epochs: 5 # Short test run (about 10% of first epoch)
-  per_device_train_batch_size: 2
-  per_device_eval_batch_size: 2
+  num_train_epochs: 0.01 # Short test run (about 10% of first epoch)
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
   gradient_accumulation_steps: 4 # Increased for effective batch size of 8
   lr_scheduler_type: "cosine" # Better for fine-tuning
   learning_rate: 1e-4 # Reduced for more stable training
   weight_decay: 0.01
   warmup_ratio: 0.1
   logging_steps: 5 # More frequent logging
-  eval_steps: 100 # Less frequent evaluation to avoid memory issues
-  save_steps: 100 # More frequent saves
+  eval_steps: 10 # Less frequent evaluation to avoid memory issues
+  save_steps: 10 # More frequent saves
   logging_first_step: true # Log the first step
   logging_strategy: "steps" # Log at every logging_steps
   save_total_limit: 5 # Keep more checkpoints
@@ -20,8 +20,9 @@ training_args:
   load_best_model_at_end: true
   metric_for_best_model: "eval_loss"
   greater_is_better: false
-  report_to: "wandb" # Enable tracking
+  report_to: "none" # Disable tracking
   run_name: null # Will be set automatically if null
+  disable_tqdm: false # Enable progress bars
 
 # Mixed precision training
 mixed_precision:

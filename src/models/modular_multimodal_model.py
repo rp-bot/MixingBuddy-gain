@@ -94,18 +94,118 @@ class ModularMultimodalModel(nn.Module):
 
     def print_trainable_parameters(self):
         """
-        Prints the number of trainable parameters in the model.
+        Prints detailed parameter information for the model.
         """
+        print("=" * 80)
+        print("MODEL PARAMETER ANALYSIS")
+        print("=" * 80)
+
+        # Overall statistics
         trainable_params = 0
         all_param = 0
-        for _, param in self.named_parameters():
+        frozen_params = 0
+
+        # Component-wise breakdown
+        llm_params = 0
+        llm_trainable = 0
+        audio_encoder_params = 0
+        audio_encoder_trainable = 0
+        audio_projection_params = 0
+        audio_projection_trainable = 0
+
+        print("\n📊 COMPONENT BREAKDOWN:")
+        print("-" * 50)
+
+        for name, param in self.named_parameters():
             all_param += param.numel()
             if param.requires_grad:
                 trainable_params += param.numel()
+            else:
+                frozen_params += param.numel()
+
+            # Categorize by component
+            if name.startswith("llm."):
+                llm_params += param.numel()
+                if param.requires_grad:
+                    llm_trainable += param.numel()
+            elif name.startswith("audio_encoder."):
+                audio_encoder_params += param.numel()
+                if param.requires_grad:
+                    audio_encoder_trainable += param.numel()
+            elif name.startswith("audio_projection."):
+                audio_projection_params += param.numel()
+                if param.requires_grad:
+                    audio_projection_trainable += param.numel()
+
+        # Print component details
+        print(f"🤖 LLM (Language Model):")
+        print(f"   Total: {llm_params:,} params ({llm_params / 1e6:.2f}M)")
+        print(f"   Trainable: {llm_trainable:,} params ({llm_trainable / 1e6:.2f}M)")
         print(
-            f"trainable params: {trainable_params} || all params: {all_param} || "
-            f"trainable%: {100 * trainable_params / all_param}"
+            f"   Frozen: {llm_params - llm_trainable:,} params ({(llm_params - llm_trainable) / 1e6:.2f}M)"
         )
+        print(f"   Trainable %: {100 * llm_trainable / llm_params:.1f}%")
+
+        print(f"\n🎵 Audio Encoder (EnCodec):")
+        print(
+            f"   Total: {audio_encoder_params:,} params ({audio_encoder_params / 1e6:.2f}M)"
+        )
+        print(
+            f"   Trainable: {audio_encoder_trainable:,} params ({audio_encoder_trainable / 1e6:.2f}M)"
+        )
+        print(
+            f"   Frozen: {audio_encoder_params - audio_encoder_trainable:,} params ({(audio_encoder_params - audio_encoder_trainable) / 1e6:.2f}M)"
+        )
+        print(
+            f"   Trainable %: {100 * audio_encoder_trainable / audio_encoder_params:.1f}%"
+        )
+
+        print(f"\n🔗 Audio Projection:")
+        print(
+            f"   Total: {audio_projection_params:,} params ({audio_projection_params / 1e6:.2f}M)"
+        )
+        print(
+            f"   Trainable: {audio_projection_trainable:,} params ({audio_projection_trainable / 1e6:.2f}M)"
+        )
+        print(
+            f"   Frozen: {audio_projection_params - audio_projection_trainable:,} params ({(audio_projection_params - audio_projection_trainable) / 1e6:.2f}M)"
+        )
+        print(
+            f"   Trainable %: {100 * audio_projection_trainable / audio_projection_params:.1f}%"
+        )
+
+        print("\n📈 OVERALL STATISTICS:")
+        print("-" * 50)
+        print(f"Total Parameters: {all_param:,} ({all_param / 1e6:.2f}M)")
+        print(
+            f"Trainable Parameters: {trainable_params:,} ({trainable_params / 1e6:.2f}M)"
+        )
+        print(f"Frozen Parameters: {frozen_params:,} ({frozen_params / 1e6:.2f}M)")
+        print(f"Trainable Percentage: {100 * trainable_params / all_param:.2f}%")
+
+        # Memory estimation (rough)
+        # Assuming float32 (4 bytes per parameter) for trainable params
+        trainable_memory_mb = (trainable_params * 4) / (1024 * 1024)
+        total_memory_mb = (all_param * 4) / (1024 * 1024)
+
+        print(f"\n💾 MEMORY ESTIMATION:")
+        print("-" * 50)
+        print(f"Trainable Parameters Memory: {trainable_memory_mb:.1f} MB")
+        print(f"Total Model Memory: {total_memory_mb:.1f} MB")
+
+        # Training efficiency metrics
+        efficiency_ratio = trainable_params / all_param if all_param > 0 else 0
+        print(f"\n⚡ TRAINING EFFICIENCY:")
+        print("-" * 50)
+        print(f"Parameter Efficiency: {efficiency_ratio:.3f}")
+        if efficiency_ratio > 0.1:
+            print("   ⚠️  High trainable ratio - consider more aggressive LoRA settings")
+        elif efficiency_ratio < 0.01:
+            print("   ✅ Very efficient - good LoRA configuration")
+        else:
+            print("   ✅ Good balance between efficiency and capacity")
+
+        print("=" * 80)
 
     def encode_audio(self, audio: torch.Tensor) -> torch.Tensor:
         """

@@ -132,7 +132,58 @@ def find_latest_checkpoint(
     return str(latest_dir)
 
 
-def initialize_experiment_tracker(cfg: DictConfig, required: bool = True):
+def generate_run_name(cfg: DictConfig):
+    """Generate run name using naming convention without requiring a tracker."""
+    # Check if custom name is provided
+    custom_name = cfg.experiment_tracking.get("name")
+    if custom_name:
+        return custom_name
+
+    # Extract components for naming convention
+    # Check if model config has a specific name for experiment naming
+    model_config_name = getattr(cfg.model, "config_name", None)
+    if model_config_name:
+        model_abbr = cfg.experiment_naming.naming.components.model_abbr.get(
+            model_config_name, model_config_name.replace("_", "-")
+        )
+    else:
+        # Fallback to original logic
+        model_name = cfg.model.model_name
+        model_abbr = cfg.experiment_naming.naming.components.model_abbr.get(
+            model_name, model_name.lower().replace("-instruct", "").replace("-", "")
+        )
+
+    # LoRA configuration
+    lora_config = cfg.model.lora
+    rank = lora_config.r
+    alpha = lora_config.lora_alpha
+    lora_str = f"r{rank}a{alpha}"
+
+    # Dataset identifier from config mapping
+    dataset_path = cfg.data.train_jsonl_path
+    if "musdb" in dataset_path.lower():
+        dataset_abbr = "musdb"
+    else:
+        dataset_abbr = "custom"
+
+    # Experiment type from config mapping
+    if cfg.model.use_qlora:
+        exp_type = cfg.experiment_naming.naming.components.exp_type.qlora
+    else:
+        exp_type = cfg.experiment_naming.naming.components.exp_type.lora
+
+    # Version (use timestamp for uniqueness)
+    import datetime
+
+    timestamp = datetime.datetime.now().strftime("%m%d-%H%M")
+
+    # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}-{timestamp}
+    run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}-{timestamp}"
+
+    return run_name
+
+
+def initialize_experiment_tracker(cfg: DictConfig, required: bool = False):
     """Initialize experiment tracker."""
     from src.utils.experiment_tracking import ExperimentTracker
 
