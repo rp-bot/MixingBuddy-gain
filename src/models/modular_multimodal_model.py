@@ -66,6 +66,15 @@ class ModularMultimodalModel(nn.Module):
         llm_hidden_size = self.llm.config.hidden_size
         audio_hidden_size = self.audio_encoder.output_dim
 
+        # Extract auxiliary loss configuration
+        self.use_auxiliary_loss = False
+        self.auxiliary_loss_weight = 0.01
+        if projection_config is not None:
+            self.use_auxiliary_loss = projection_config.get("use_auxiliary_loss", False)
+            self.auxiliary_loss_weight = projection_config.get(
+                "auxiliary_loss_weight", 0.01
+            )
+
         if (
             projection_config is None
             or projection_config.get("type", "linear") == "linear"
@@ -77,6 +86,8 @@ class ModularMultimodalModel(nn.Module):
             # Convert DictConfig to regular dict to avoid struct mode issues
             mlp_config = dict(projection_config)
             mlp_config.pop("type", None)  # Remove type from config
+            mlp_config.pop("use_auxiliary_loss", None)  # Remove auxiliary loss config
+            mlp_config.pop("auxiliary_loss_weight", None)
             self.audio_projection = MLPProjection(
                 input_dim=audio_hidden_size, output_dim=llm_hidden_size, **mlp_config
             )
@@ -91,6 +102,13 @@ class ModularMultimodalModel(nn.Module):
         llm_device = self.llm.device
         self.audio_encoder.to(llm_device)
         self.audio_projection.to(llm_device)
+
+        # Print auxiliary loss configuration
+        if self.use_auxiliary_loss:
+            print(
+                f"✓ Auxiliary loss enabled with weight {self.auxiliary_loss_weight} "
+                f"to improve projection layer training"
+            )
 
     def print_trainable_parameters(self):
         """
@@ -272,7 +290,25 @@ class ModularMultimodalModel(nn.Module):
         # 3. Get text embeddings
         text_embeds = self.llm.get_input_embeddings()(input_ids)
 
-        # 4. Replace the dummy audio token embeddings with the projected audio embeddings
+        # 4. Compute auxiliary loss if enabled (to ensure strong gradient flow to projection)
+        auxiliary_loss = torch.tensor(0.0, device=projected_audio_embeds.device)
+        if self.use_auxiliary_loss and self.training:
+            # Compute the mean L2 norm per embedding dimension
+            # This keeps the loss magnitude reasonable
+            audio_norm_per_dim = (
+                torch.norm(projected_audio_embeds, p=2, dim=-1)
+                / projected_audio_embeds.shape[-1]
+            )
+            text_norm_per_dim = (
+                torch.norm(text_embeds, p=2, dim=-1) / text_embeds.shape[-1]
+            )
+
+            # L2 loss to match normalized norms
+            auxiliary_loss = torch.nn.functional.mse_loss(
+                audio_norm_per_dim.mean(), text_norm_per_dim.mean().detach()
+            )
+
+        # 5. Replace the dummy audio token embeddings with the projected audio embeddings
         num_audio_tokens = projected_audio_embeds.shape[1]
 
         # Ensure dtypes match before concatenation
@@ -293,6 +329,15 @@ class ModularMultimodalModel(nn.Module):
             return_dict=True,
             use_cache=False,  # Disable cache to avoid padding issues
         )
+
+        # Add auxiliary loss to the main loss
+        if self.use_auxiliary_loss and self.training:
+            weighted_aux_loss = self.auxiliary_loss_weight * auxiliary_loss
+            output.loss = output.loss + weighted_aux_loss
+            # Store auxiliary loss for logging (optional, won't break if not used)
+            if hasattr(output, "auxiliary_loss"):
+                output.auxiliary_loss = auxiliary_loss.item()
+
         return output
 
     @torch.no_grad()

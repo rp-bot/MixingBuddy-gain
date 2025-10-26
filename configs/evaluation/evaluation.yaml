@@ -38,6 +38,10 @@ model_loading:
   strict_loading: false # Allow missing keys
   map_location: "cuda" # "cpu", "cuda", or "auto"
 
+# Ablation study: Use random projection weights instead of trained ones
+# This tests whether the trained audio projection actually helps
+use_random_projection: true
+
 # Custom metrics configuration (for 09_compute_metrics.py)
 custom_metrics:
   semantic_model: "sentence-transformers/all-mpnet-base-v2"

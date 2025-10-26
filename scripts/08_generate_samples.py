@@ -84,21 +84,32 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
     )
 
     # The audio projection weights are a required component for evaluation.
-    projection_path = f"{checkpoint_path}/audio_projection.bin"
-    print(f"Loading audio projection weights from {projection_path}...")
-    map_location = cfg.evaluation.model_loading.map_location
-    if map_location == "auto":
-        map_location = "cuda" if torch.cuda.is_available() else "cpu"
-    state_dict = torch.load(projection_path, map_location=map_location)
+    # Optionally use random weights for ablation study
+    use_random_projection = cfg.evaluation.get("use_random_projection", False)
 
-    # --- DEBUGGING PRINT ---
-    print(f"Loaded audio_projection state_dict with keys: {state_dict.keys()}")
-    # --- END DEBUGGING PRINT ---
+    if use_random_projection:
+        print("=" * 60)
+        print("⚠️  ABLATION STUDY: Using RANDOM audio projection weights!")
+        print("   This tests if trained projection actually helps.")
+        print("=" * 60)
+        # Keep the randomly initialized weights from model creation
+        # No need to load trained weights
+    else:
+        projection_path = f"{checkpoint_path}/audio_projection.bin"
+        print(f"Loading audio projection weights from {projection_path}...")
+        map_location = cfg.evaluation.model_loading.map_location
+        if map_location == "auto":
+            map_location = "cuda" if torch.cuda.is_available() else "cpu"
+        state_dict = torch.load(projection_path, map_location=map_location)
 
-    model.audio_projection.load_state_dict(
-        state_dict,
-        strict=cfg.evaluation.model_loading.strict_loading,
-    )
+        # --- DEBUGGING PRINT ---
+        print(f"Loaded audio_projection state_dict with keys: {state_dict.keys()}")
+        # --- END DEBUGGING PRINT ---
+
+        model.audio_projection.load_state_dict(
+            state_dict,
+            strict=cfg.evaluation.model_loading.strict_loading,
+        )
 
     # Freeze all parameters for evaluation
     model.eval()

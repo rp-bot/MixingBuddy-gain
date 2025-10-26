@@ -1,15 +1,17 @@
 # @package model
 
-# Model configuration for Qwen2 7B with all target modules (QLoRA)
+# Model configuration for Qwen2 7B with ONLY attention target modules (QLoRA)
+# This constrains the LLM to force it to rely more on audio projection
 model_name: "Qwen/Qwen2-7B-Instruct"
-config_name: "qwen2_7b_all_modules"
+config_name: "qwen2_7b_attention_only"
 use_qlora: true
 
-# LoRA configuration with all available target modules
+# LoRA configuration with ONLY attention modules
+# Hypothesis: Fewer adaptation points forces model to use audio
 lora:
   r: 16
   lora_alpha: 32
-  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "embed_tokens", "lm_head"]
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
   lora_dropout: 0.1
   bias: "none"
   task_type: "CAUSAL_LM"
@@ -29,12 +31,12 @@ encoder:
 
 # Audio projection configuration
 projection:
-  type: "linear"
-  # hidden_dims: [512, 1024, 2048, 1024]
-  # activation: "relu"
-  # dropout: 0.1
-  # use_layer_norm: true
-  # use_residual: false
+  type: "mlp"
+  hidden_dims: [512, 1024, 2048, 1024]
+  activation: "relu"
+  dropout: 0.1
+  use_layer_norm: true
+  use_residual: false
   # Auxiliary loss to ensure strong gradient flow to projection layer
   use_auxiliary_loss: true
   auxiliary_loss_weight: 0.01

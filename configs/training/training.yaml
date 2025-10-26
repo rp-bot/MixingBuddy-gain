@@ -1,7 +1,7 @@
 # Training arguments
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
-  num_train_epochs: 0.01 # Short test run (about 10% of first epoch)
+  num_train_epochs: 20 # Short test run (about 10% of first epoch)
   per_device_train_batch_size: 4
   per_device_eval_batch_size: 4
   gradient_accumulation_steps: 4 # Increased for effective batch size of 8
@@ -10,11 +10,11 @@ training_args:
   weight_decay: 0.01
   warmup_ratio: 0.1
   logging_steps: 5 # More frequent logging
-  eval_steps: 10 # Less frequent evaluation to avoid memory issues
-  save_steps: 10 # More frequent saves
+  eval_steps: 100 # Less frequent evaluation to avoid memory issues
+  save_steps: 100 # More frequent saves
   logging_first_step: true # Log the first step
   logging_strategy: "steps" # Log at every logging_steps
-  save_total_limit: 5 # Keep more checkpoints
+  save_total_limit: 2 # Keep more checkpoints
   save_strategy: "steps"
   eval_strategy: "steps"
   load_best_model_at_end: true

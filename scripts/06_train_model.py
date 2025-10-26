@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 import torch
 import logging
-from transformers import TrainingArguments, EarlyStoppingCallback
+from transformers import TrainingArguments, EarlyStoppingCallback, TrainerCallback
 from trl import SFTTrainer
 
 # Configure logging to work better with tqdm
@@ -31,6 +31,140 @@ from src.utils.model_utils import (  # noqa: E402
     initialize_experiment_tracker,
     IterableDatasetWrapper,
 )
+
+
+class ProjectionDiagnosticCallback(TrainerCallback):
+    """Monitor projection layer during training to diagnose issues."""
+
+    def __init__(self, model):
+        self.model = model
+        self.step = 0
+        self.grad_history = []
+        self.weight_history = []
+        self.optimizer_checked = False
+
+    def on_train_begin(self, args, state, control, model, **kwargs):
+        """Check optimizer when training begins."""
+        if not self.optimizer_checked:
+            # Try to get optimizer from kwargs
+            optimizer = kwargs.get("optimizer")
+            if optimizer is None:
+                # Optimizer may not be in kwargs, try to check on first step instead
+                print("\n" + "=" * 60)
+                print("OPTIMIZER DIAGNOSTIC")
+                print("=" * 60)
+                print("Note: Optimizer not yet available in callback.")
+                print("Will check on first training step.")
+                print("=" * 60 + "\n")
+                return
+
+            print("\n" + "=" * 60)
+            print("OPTIMIZER DIAGNOSTIC")
+            print("=" * 60)
+            proj_param_ids = {id(p) for p in self.model.audio_projection.parameters()}
+            optimizer_param_ids = {
+                id(p) for group in optimizer.param_groups for p in group["params"]
+            }
+            proj_in_optimizer = proj_param_ids.issubset(optimizer_param_ids)
+            print(f"Projection parameters in optimizer: {proj_in_optimizer}")
+            print(f"Projection param count: {len(proj_param_ids)}")
+            print(f"Optimizer param count: {len(optimizer_param_ids)}")
+
+            # If not in optimizer, let's check why
+            if not proj_in_optimizer:
+                print("\n⚠️  WARNING: Projection parameters NOT in optimizer!")
+                print("Checking requires_grad status:")
+                for name, param in self.model.audio_projection.named_parameters():
+                    print(f"  {name}: requires_grad={param.requires_grad}")
+
+            print("=" * 60 + "\n")
+            self.optimizer_checked = True
+
+    def on_step_end(self, args, state, control, **kwargs):
+        self.step += 1
+
+        # Check optimizer on first step if we haven't checked it yet
+        if self.step == 1 and not self.optimizer_checked:
+            optimizer = kwargs.get("optimizer")
+            if optimizer is not None:
+                print("\n" + "=" * 60)
+                print("OPTIMIZER DIAGNOSTIC (First Step)")
+                print("=" * 60)
+                proj_param_ids = {
+                    id(p) for p in self.model.audio_projection.parameters()
+                }
+                optimizer_param_ids = {
+                    id(p) for group in optimizer.param_groups for p in group["params"]
+                }
+                proj_in_optimizer = proj_param_ids.issubset(optimizer_param_ids)
+                print(f"Projection parameters in optimizer: {proj_in_optimizer}")
+                print(f"Projection param count: {len(proj_param_ids)}")
+                print(f"Optimizer param count: {len(optimizer_param_ids)}")
+
+                if not proj_in_optimizer:
+                    print("\n⚠️  WARNING: Projection parameters NOT in optimizer!")
+                    print("Checking requires_grad status:")
+                    for name, param in self.model.audio_projection.named_parameters():
+                        print(f"  {name}: requires_grad={param.requires_grad}")
+
+                print("=" * 60 + "\n")
+                self.optimizer_checked = True
+
+        # NOTE: on_step_end is called AFTER optimizer.step() and zero_grad()
+        # So gradients will always be None here. Use on_optimizer_step instead.
+
+        # Check weight changes (compare to first step)
+        if self.step == 1:
+            self.initial_weights = {
+                name: param.data.clone()
+                for name, param in self.model.audio_projection.named_parameters()
+            }
+        elif self.step % 5 == 0:
+            weight_changes = []
+            for name, param in self.model.audio_projection.named_parameters():
+                if name in self.initial_weights:
+                    change = (
+                        (param.data - self.initial_weights[name]).abs().mean().item()
+                    )
+                    weight_changes.append(change)
+            avg_change = (
+                sum(weight_changes) / len(weight_changes) if weight_changes else 0.0
+            )
+            self.weight_history.append((self.step, avg_change))
+
+            print(f"\n[DIAGNOSTIC - WEIGHT CHANGES] Step {self.step}:")
+            print(f"  Avg weight change from step 1: {avg_change:.8f}")
+
+    def on_optimizer_step(self, args, state, control, **kwargs):
+        """Check gradients BEFORE optimizer applies and zeros them."""
+        current_step = state.global_step + 1  # Will be incremented after this
+
+        # Check gradients BEFORE they're applied and zeroed
+        has_grad = False
+        grad_values = []
+        for name, param in self.model.audio_projection.named_parameters():
+            if param.grad is not None:
+                has_grad = True
+                grad_values.append(param.grad.abs().mean().item())
+
+        avg_grad = sum(grad_values) / len(grad_values) if grad_values else 0.0
+        self.grad_history.append(avg_grad)
+
+        # Print on first step and every 5 steps
+        if current_step == 1 or current_step % 5 == 0:
+            print(f"\n[DIAGNOSTIC - GRADIENTS] Step {current_step}:")
+            print(f"  Gradients present: {has_grad}")
+            print(f"  Avg gradient magnitude: {avg_grad:.8f}")
+
+            # Show gradient improvement from baseline
+            if len(self.grad_history) > 1:
+                initial_grad = self.grad_history[0]
+                if initial_grad > 0:
+                    improvement = (avg_grad / initial_grad) * 100
+                    print(f"  Gradient magnitude vs step 1: {improvement:.1f}%")
+
+            if has_grad and avg_grad < 1e-6:
+                print("  ⚠️  WARNING: Gradients are extremely small!")
 
 
 def initialize_model_and_tokenizer(cfg: DictConfig):
@@ -109,6 +243,27 @@ def main(cfg: DictConfig):
     """Main training function."""
     tracker = initialize_experiment_tracker(cfg, required=False)
     model, tokenizer = initialize_model_and_tokenizer(cfg)
+
+    # === DIAGNOSTIC: Check projection layer parameter status ===
+    print("\n" + "=" * 60)
+    print("PROJECTION LAYER DIAGNOSTIC")
+    print("=" * 60)
+    proj_params = list(model.audio_projection.parameters())
+    proj_trainable = [p for p in proj_params if p.requires_grad]
+    print(f"Total projection parameters: {len(proj_params)}")
+    print(f"Trainable projection parameters: {len(proj_trainable)}")
+    print(
+        f"All projection params require_grad: {all(p.requires_grad for p in proj_params)}"
+    )
+
+    # Check if projection is in model's trainable parameters
+    all_trainable = [p for p in model.parameters() if p.requires_grad]
+    proj_in_trainable = any(
+        id(p) in [id(tp) for tp in proj_trainable] for p in all_trainable
+    )
+    print(f"Projection params in model.parameters(): {proj_in_trainable}")
+    print("=" * 60 + "\n")
+
     train_dataset, val_dataset, test_dataset = load_datasets(cfg, tokenizer)
 
     # Convert Hydra config to a dictionary to safely modify it
@@ -140,6 +295,8 @@ def main(cfg: DictConfig):
     # Always add ExperimentTrackingCallback to save LoRA adapters and audio projection
     # The callback handles None tracker gracefully
     callbacks.append(ExperimentTrackingCallback(tracker, model))
+    # Add diagnostic callback to monitor projection layer training
+    callbacks.append(ProjectionDiagnosticCallback(model))
     if cfg.training.early_stopping.enabled:
         callbacks.append(
             EarlyStoppingCallback(
@@ -168,6 +325,7 @@ def main(cfg: DictConfig):
     )
 
     print("Starting training...")
+    print("(Optimizer diagnostic will be shown at step 0)\n")
     trainer.train()
     print("Training finished.")
 
