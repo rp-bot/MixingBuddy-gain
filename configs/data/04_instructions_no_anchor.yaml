@@ -1,0 +1,117 @@
+paths:
+  processed_root: data/musdb18hq_processed
+  output_root: data/musdb18hq_processed
+  musdb_root: data/musdb18hq
+
+# Dataset paths
+train_jsonl_path: data/musdb18hq_processed/train/training_samples_instructions_no_anchor.jsonl
+train_audio_root: data/musdb18hq_processed/train/flawed_mixes
+test_jsonl_path: data/musdb18hq_processed/test/test_samples_instructions_no_anchor.jsonl
+test_audio_root: data/musdb18hq_processed/test/flawed_mixes
+
+# Training parameters
+error:
+  priors:
+    no_error: 0.20
+    quiet: 0.20
+    very_quiet: 0.20
+    loud: 0.20
+    very_loud: 0.20
+  # Fixed dB ranges for each category (no IQR scaling)
+  ranges_db:
+    quiet: [-6, -3]
+    very_quiet: [-12, -6]
+    loud: [3, 6]
+    very_loud: [6, 12]
+  # Overall gain limits for safety
+  gain_limits_db:
+    min: -15.0
+    max: 15.0
+
+chunk:
+  sec: 10.0
+
+frame:
+  ms: 50.0
+
+gating:
+  mixture_min_rms_dbfs: -30.0 # More lenient - allow quieter mixes
+  stem_min_rms_dbfs: -40.0 # More lenient - allow quieter individual stems
+  min_active_frame_ratio: 0.20 # More lenient - allow more silence
+
+target_stem:
+  priors:
+    bass: 0.33
+    drums: 0.33
+    vocals: 0.34
+    other: 0.0
+
+anchor:
+  fallback_order:
+    - bass
+    - drums
+    - vocals # Reordered: vocals before "other" is removed
+  # Note: "other" excluded from fallback order
+  # Anchor is selected as first available stem from fallback_order
+  # that is NOT the target stem and NOT "other"
+
+audio:
+  sample_rate: 32000 # Base sample rate - can be downsampled later for model input
+  bit_depth: 24 # Audio bit depth: 16, 24, or 32 (float)
+  # peak_normalize: false  # Removed - let audio clip naturally to preserve relative levels
+
+limit: null # Set to a number to limit dataset size for testing
+system_message: "You are a mixing engineer. You are given a segment of a track and you need to provide gain balancing advice."
+use_instructions: true
+
+splits:
+  - train
+  - test
+
+output:
+  flawed_mix_subdir: flawed_mixes
+  train_samples: training_samples.jsonl
+  test_samples: test_samples.jsonl
+  output_suffix: "synthesis_instructions"
+
+instruction_templates:
+  - "Listen carefully to this {duration_sec}s audio clip. The available stems are: {stems_present}. Analyze the mix balance and identify which stem needs adjustment. Provide specific mixing advice about the gain of the problematic stem."
+  - "You are listening to a {duration_sec}s audio segment with stems: {stems_present}. Pay attention to the audio and determine which stem is causing balance issues. Suggest the appropriate gain adjustment for the problematic stem."
+  - "Analyze this {duration_sec}s track by listening to the audio. Stems present: {stems_present}. Identify which stem is out of balance and provide mixing advice about the gain adjustment needed."
+  - "Listen to this {duration_sec}s audio clip containing stems: {stems_present}. Based on what you hear, determine which stem needs gain adjustment and provide specific mixing recommendations."
+  - "Carefully listen to this {duration_sec}s audio segment. Available stems: {stems_present}. Identify the stem that's causing mix balance problems and suggest the appropriate gain change."
+  - "Listen to the audio in this {duration_sec}s clip with stems: {stems_present}. Determine which stem is problematic and provide mixing advice about the required gain adjustment."
+
+response_templates:
+  no_error:
+    - "The mix sounds balanced. All elements are at appropriate levels."
+    - "The balance is good. All instruments are sitting well in the mix."
+    - "The mix is well-balanced. No adjustments needed."
+    - "Everything sounds properly leveled. The mix is solid."
+
+  quiet:
+    - "The {target_stem} is too quiet. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to bring it up to the proper balance."
+    - "The {target_stem} needs more presence. Boost it between {min_gain_db} and {max_gain_db} dB to balance the mix."
+    - "The {target_stem} is getting lost. Bring it up between {min_gain_db} and {max_gain_db} dB."
+    - "The {target_stem} is too low in the mix. Add between {min_gain_db} and {max_gain_db} dB to fix the balance."
+
+  very_quiet:
+    - "The {target_stem} is much too quiet. Boost the {target_stem} between {min_gain_db} and {max_gain_db} dB to restore the mix balance."
+    - "The {target_stem} is barely audible. Increase it between {min_gain_db} and {max_gain_db} dB to bring it forward."
+    - "The {target_stem} is way too low. Add between {min_gain_db} and {max_gain_db} dB to make it present."
+    - "The {target_stem} needs a significant boost. Raise it between {min_gain_db} and {max_gain_db} dB."
+
+  loud:
+    - "The {target_stem} is too loud. Reduce the {target_stem} level between {min_gain_db} and {max_gain_db} dB to balance the mix."
+    - "The {target_stem} is overpowering. Turn it down between {min_gain_db} and {max_gain_db} dB."
+    - "The {target_stem} is too prominent. Cut it between {min_gain_db} and {max_gain_db} dB to balance."
+    - "The {target_stem} needs to be quieter. Reduce between {min_gain_db} and {max_gain_db} dB."
+
+  very_loud:
+    - "The {target_stem} is overpowering. Cut the {target_stem} between {min_gain_db} and {max_gain_db} dB to fix the balance."
+    - "The {target_stem} is way too loud. Bring it down between {min_gain_db} and {max_gain_db} dB."
+    - "The {target_stem} is dominating the mix. Cut it between {min_gain_db} and {max_gain_db} dB."
+    - "The {target_stem} is overwhelming. Reduce between {min_gain_db} and {max_gain_db} dB to balance."
+
+rng:
+  seed: 42

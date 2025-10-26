@@ -242,7 +242,7 @@ def generate_and_compare(
 
 @hydra.main(
     config_path="../configs",
-    config_name="07_evaluate_all_modules",
+    config_name="09_eval_no_anchor",
     version_base=None,
 )
 def main(cfg: DictConfig):

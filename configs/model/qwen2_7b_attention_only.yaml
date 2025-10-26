@@ -31,12 +31,12 @@ encoder:
 
 # Audio projection configuration
 projection:
-  type: "mlp"
-  hidden_dims: [512, 1024, 2048, 1024]
-  activation: "relu"
-  dropout: 0.1
-  use_layer_norm: true
-  use_residual: false
+  type: "linear"
+  # hidden_dims: [512, 1024, 2048, 1024]
+  # activation: "relu"
+  # dropout: 0.1
+  # use_layer_norm: true
+  # use_residual: false
   # Auxiliary loss to ensure strong gradient flow to projection layer
   use_auxiliary_loss: true
   auxiliary_loss_weight: 0.01
