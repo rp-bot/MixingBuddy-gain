@@ -2,9 +2,9 @@
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
   num_train_epochs: 20 # Short test run (about 10% of first epoch)
-  per_device_train_batch_size: 4
-  per_device_eval_batch_size: 4
-  gradient_accumulation_steps: 4 # Increased for effective batch size of 8
+  per_device_train_batch_size: 2 # Reduced for MERT memory usage
+  per_device_eval_batch_size: 2 # Reduced for MERT memory usage
+  gradient_accumulation_steps: 8 # Increased to maintain effective batch size of 16
   lr_scheduler_type: "cosine" # Better for fine-tuning
   learning_rate: 1e-4 # Reduced for more stable training
   weight_decay: 0.01

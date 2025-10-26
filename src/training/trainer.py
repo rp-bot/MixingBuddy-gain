@@ -76,7 +76,13 @@ class ExperimentTrackingCallback(TrainerCallback):
         )
 
         # Save LoRA adapter files (these are needed for inference)
-        # Save the LoRA adapter to the checkpoint directory
-        self.model.llm.save_pretrained(checkpoint_dir)
-
-        print(f"Saved custom components to {checkpoint_dir}/")
+        # Only save if the model has PEFT adapters
+        if hasattr(self.model.llm, "save_pretrained") and hasattr(
+            self.model.llm, "peft_config"
+        ):
+            # Model has PEFT adapters
+            self.model.llm.save_pretrained(checkpoint_dir)
+            print(f"Saved LoRA adapters and audio projection to {checkpoint_dir}/")
+        else:
+            # Projection-only training, no adapters to save
+            print(f"Saved audio projection to {checkpoint_dir}/ (no LoRA adapters)")

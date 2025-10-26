@@ -5,7 +5,7 @@
 
 defaults:
   - data: 04_instructions_no_anchor
-  - model: qwen2_7b_projection_only
+  - model: qwen2_7b_mert
   - training: training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
