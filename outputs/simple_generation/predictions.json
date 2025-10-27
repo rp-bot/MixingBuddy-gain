@@ -1,0 +1,182 @@
+[
+  {
+    "sample_idx": 0,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Drum_set"
+  },
+  {
+    "sample_idx": 1,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "flute",
+    "predicted_response": "flute"
+  },
+  {
+    "sample_idx": 2,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Horn",
+    "predicted_response": "Horn"
+  },
+  {
+    "sample_idx": 3,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Tambourine",
+    "predicted_response": "Tambourine"
+  },
+  {
+    "sample_idx": 4,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Keyboard",
+    "predicted_response": "Keyboard"
+  },
+  {
+    "sample_idx": 5,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Bass_Guitar",
+    "predicted_response": "Flooring_ANGLES\n\nAssistant_Band_Guitar_bass_glass_bass_"
+  },
+  {
+    "sample_idx": 6,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Trombone"
+  },
+  {
+    "sample_idx": 7,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Acoustic_Guitar",
+    "predicted_response": "Acoustic_Guitar"
+  },
+  {
+    "sample_idx": 8,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Trombone"
+  },
+  {
+    "sample_idx": 9,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Drum_set"
+  },
+  {
+    "sample_idx": 10,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Trombone"
+  },
+  {
+    "sample_idx": 11,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Keyboard",
+    "predicted_response": "Keyboard"
+  },
+  {
+    "sample_idx": 12,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Violin",
+    "predicted_response": "Clarinet"
+  },
+  {
+    "sample_idx": 13,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Accordion",
+    "predicted_response": "Banjo"
+  },
+  {
+    "sample_idx": 14,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Trombone"
+  },
+  {
+    "sample_idx": 15,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Ukulele",
+    "predicted_response": "Mandolin"
+  },
+  {
+    "sample_idx": 16,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Floor_Tom",
+    "predicted_response": "Flooring_ Music_ Kontroled_After_Festival_"
+  },
+  {
+    "sample_idx": 17,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Drum_set"
+  },
+  {
+    "sample_idx": 18,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Electro_Guitar",
+    "predicted_response": "Acoustic_Guitar"
+  },
+  {
+    "sample_idx": 19,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Accordion",
+    "predicted_response": "Accordion"
+  },
+  {
+    "sample_idx": 20,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Mandolin",
+    "predicted_response": "Mandolin"
+  },
+  {
+    "sample_idx": 21,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "flute",
+    "predicted_response": "flute"
+  },
+  {
+    "sample_idx": 22,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Keyboard",
+    "predicted_response": "Keyboard"
+  },
+  {
+    "sample_idx": 23,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "cowbell",
+    "predicted_response": "Hi_Hats"
+  },
+  {
+    "sample_idx": 24,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Mandolin",
+    "predicted_response": "Banjo"
+  },
+  {
+    "sample_idx": 25,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Drum_set"
+  },
+  {
+    "sample_idx": 26,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "flute",
+    "predicted_response": "flute"
+  },
+  {
+    "sample_idx": 27,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Organ"
+  },
+  {
+    "sample_idx": 28,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Drum_set"
+  },
+  {
+    "sample_idx": 29,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Electro_Guitar",
+    "predicted_response": "Accordion"
+  }
+]

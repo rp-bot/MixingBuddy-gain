@@ -179,7 +179,21 @@ def run_evaluation(cfg: DictConfig):
     )
 
     # The stride of the audio encoder is needed to correctly pad the text tokens
-    audio_encoder_stride = model.audio_encoder.model.config.hop_length
+    # Get hop_length from encoder (handles both EnCodec and MERT)
+    if hasattr(model.audio_encoder, "hop_length"):
+        # MERT and other encoders with hop_length property
+        audio_encoder_stride = model.audio_encoder.hop_length
+    elif hasattr(model.audio_encoder.model, "config") and hasattr(
+        model.audio_encoder.model.config, "hop_length"
+    ):
+        # EnCodec-style encoders
+        audio_encoder_stride = model.audio_encoder.model.config.hop_length
+    else:
+        # Fallback: try to infer from sample rate and output dimension
+        logger.warning("Could not determine audio encoder stride, using default")
+        audio_encoder_stride = 320  # Default stride
+
+    logger.info(f"Audio encoder stride: {audio_encoder_stride}")
 
     # Create data collator
     data_collator = MultimodalDataCollator(

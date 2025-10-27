@@ -1,0 +1,27 @@
+# @package _global_
+
+# Training config with NO LoRA adapters - ONLY train audio projection
+# Most extreme setup to test if projection alone is sufficient
+
+defaults:
+  - data: 04_instructions_no_anchor
+  - model: qwen2_7b_mert
+  - training: training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}

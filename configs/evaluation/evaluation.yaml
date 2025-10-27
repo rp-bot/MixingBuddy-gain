@@ -35,8 +35,12 @@ memory:
 # Model loading settings
 model_loading:
   load_audio_projection: true
-  strict_loading: false # Allow missing keys
+  strict_loading: true # Allow missing keys
   map_location: "cuda" # "cpu", "cuda", or "auto"
+
+# Ablation study: Use random projection weights instead of trained ones
+# This tests whether the trained audio projection actually helps
+use_random_projection: true
 
 # Custom metrics configuration (for 09_compute_metrics.py)
 custom_metrics:

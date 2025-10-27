@@ -1,0 +1,63 @@
+# @package _global_
+
+# Evaluation config for projection-only training (experiment 10)
+# This evaluates the model with NO LoRA adapters - only trained audio projection
+defaults:
+  - data: 04_instructions_no_anchor
+  - model: qwen2_7b_mert
+  - evaluation: evaluation
+  - training: training # Include training config for trainer compatibility
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - plotting: plotting
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  # Output directory will be determined by checkpoint run name
+
+# Model checkpoint settings
+# Set this to the path of your trained MERT projection-only model checkpoint
+# Options:
+# - null: Use base model (no trained weights)
+# - "latest": Automatically use the latest checkpoint
+# - "path/to/checkpoint": Use specific checkpoint
+checkpoint_path: outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-r16a32-musdb-1026-1850 # Update this to the trained MERT checkpoint path
+
+# IMPORTANT: The evaluation output directory will be automatically determined
+# from the checkpoint path. For example, if checkpoint is:
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-r16a32-musdb-XXXX-XXXX/checkpoint-XXX"
+# Then evaluation will be saved to:
+# "outputs/evaluation/qlora-qwen2-7b-mert-r16a32-musdb-XXXX-XXXX/predictions/"
+
+# Predictions file path for metrics computation
+# If not specified, the script will use the new evaluation structure
+# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-r16a32-musdb-XXXX-XXXX/predictions/predictions.jsonl"
+
+# Plotting configuration
+plotting:
+  # These will be automatically set based on checkpoint path
+  metrics_file: null # Will be set to {output_dir}/predictions/metrics_results_detailed.json
+  output_dir: null # Will be set to {output_dir}/predictions/
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: true
+  use_mlflow: false
+
+# Evaluation-specific overrides for projection-only model
+evaluation:
+  # Since this is projection-only, we want to test if the audio projection actually helps
+  use_random_projection: false # Use the trained projection weights
+  # We might want to compare with random projection as an ablation
+  # use_random_projection: true  # Uncomment to test with random weights
+
+  # Increased generation samples to better evaluate projection-only performance
+  num_generation_samples: 2 # More samples for better statistical significance
+
+  # Memory settings - projection-only should use less memory
+  memory:
+    max_memory_usage_gb: 6.0 # Lower than full LoRA models
+

@@ -1,0 +1,62 @@
+[
+  {
+    "sample_idx": 0,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Hi_Hats"
+  },
+  {
+    "sample_idx": 1,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "flute",
+    "predicted_response": "Tambourine"
+  },
+  {
+    "sample_idx": 2,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Horn",
+    "predicted_response": "Tambourine"
+  },
+  {
+    "sample_idx": 3,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Tambourine",
+    "predicted_response": "Shakers"
+  },
+  {
+    "sample_idx": 4,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Keyboard",
+    "predicted_response": "Tambourine"
+  },
+  {
+    "sample_idx": 5,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Bass_Guitar",
+    "predicted_response": "Shakers"
+  },
+  {
+    "sample_idx": 6,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Tambourine"
+  },
+  {
+    "sample_idx": 7,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Acoustic_Guitar",
+    "predicted_response": "Tambourine"
+  },
+  {
+    "sample_idx": 8,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Trombone",
+    "predicted_response": "Shakers"
+  },
+  {
+    "sample_idx": 9,
+    "instruction": "listen to the 3 second audio and classify which instrument it is.",
+    "true_response": "Drum_set",
+    "predicted_response": "Tambourine"
+  }
+]

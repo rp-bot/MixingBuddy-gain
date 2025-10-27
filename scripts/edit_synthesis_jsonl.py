@@ -21,7 +21,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from src.data.text_generation import create_instruction, create_response
 
 
-@hydra.main(version_base=None, config_path="../configs/data", config_name="02_elaborate_response_synthesis")
+@hydra.main(version_base=None, config_path="../configs/data", config_name="04_instructions_no_anchor")
 def main(cfg: DictConfig) -> None:
     """Main function to edit synthesis JSONL files."""
     print("Starting JSONL editing...")
@@ -94,6 +94,7 @@ def edit_split_jsonl(split_name: str, config: DictConfig, rng: random.Random) ->
 
         # Extract metadata from sample
         meta = sample["meta"]
+        anchor_stem = meta["anchor_stem"]
         stems_present = meta["stems_present"]
         error_category = meta["error_category"]
         target_stem = meta["target_stem"]
@@ -103,7 +104,7 @@ def edit_split_jsonl(split_name: str, config: DictConfig, rng: random.Random) ->
 
         # Regenerate instruction
         new_instruction = create_instruction(
-            config.instruction_templates, duration_sec, stems_present, rng
+            config.instruction_templates, duration_sec, stems_present, anchor_stem, rng
         )
 
         # Regenerate response

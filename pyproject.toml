@@ -130,6 +130,32 @@ multi_line_output = 3
 line_length = 88
 known_first_party = ["src", "configs", "scripts"]
 
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "env",
+    "venv",
+    "unsloth_compiled_cache",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "UP", # pyupgrade
+    "B",  # bugbear
+    "PL", # pylint (subset)
+]
+ignore = [
+    "E203", # whitespace before ':' (black compatibility)
+    "W503", # line break before binary operator (black compatibility)
+]
+
 [tool.mypy]
 python_version = "3.8"
 warn_return_any = true
