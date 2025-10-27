@@ -118,6 +118,14 @@ def main(cfg: DictConfig):
         f"{final_model_dir}/audio_projection.bin",
     )
 
+    # Save MERT encoder weights if using MERT (contains trainable layer_weights)
+    if hasattr(model.audio_encoder, "layer_weights"):
+        logger.info("Saving MERT encoder weights (trainable layer weights)...")
+        torch.save(
+            model.audio_encoder.state_dict(),
+            f"{final_model_dir}/mert_encoder.bin",
+        )
+
     target_modules = cfg.model.lora.get("target_modules", [])
     if len(target_modules) > 0:
         logger.info("Saving PEFT adapter files to final model directory...")

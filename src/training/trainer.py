@@ -75,6 +75,13 @@ class ExperimentTrackingCallback(TrainerCallback):
             f"{checkpoint_dir}/audio_projection.bin",
         )
 
+        # Save MERT encoder weights (including the 25 trainable layer weights)
+        if hasattr(self.model.audio_encoder, "layer_weights"):
+            torch.save(
+                self.model.audio_encoder.state_dict(),
+                f"{checkpoint_dir}/mert_encoder.bin",
+            )
+
         # Save LoRA adapter files (these are needed for inference)
         # Only save if the model has PEFT adapters
         if hasattr(self.model.llm, "save_pretrained") and hasattr(

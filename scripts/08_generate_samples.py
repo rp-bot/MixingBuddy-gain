@@ -34,7 +34,7 @@ def main(cfg: DictConfig):
 
     # Load test dataset
     limit = cfg.evaluation.num_generation_samples
-    test_dataset = load_dataset(cfg, "train", limit=limit)
+    test_dataset = load_dataset(cfg, "test", limit=limit)
 
     # Get generation parameters from config
     max_new_tokens = cfg.evaluation.max_new_tokens

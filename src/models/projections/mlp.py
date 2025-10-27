@@ -7,7 +7,7 @@ non-linear activations, and regularization techniques to increase information ca
 
 import torch
 import torch.nn as nn
-from typing import Optional, List
+from typing import  List
 
 
 class MLPProjection(nn.Module):

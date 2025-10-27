@@ -92,6 +92,15 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
             strict=cfg.evaluation.model_loading.strict_loading,
         )
 
+    # Load MERT encoder weights if available (contains trainable layer_weights)
+    mert_path = f"{checkpoint_path}/mert_encoder.bin"
+    if os.path.exists(mert_path):
+        logger.info("Loading MERT encoder weights from %s", mert_path)
+        mert_state_dict = torch.load(mert_path, map_location=map_location)
+        model.audio_encoder.load_state_dict(mert_state_dict)
+    else:
+        logger.info("No MERT encoder weights found, using default initialization")
+
     model.eval()
     for param in model.parameters():
         param.requires_grad = False
