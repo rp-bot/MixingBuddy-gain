@@ -15,9 +15,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.simple_dataset import SimpleInstrumentDataset
-from src.models.modular_multimodal_model import ModularMultimodalModel
-from src.models.checkpoint_loading import load_trained_model
+from src.data.simple_dataset import SimpleInstrumentDataset  # noqa: E402
+from src.models.modular_multimodal_model import ModularMultimodalModel  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
