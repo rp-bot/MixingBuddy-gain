@@ -17,7 +17,6 @@ from src.data.audio_processing import load_track_stems, chunk_audio
 from src.data.gating import apply_gating
 from src.data.error_injection import sample_error_category, apply_gain_error
 from src.data.text_generation import create_instruction, create_response
-from src.utils.audio_utils import save_audio
 
 
 def sample_target_stem(
@@ -144,10 +143,7 @@ def process_split(
 
     # Create output directories
     split_output_dir = output_root / split_name
-    flawed_mixes_dir = split_output_dir / "flawed_mixes"
-    reference_mixes_dir = split_output_dir / "reference_mixes"
-    flawed_mixes_dir.mkdir(parents=True, exist_ok=True)
-    reference_mixes_dir.mkdir(parents=True, exist_ok=True)
+    split_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get list of tracks
     split_dir = musdb_root / split_name
@@ -187,29 +183,27 @@ def process_split(
                 chunk_stems, target_stem, config.anchor.fallback_order
             )
 
-            # Synthesize chunk
-            reference_mix, flawed_mix, metadata = synthesize_chunk(
-                chunk_stems, target_stem, error_category, config, rng
-            )
+            # Synthesize chunk metadata (no audio generation needed for on-the-fly)
+            metadata = {
+                "target_stem": target_stem,
+                "error_category": error_category,
+                "intended_gain_db": 0.0,  # Will be calculated during synthesis
+                "stems_present": list(chunk_stems.keys()),
+            }
 
-            # Create filenames
+            # Calculate intended gain for the error category
+            if error_category != "no_error":
+                from src.data.error_injection import apply_gain_error
+
+                # Apply gain error to get the actual gain value
+                _, actual_gain_db = apply_gain_error(
+                    chunk_stems[target_stem], error_category, config.error, rng
+                )
+                metadata["intended_gain_db"] = actual_gain_db
+
+            # Create filenames for reference (optional, for potential future use)
             chunk_filename = f"track{track_idx:03d}_chunk{chunk_idx:03d}"
-            flawed_mix_path = flawed_mixes_dir / f"{chunk_filename}_flawed.wav"
-            reference_mix_path = reference_mixes_dir / f"{chunk_filename}_reference.wav"
-
-            # Save audio files
-            save_audio(
-                flawed_mix,
-                flawed_mix_path,
-                config.audio.sample_rate,
-                config.audio.bit_depth,
-            )
-            save_audio(
-                reference_mix,
-                reference_mix_path,
-                config.audio.sample_rate,
-                config.audio.bit_depth,
-            )
+            reference_mix_path = f"reference_mixes/{chunk_filename}_reference.wav"  # Keep as reference path
 
             # Create instruction and response
             instruction = create_instruction(
@@ -232,8 +226,9 @@ def process_split(
                 "global_uid": f"{split_name}_{chunk_filename}",
                 "instruction": instruction,
                 "response": response,
-                "flawed_mix_path": str(flawed_mix_path),
-                "reference_mix_path": str(reference_mix_path),
+                "reference_mix_path": str(
+                    reference_mix_path
+                ),  # Keep for potential future use
                 "meta": {
                     "track_name": track_dir.name,
                     "split": split_name,

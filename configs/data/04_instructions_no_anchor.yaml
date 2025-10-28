@@ -5,9 +5,9 @@ paths:
 
 # Dataset paths
 train_jsonl_path: data/musdb18hq_processed/train/training_samples_instructions_no_anchor.jsonl
-train_audio_root: data/musdb18hq_processed/train/flawed_mixes
+# train_audio_root: data/musdb18hq_processed/train/flawed_mixes
 test_jsonl_path: data/musdb18hq_processed/test/test_samples_instructions_no_anchor.jsonl
-test_audio_root: data/musdb18hq_processed/test/flawed_mixes
+# test_audio_root: data/musdb18hq_processed/test/flawed_mixes
 
 # Training parameters
 error:

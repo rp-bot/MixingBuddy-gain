@@ -7,7 +7,6 @@ import librosa
 import numpy as np
 from torch.utils.data import Dataset
 
-from src.data.error_injection import apply_gain_error
 from src.utils.audio_utils import db_to_linear
 
 
@@ -76,10 +75,32 @@ class MusdbDataset(Dataset):
         stems = {}
         for stem_name, stem_path in item["meta"]["paths"]["stems"].items():
             audio, _ = librosa.load(str(stem_path), sr=self.sample_rate, mono=True)
-            # Extract chunk based on time reference
+            # Extract chunk based on time reference with bounds checking
             start_sample = int(item["meta"]["time_ref"]["start_sec"] * self.sample_rate)
             end_sample = int(item["meta"]["time_ref"]["end_sec"] * self.sample_rate)
-            stems[stem_name] = audio[start_sample:end_sample]
+
+            # Ensure indices are within bounds
+            start_sample = max(0, min(start_sample, len(audio)))
+            end_sample = max(start_sample, min(end_sample, len(audio)))
+
+            # Extract chunk
+            chunk = audio[start_sample:end_sample]
+
+            # If chunk is shorter than expected, pad with zeros
+            expected_length = int(
+                (
+                    item["meta"]["time_ref"]["end_sec"]
+                    - item["meta"]["time_ref"]["start_sec"]
+                )
+                * self.sample_rate
+            )
+            if len(chunk) < expected_length:
+                padding_length = expected_length - len(chunk)
+                chunk = np.pad(
+                    chunk, (0, padding_length), mode="constant", constant_values=0
+                )
+
+            stems[stem_name] = chunk
 
         # Apply error to target stem
         target_stem = item["meta"]["target_stem"]

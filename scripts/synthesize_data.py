@@ -19,7 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from src.data.synthesis import process_split
 
 
-@hydra.main(version_base=None, config_path="../configs/data", config_name="03_synthesis_instructions")
+@hydra.main(version_base=None, config_path="../configs/data", config_name="04_instructions_no_anchor")
 def main(cfg: DictConfig) -> None:
     """Main function to synthesize training data."""
     print("Starting data synthesis...")
