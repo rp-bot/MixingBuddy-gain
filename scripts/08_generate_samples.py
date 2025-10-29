@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="10_eval_projection_only",
+    config_name="11_eval_mert_musdb_expanded",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -34,7 +34,7 @@ def main(cfg: DictConfig):
 
     # Load test dataset
     limit = cfg.evaluation.num_generation_samples
-    test_dataset = load_dataset(cfg, "test", limit=limit)
+    test_dataset = load_dataset(cfg, "test", limit=limit, random_seed=cfg.env.seed)
 
     # Get generation parameters from config
     max_new_tokens = cfg.evaluation.max_new_tokens

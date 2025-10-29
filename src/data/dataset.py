@@ -1,4 +1,5 @@
 import json
+import random
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -34,6 +35,7 @@ class MixingDataset(Dataset):
         system_message: str,
         use_instructions: bool,
         limit: Optional[int] = None,
+        random_seed: Optional[int] = None,
     ):
         """
         Args:
@@ -43,6 +45,7 @@ class MixingDataset(Dataset):
             system_message: The system message to prepend to the conversation
             use_instructions: Whether to include instruction text in training
             limit: Optional limit on number of samples to load
+            random_seed: Optional random seed for reproducible random sampling
         """
         self.jsonl_path = Path(jsonl_path)
         self.audio_root = Path(audio_root)
@@ -53,7 +56,14 @@ class MixingDataset(Dataset):
         # Load data
         self.data = load_jsonl(self.jsonl_path)
         if limit is not None:
-            self.data = self.data[:limit]
+            if random_seed is not None:
+                # Set random seed for reproducible sampling
+                random.seed(random_seed)
+                # Randomly sample without replacement
+                self.data = random.sample(self.data, min(limit, len(self.data)))
+            else:
+                # Take first N samples (original behavior)
+                self.data = self.data[:limit]
 
         print(f"Loaded {len(self.data)} samples from {self.jsonl_path}")
 
@@ -86,7 +96,7 @@ class MixingDataset(Dataset):
             "sample_rate": self.sample_rate,
             "instruction": instruction,
             "response": response,
-            "reference_mix_path": item["reference_mix_path"],
+            # "reference_mix_path": item["reference_mix_path"],
             "target_stem": item["meta"]["target_stem"],
             "error_category": item["meta"]["error_category"],
             "global_uid": item["global_uid"],

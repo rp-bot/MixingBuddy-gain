@@ -83,13 +83,8 @@ class ExperimentTracker:
         else:
             exp_type = self.config.experiment_naming.naming.components.exp_type.lora
 
-        # Version (use timestamp for uniqueness)
-        import datetime
-
-        timestamp = datetime.datetime.now().strftime("%m%d-%H%M")
-
-        # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}-{timestamp}
-        run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}-{timestamp}"
+        # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}
+        run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}"
 
         return run_name
 

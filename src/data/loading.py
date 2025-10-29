@@ -3,7 +3,7 @@ from typing import Tuple
 
 from omegaconf import DictConfig
 
-from src.data.musdb_dataset import MusdbDataset
+from src.data.dataset import MixingDataset
 from src.utils.model_utils import IterableDatasetWrapper
 
 
@@ -19,7 +19,7 @@ def load_datasets(cfg: DictConfig, tokenizer) -> Tuple[object, object, object]:
         cfg.data.audio.sample_rate,
     )
 
-    full_train_pytorch_dataset = MusdbDataset(
+    full_train_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.train_jsonl_path,
         audio_root=cfg.data.train_audio_root,
         sample_rate=cfg.data.audio.sample_rate,
@@ -29,7 +29,7 @@ def load_datasets(cfg: DictConfig, tokenizer) -> Tuple[object, object, object]:
     )
     full_train_dataset = IterableDatasetWrapper(full_train_pytorch_dataset)
 
-    test_pytorch_dataset = MusdbDataset(
+    test_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.test_jsonl_path,
         audio_root=cfg.data.test_audio_root,
         sample_rate=cfg.data.audio.sample_rate,

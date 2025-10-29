@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="10_train_projection_only",
+    config_name="11_train_mert_musdb_expanded",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -104,12 +104,76 @@ def main(cfg: DictConfig):
         callbacks=callbacks,
     )
 
+    # Define output directory before training
+    final_model_dir = training_args.output_dir
+
+    # Resolve resume checkpoint if enabled
+    resume_from_checkpoint: str | None = None
+    if cfg.training.resume.enabled:
+        checkpoint_path = PROJECT_ROOT / cfg.training.resume.checkpoint_path
+        if checkpoint_path.exists():
+            # Detect if this is a full HF checkpoint (has optimizer/scheduler/state)
+            has_trainer_state = (checkpoint_path / "trainer_state.json").exists()
+            has_optimizer = (checkpoint_path / "optimizer.pt").exists()
+            if has_trainer_state and has_optimizer:
+                resume_from_checkpoint = str(checkpoint_path)
+                logger.info(
+                    "Resuming full training state from checkpoint: %s (epoch, step, LR scheduler)",
+                    resume_from_checkpoint,
+                )
+            else:
+                logger.info(
+                    "Checkpoint found but missing optimizer/scheduler; performing weight-only warm start from: %s",
+                    checkpoint_path,
+                )
+                # Weight-only warm start
+                projection_path = checkpoint_path / "audio_projection.bin"
+                if projection_path.exists():
+                    logger.info("Loading projection weights from %s", projection_path)
+                    state_dict = torch.load(projection_path, map_location="cpu")
+                    model.audio_projection.load_state_dict(state_dict)
+                mert_path = checkpoint_path / "mert_encoder.bin"
+                if mert_path.exists():
+                    logger.info("Loading MERT encoder weights from %s", mert_path)
+                    mert_state_dict = torch.load(mert_path, map_location="cpu")
+                    model.audio_encoder.load_state_dict(mert_state_dict)
+        else:
+            logger.warning(
+                "Resume enabled but checkpoint not found at: %s; starting from scratch",
+                checkpoint_path,
+            )
+    else:
+        logger.info("Resume disabled; starting from scratch")
+
     logger.info("Starting training... (optimizer diagnostic at step 0)")
-    trainer.train()
-    logger.info("Training finished.")
+    try:
+        if resume_from_checkpoint is not None:
+            trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+        else:
+            trainer.train()
+        logger.info("Training finished successfully.")
+    except Exception as e:
+        logger.error(f"Training failed with error: {e}")
+        logger.info("Attempting to save current state...")
+        # Try to save whatever we have
+        try:
+            trainer.save_model(final_model_dir)
+            torch.save(
+                model.audio_projection.state_dict(),
+                f"{final_model_dir}/audio_projection.bin",
+            )
+            # Save MERT encoder weights if using MERT
+            if hasattr(model.audio_encoder, "layer_weights"):
+                torch.save(
+                    model.audio_encoder.state_dict(),
+                    f"{final_model_dir}/mert_encoder.bin",
+                )
+            logger.info("Partial model saved despite training failure.")
+        except Exception as save_error:
+            logger.error(f"Failed to save model: {save_error}")
+        raise
 
     logger.info("Saving final model...")
-    final_model_dir = training_args.output_dir
     trainer.save_model(final_model_dir)
 
     logger.info("Saving custom model components (audio projection)...")

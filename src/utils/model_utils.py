@@ -172,13 +172,8 @@ def generate_run_name(cfg: DictConfig):
     else:
         exp_type = cfg.experiment_naming.naming.components.exp_type.lora
 
-    # Version (use timestamp for uniqueness)
-    import datetime
-
-    timestamp = datetime.datetime.now().strftime("%m%d-%H%M")
-
-    # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}-{timestamp}
-    run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}-{timestamp}"
+    # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}
+    run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}"
 
     return run_name
 
@@ -285,6 +280,7 @@ def load_dataset(
     cfg: DictConfig,
     dataset_type: str = "train",
     limit: Optional[int] = None,
+    random_seed: Optional[int] = None,
 ):
     """Load a dataset (train, validation, or test)."""
     from src.data.dataset import MixingDataset
@@ -312,6 +308,7 @@ def load_dataset(
         limit=limit,
         use_instructions=cfg.data.use_instructions,
         system_message=cfg.data.system_message,
+        random_seed=random_seed,
     )
 
     print(f"{dataset_type.title()} dataset size: {len(dataset)} samples")

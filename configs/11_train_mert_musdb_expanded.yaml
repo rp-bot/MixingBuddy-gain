@@ -1,0 +1,28 @@
+# @package _global_
+
+# Training config with MERT encoder and multi-anchor data
+# Experiment 11: MERT + multi-anchor MUSDB data
+# Tests MERT audio encoder with the new multi-anchor dataset configuration
+
+defaults:
+  - data: 05_musdb_expanded
+  - model: qwen2_7b_mert_musdb_expanded
+  - training: 11_training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}

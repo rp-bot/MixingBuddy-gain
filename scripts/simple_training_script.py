@@ -71,6 +71,7 @@ def main():
         greater_is_better=False,
         report_to="none",
         remove_unused_columns=False,
+        # Specify which columns to use as labels for loss computation
         label_names=["labels"],
         disable_tqdm=False,
         # Don't use fp16/bf16 training with QLoRA - quantization handles precision

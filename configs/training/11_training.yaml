@@ -1,0 +1,38 @@
+# Training arguments
+training_args:
+  output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
+  num_train_epochs: 100 # Longer training run
+  per_device_train_batch_size: 2 # Reduced for MERT memory usage
+  per_device_eval_batch_size: 2 # Reduced for MERT memory usage
+  gradient_accumulation_steps: 8 # Increased to maintain effective batch size of 16
+  lr_scheduler_type: "cosine" # Better for fine-tuning
+  learning_rate: 1e-4 # Reduced for more stable training
+  weight_decay: 0.01 # L2 regularization strength to prevent overfitting
+  warmup_ratio: 0.01 # 1% warmup = 2,310 steps instead of 23,100
+  max_grad_norm: 1 # Higher gradient clipping for more aggressive learning
+  logging_steps: 5 # More frequent logging
+  save_steps: 200 # Save every 200 steps
+  logging_first_step: true # Log the first step
+  logging_strategy: "steps" # Log at every logging_steps
+  save_total_limit: 2 # Keep more checkpoints
+  save_strategy: "steps"
+  eval_strategy: "no" # Disable evaluation entirely
+  load_best_model_at_end: false
+  report_to: "none" # Disable tracking
+  run_name: null # Will be set automatically if null
+  disable_tqdm: false # Enable progress bars
+
+# Mixed precision training
+mixed_precision:
+  enabled: true
+  dtype: "bf16" # or "fp16"
+
+# Early stopping
+early_stopping:
+  enabled: false # Disabled since evaluation is disabled
+  patience: 3
+
+# Resume training configuration
+resume:
+  enabled: true
+  checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb-1029-0952/checkpoint-1200" # Absolute path to checkpoint
