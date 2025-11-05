@@ -11,6 +11,28 @@ import logging
 from transformers import TrainingArguments, EarlyStoppingCallback
 from trl import SFTTrainer
 
+# Allowlist required globals for torch.load(weights_only=True) introduced in PyTorch 2.6
+# This is safe here because checkpoints are produced by our own training pipeline.
+try:
+    import numpy as np  # noqa: F401
+    safe_globals = []
+    # Common path in NumPy
+    try:
+        safe_globals.append(np.core.multiarray._reconstruct)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    # Some environments reference it via np._core
+    try:
+        safe_globals.append(np._core.multiarray._reconstruct)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    if len(safe_globals) > 0:
+        torch.serialization.add_safe_globals(safe_globals)
+except Exception as e:
+    # If anything goes wrong, fall back silently; Trainer may still work depending on PyTorch version
+    print(f"Error adding safe globals: {e}")
+    pass
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -46,7 +68,7 @@ def main(cfg: DictConfig):
     )
     training_args_dict["remove_unused_columns"] = False
     training_args_dict["label_names"] = ["labels"]
-    training_args_dict["disable_tqdm"] = False
+    training_args_dict["disable_tqdm"] = True
 
     if tracker:
         run_name = tracker._current_run_name
@@ -148,6 +170,28 @@ def main(cfg: DictConfig):
     logger.info("Starting training... (optimizer diagnostic at step 0)")
     try:
         if resume_from_checkpoint is not None:
+            # Pre-validate rng_state compatibility with PyTorch 2.6 weights_only semantics
+            try:
+                rng_file = Path(resume_from_checkpoint) / "rng_state.pth"
+                if rng_file.exists():
+                    try:
+                        _ = torch.load(rng_file)
+                    except Exception:
+                        try:
+                            _ = torch.load(rng_file, weights_only=False)
+                        except Exception:
+                            logger.warning(
+                                "Incompatible rng_state.pth detected; deleting to proceed with resume."
+                            )
+                            try:
+                                rng_file.unlink()
+                            except Exception as unlink_err:
+                                logger.warning(
+                                    "Failed to delete rng_state.pth (%s); continuing without it may still fail.",
+                                    unlink_err,
+                                )
+            except Exception as rng_check_err:
+                logger.debug("RNG state pre-check failed: %s", rng_check_err)
             trainer.train(resume_from_checkpoint=resume_from_checkpoint)
         else:
             trainer.train()

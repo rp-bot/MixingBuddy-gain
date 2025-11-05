@@ -35,4 +35,4 @@ early_stopping:
 # Resume training configuration
 resume:
   enabled: true
-  checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-4400" # Absolute path to checkpoint
+  checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-13000" # Absolute path to checkpoint
