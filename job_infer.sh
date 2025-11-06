@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -J Inference_H100_Job           # Job name
+#SBATCH -J h100_infer_job           # Job name
 #SBATCH -N1 --ntasks-per-node=1         # 1 node and 1 core
 #SBATCH --gres=gpu:H100:1               # Request 1 H100 GPU
 #SBATCH --mem-per-gpu=224GB             # Recommended memory for H100
 #SBATCH -t04:00:00                      # 4 hours of walltime (adjust as needed)
-#SBATCH -o h100_infer-%j.out            # Output file name (%j = job ID)
+#SBATCH -o outputs/logs/h100_infer-%j.out            # Output file name (%j = job ID)
 
 # --- Optional Email Notifications ---
 #SBATCH --mail-type=END,BEGIN,FAIL      # Send email on job events
