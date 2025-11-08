@@ -1,10 +1,11 @@
 # @package _global_
 
-# Evaluation config for MERT + multi-anchor training with deeper projection MLP (experiment 12)
-# This evaluates the model trained with MERT encoder, multi-anchor MUSDB data, and deeper MLP projection
+# Evaluation config for Experiment 13: Frozen projection + strategic LoRA adapters
+# Evaluates model trained with frozen exp 11 projection and LoRA adapters on output layers
+
 defaults:
   - data: 05_musdb_expanded
-  - model: qwen2_7b_mert_musdb_expanded_deeper
+  - model: qwen2_7b_mert_lora_outputs
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility
   - experiment_tracking: wandb
@@ -19,22 +20,22 @@ env:
   # Output directory will be determined by checkpoint run name
 
 # Model checkpoint settings
-# Set this to the path of your trained MERT + multi-anchor + deeper MLP model checkpoint
+# Set this to the path of your trained experiment 13 model checkpoint
 # Options:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
-checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-deeper-r16a32-musdb/checkpoint-34000" # Update this to the trained checkpoint path
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-lora-outputs-r8a16-musdb/checkpoint-800" # Update this to the trained experiment 13 checkpoint path
 
 # IMPORTANT: The evaluation output directory will be automatically determined
 # from the checkpoint path. For example, if checkpoint is:
-# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-deeper-r16a32-musdb/checkpoint-XXX"
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-lora-outputs-r16a32-musdb-XXXX-XXXX/checkpoint-XXX"
 # Then evaluation will be saved to:
-# "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-deeper-r16a32-musdb/predictions/"
+# "outputs/evaluation/qlora-qwen2-7b-mert-lora-outputs-r16a32-musdb-XXXX-XXXX/predictions/"
 
 # Predictions file path for metrics computation
 # If not specified, the script will use the new evaluation structure
-# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-deeper-r16a32-musdb/predictions/predictions.jsonl"
+# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-lora-outputs-r16a32-musdb-XXXX-XXXX/predictions/predictions.jsonl"
 
 # Plotting configuration
 plotting:
@@ -47,9 +48,9 @@ experiment_tracking:
   use_wandb: false
   use_mlflow: false
 
-# Evaluation-specific overrides for MERT + multi-anchor + deeper MLP model
+# Evaluation-specific overrides
 evaluation:
-  # Use the trained MERT projection weights
+  # Use the trained projection weights (frozen from exp 11) + trained LoRA adapters
   use_random_projection: false # Use the trained projection weights
 
   # Generation samples for evaluation
@@ -58,4 +59,10 @@ evaluation:
   # Memory settings - MERT should be memory efficient
   memory:
     max_memory_usage_gb: 8.0 # MERT is efficient but still needs some headroom
+
+# Training resume config (needed for projection/encoder weight loading during eval)
+training:
+  resume:
+    enabled: false
+    checkpoint_path: null # Will be set to the same as checkpoint_path during evaluation
 

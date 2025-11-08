@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Tuple
 
 import torch
@@ -77,6 +78,68 @@ def initialize_model_and_tokenizer(
         encoder_config=cfg.model.get("encoder"),
         projection_config=cfg.model.get("projection"),
     )
+    
+    # Handle frozen projection and encoder weights loading
+    freeze_projection = cfg.model.projection.get("freeze_projection", False)
+    freeze_layer_weights = cfg.model.encoder.get("freeze_layer_weights", False)
+    
+    if freeze_projection or freeze_layer_weights:
+        # Get checkpoint path from resume config
+        checkpoint_path = cfg.training.resume.get("checkpoint_path", None)
+        if checkpoint_path is None:
+            raise ValueError(
+                "freeze_projection or freeze_layer_weights is enabled but no checkpoint_path provided in training.resume"
+            )
+        
+        if not os.path.exists(checkpoint_path):
+            raise ValueError(
+                f"Checkpoint path does not exist: {checkpoint_path}"
+            )
+        
+        logger.info("Loading pre-trained weights from checkpoint: %s", checkpoint_path)
+        
+        # Load and freeze projection weights
+        if freeze_projection:
+            projection_path = os.path.join(checkpoint_path, "audio_projection.bin")
+            if not os.path.exists(projection_path):
+                raise ValueError(
+                    f"Projection weights not found at: {projection_path}"
+                )
+            
+            logger.info("Loading and freezing projection weights from %s", projection_path)
+            projection_state_dict = torch.load(
+                projection_path, 
+                map_location="cuda" if torch.cuda.is_available() else "cpu"
+            )
+            model.audio_projection.load_state_dict(projection_state_dict)
+            
+            # Freeze all projection parameters
+            for param in model.audio_projection.parameters():
+                param.requires_grad = False
+            
+            logger.info("Projection weights loaded and frozen")
+        
+        # Load and freeze MERT layer weights
+        if freeze_layer_weights:
+            mert_path = os.path.join(checkpoint_path, "mert_encoder.bin")
+            if os.path.exists(mert_path):
+                logger.info("Loading and freezing MERT layer_weights from %s", mert_path)
+                mert_state_dict = torch.load(
+                    mert_path,
+                    map_location="cuda" if torch.cuda.is_available() else "cpu"
+                )
+                model.audio_encoder.load_state_dict(mert_state_dict)
+                
+                # Ensure layer_weights are frozen (should already be from encoder init)
+                model.audio_encoder.layer_weights.requires_grad = False
+                logger.info("MERT layer_weights loaded and frozen")
+            else:
+                logger.warning(
+                    "freeze_layer_weights is True but no mert_encoder.bin found at %s. "
+                    "Layer weights will use default initialization.",
+                    mert_path
+                )
+    
     logger.info("Model and tokenizer initialized.")
     model.print_trainable_parameters()
     return model, tokenizer

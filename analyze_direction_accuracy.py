@@ -453,90 +453,90 @@ def analyze_predictions(predictions_path):
             print(f"    Correct all components: {cat_stats['correct_all_components']} ({100*cat_stats['correct_all_components']/cat_stats['total']:.1f}%)")
             print(f"    Exact match: {cat_stats['exact_match']} ({100*cat_stats['exact_match']/cat_stats['total']:.1f}%)")
     
-    print(f"\nDirection Errors: {len(stats['direction_errors'])}")
-    if stats['direction_errors']:
-        print("\n  Sample direction errors:")
-        for i, err in enumerate(stats['direction_errors'][:5], 1):
-            print(f"\n    {i}. {err['uid']}")
-            print(f"       Category: {err['error_category']}")
-            print(f"       Expected direction: {err['gt_direction']}")
-            print(f"       Predicted direction: {err['pred_direction']}")
-            print(f"       Expected stem: {err['gt_stem']}")
-            print(f"       Predicted stem: {err['pred_stem']}")
-            # Show first sentence of generated text
-            first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
-            print(f"       First sentence (generated): {first_sent[:150]}")
-            print(f"       Ground truth: {err['ground_truth'][:100]}...")
+    # print(f"\nDirection Errors: {len(stats['direction_errors'])}")
+    # if stats['direction_errors']:
+    #     print("\n  Sample direction errors:")
+    #     for i, err in enumerate(stats['direction_errors'][:5], 1):
+    #         print(f"\n    {i}. {err['uid']}")
+    #         print(f"       Category: {err['error_category']}")
+    #         print(f"       Expected direction: {err['gt_direction']}")
+    #         print(f"       Predicted direction: {err['pred_direction']}")
+    #         print(f"       Expected stem: {err['gt_stem']}")
+    #         print(f"       Predicted stem: {err['pred_stem']}")
+    #         # Show first sentence of generated text
+    #         first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
+    #         print(f"       First sentence (generated): {first_sent[:150]}")
+    #         print(f"       Ground truth: {err['ground_truth'][:100]}...")
     
-    print(f"\nStem Errors: {len(stats['stem_errors'])}")
-    if stats['stem_errors']:
-        print("\n  Sample stem errors:")
-        for i, err in enumerate(stats['stem_errors'][:5], 1):
-            print(f"\n    {i}. {err['uid']}")
-            print(f"       Category: {err['error_category']}")
-            print(f"       Expected stem: {err['gt_stem']}")
-            print(f"       Predicted stem: {err['pred_stem']}")
-            print(f"       Expected direction: {err['gt_direction']}")
-            print(f"       Predicted direction: {err['pred_direction']}")
-            # Show first sentence of generated text
-            first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
-            print(f"       First sentence (generated): {first_sent[:150]}")
-            print(f"       Ground truth: {err['ground_truth'][:100]}...")
+    # print(f"\nStem Errors: {len(stats['stem_errors'])}")
+    # if stats['stem_errors']:
+    #     print("\n  Sample stem errors:")
+    #     for i, err in enumerate(stats['stem_errors'][:5], 1):
+    #         print(f"\n    {i}. {err['uid']}")
+    #         print(f"       Category: {err['error_category']}")
+    #         print(f"       Expected stem: {err['gt_stem']}")
+    #         print(f"       Predicted stem: {err['pred_stem']}")
+    #         print(f"       Expected direction: {err['gt_direction']}")
+    #         print(f"       Predicted direction: {err['pred_direction']}")
+    #         # Show first sentence of generated text
+    #         first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
+    #         print(f"       First sentence (generated): {first_sent[:150]}")
+    #         print(f"       Ground truth: {err['ground_truth'][:100]}...")
     
-    print(f"\nSolution Direction Errors: {len(stats['solution_direction_errors'])}")
-    if stats['solution_direction_errors']:
-        print("\n  Sample solution direction errors:")
-        for i, err in enumerate(stats['solution_direction_errors'][:5], 1):
-            print(f"\n    {i}. {err['uid']}")
-            print(f"       Category: {err['error_category']}")
-            print(f"       Expected solution: {err['gt_solution_direction']}")
-            print(f"       Predicted solution: {err['pred_solution_direction']}")
-            print(f"       Expected problem direction: {err['gt_direction']}")
-            print(f"       Predicted problem direction: {err['pred_direction']}")
-            print(f"       Expected stem: {err['gt_stem']}")
-            print(f"       Predicted stem: {err['pred_stem']}")
-            # Show second sentence of generated text
-            sentences = re.split(r'[.\n]|Assistant:', err['generated'])
-            second_sent = sentences[1].strip() if len(sentences) > 1 else ""
-            print(f"       Second sentence (generated): {second_sent[:150]}")
-            print(f"       Ground truth: {err['ground_truth'][:100]}...")
+    # print(f"\nSolution Direction Errors: {len(stats['solution_direction_errors'])}")
+    # if stats['solution_direction_errors']:
+    #     print("\n  Sample solution direction errors:")
+    #     for i, err in enumerate(stats['solution_direction_errors'][:5], 1):
+    #         print(f"\n    {i}. {err['uid']}")
+    #         print(f"       Category: {err['error_category']}")
+    #         print(f"       Expected solution: {err['gt_solution_direction']}")
+    #         print(f"       Predicted solution: {err['pred_solution_direction']}")
+    #         print(f"       Expected problem direction: {err['gt_direction']}")
+    #         print(f"       Predicted problem direction: {err['pred_direction']}")
+    #         print(f"       Expected stem: {err['gt_stem']}")
+    #         print(f"       Predicted stem: {err['pred_stem']}")
+    #         # Show second sentence of generated text
+    #         sentences = re.split(r'[.\n]|Assistant:', err['generated'])
+    #         second_sent = sentences[1].strip() if len(sentences) > 1 else ""
+    #         print(f"       Second sentence (generated): {second_sent[:150]}")
+    #         print(f"       Ground truth: {err['ground_truth'][:100]}...")
     
-    print(f"\nMagnitude Errors: {len(stats['magnitude_errors'])}")
-    if stats['magnitude_errors']:
-        print("\n  Sample magnitude errors:")
-        for i, err in enumerate(stats['magnitude_errors'][:5], 1):
-            print(f"\n    {i}. {err['uid']}")
-            print(f"       Category: {err['error_category']}")
-            print(f"       Expected range: {err['expected_min']} - {err['expected_max']} dB")
-            print(f"       Predicted range: {err['pred_min']} - {err['pred_max']} dB")
-            print(f"       Expected stem: {err['gt_stem']}")
-            print(f"       Predicted stem: {err['pred_stem']}")
-            # Show first sentence of generated text
-            first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
-            print(f"       First sentence (generated): {first_sent[:150]}")
-            print(f"       Ground truth: {err['ground_truth'][:100]}...")
+    # print(f"\nMagnitude Errors: {len(stats['magnitude_errors'])}")
+    # if stats['magnitude_errors']:
+    #     print("\n  Sample magnitude errors:")
+    #     for i, err in enumerate(stats['magnitude_errors'][:5], 1):
+    #         print(f"\n    {i}. {err['uid']}")
+    #         print(f"       Category: {err['error_category']}")
+    #         print(f"       Expected range: {err['expected_min']} - {err['expected_max']} dB")
+    #         print(f"       Predicted range: {err['pred_min']} - {err['pred_max']} dB")
+    #         print(f"       Expected stem: {err['gt_stem']}")
+    #         print(f"       Predicted stem: {err['pred_stem']}")
+    #         # Show first sentence of generated text
+    #         first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
+    #         print(f"       First sentence (generated): {first_sent[:150]}")
+    #         print(f"       Ground truth: {err['ground_truth'][:100]}...")
     
-    print(f"\nBoth Errors (wrong direction AND wrong stem): {len(stats['both_errors'])}")
-    if stats['both_errors']:
-        print("\n  Sample errors (both wrong):")
-        for i, err in enumerate(stats['both_errors'][:5], 1):
-            print(f"\n    {i}. {err['uid']}")
-            print(f"       Category: {err['error_category']}")
-            print(f"       Expected: {err['gt_stem']} ({err['gt_direction']})")
-            print(f"       Predicted: {err['pred_stem']} ({err['pred_direction']})")
-            # Show first sentence of generated text
-            first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
-            print(f"       First sentence (generated): {first_sent[:150]}")
-            print(f"       Ground truth: {err['ground_truth'][:100]}...")
+    # print(f"\nBoth Errors (wrong direction AND wrong stem): {len(stats['both_errors'])}")
+    # if stats['both_errors']:
+    #     print("\n  Sample errors (both wrong):")
+    #     for i, err in enumerate(stats['both_errors'][:5], 1):
+    #         print(f"\n    {i}. {err['uid']}")
+    #         print(f"       Category: {err['error_category']}")
+    #         print(f"       Expected: {err['gt_stem']} ({err['gt_direction']})")
+    #         print(f"       Predicted: {err['pred_stem']} ({err['pred_direction']})")
+    #         # Show first sentence of generated text
+    #         first_sent = err['generated'].split(".")[0].split("\n")[0].split("Assistant:")[0].strip()
+    #         print(f"       First sentence (generated): {first_sent[:150]}")
+    #         print(f"       Ground truth: {err['ground_truth'][:100]}...")
     
-    print(f"\nExact Match Errors: {len(stats['exact_match_errors'])}")
-    if stats['exact_match_errors']:
-        print("\n  Sample non-exact matches (showing differences):")
-        for i, err in enumerate(stats['exact_match_errors'][:10], 1):
-            print(f"\n    {i}. {err['uid']}")
-            print(f"       Category: {err['error_category']}")
-            print(f"       Ground truth: {err['ground_truth'][:150]}...")
-            print(f"       Generated: {err['generated'][:150]}...")
+    # print(f"\nExact Match Errors: {len(stats['exact_match_errors'])}")
+    # if stats['exact_match_errors']:
+    #     print("\n  Sample non-exact matches (showing differences):")
+    #     for i, err in enumerate(stats['exact_match_errors'][:10], 1):
+    #         print(f"\n    {i}. {err['uid']}")
+    #         print(f"       Category: {err['error_category']}")
+    #         print(f"       Ground truth: {err['ground_truth'][:150]}...")
+    #         print(f"       Generated: {err['generated'][:150]}...")
     
     print("\n" + "=" * 80)
     
@@ -544,7 +544,7 @@ def analyze_predictions(predictions_path):
 
 if __name__ == "__main__":
     predictions_path = Path(
-        "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/predictions/predictions.jsonl"
+        "outputs/evaluation/qlora-qwen2-7b-mert-lora-outputs-r8a16-musdb/predictions/predictions.jsonl"
     )
     analyze_predictions(predictions_path)
 

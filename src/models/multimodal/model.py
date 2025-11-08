@@ -75,6 +75,7 @@ class ModularMultimodalModel(nn.Module):
             mlp_config.pop("type", None)
             mlp_config.pop("use_auxiliary_loss", None)
             mlp_config.pop("auxiliary_loss_weight", None)
+            mlp_config.pop("freeze_projection", None)  # Not a parameter for MLPProjection
             self.audio_projection = MLPProjection(
                 input_dim=audio_hidden_size, output_dim=llm_hidden_size, **mlp_config
             )

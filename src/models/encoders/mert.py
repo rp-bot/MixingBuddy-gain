@@ -19,6 +19,7 @@ class MERTEncoder(nn.Module):
         self,
         model_name: str = "m-a-p/MERT-v1-330M",
         freeze: bool = True,
+        freeze_layer_weights: bool = False,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
     ):
@@ -62,7 +63,11 @@ class MERTEncoder(nn.Module):
         # Initialize with uniform weights that sum to 1
         num_layers = 25  # MERT-v1-330M has 25 layers
         self.layer_weights = nn.Parameter(torch.ones(num_layers) / num_layers)
-        # Note: these weights are ALWAYS trainable, even when encoder is frozen
+        
+        # Optionally freeze layer weights
+        self.freeze_layer_weights = freeze_layer_weights
+        if freeze_layer_weights:
+            self.layer_weights.requires_grad = False
 
     def encode(self, audio: torch.Tensor) -> torch.Tensor:
         """Encode audio and return weighted average of all layer features.
@@ -181,12 +186,14 @@ class MERTEncoder(nn.Module):
 def create_mert_encoder(
     model_name: str = "m-a-p/MERT-v1-330M",
     freeze: bool = True,
+    freeze_layer_weights: bool = False,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
 ) -> MERTEncoder:
     return MERTEncoder(
         model_name=model_name,
         freeze=freeze,
+        freeze_layer_weights=freeze_layer_weights,
         device=device,
         input_sample_rate=input_sample_rate,
     )

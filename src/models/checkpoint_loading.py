@@ -6,6 +6,7 @@ from typing import Any
 import torch
 from omegaconf import DictConfig
 from peft import PeftModel, prepare_model_for_kbit_training
+from safetensors import safe_open
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
 from src.models.modular_multimodal_model import ModularMultimodalModel
@@ -19,8 +20,6 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
     """Load a trained model for evaluation."""
     logger.info("Loading trained model for generation...")
 
-    tokenizer = initialize_tokenizer(cfg.model.model_name)
-
     checkpoint_path: Any = cfg.checkpoint_path
     if checkpoint_path == "latest":
         checkpoint_path = find_latest_checkpoint()
@@ -28,7 +27,42 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
             raise ValueError(
                 "No checkpoint found when checkpoint_path is set to 'latest'"
             )
+    
+    # Load tokenizer from checkpoint if available, otherwise use base tokenizer
+    # This ensures vocabulary size matches what was used during training
+    if checkpoint_path and os.path.exists(os.path.join(checkpoint_path, "tokenizer_config.json")):
+        logger.info("Loading tokenizer from checkpoint: %s", checkpoint_path)
+        tokenizer = initialize_tokenizer(checkpoint_path)
+    else:
+        logger.info("Loading base tokenizer from: %s", cfg.model.model_name)
+        tokenizer = initialize_tokenizer(cfg.model.model_name)
 
+    logger.info("Tokenizer vocabulary size: %d", len(tokenizer))
+    
+    # Check if checkpoint has LoRA adapters with different vocab size
+    # This handles cases where embeddings were resized during training
+    # but the saved tokenizer doesn't reflect that
+    expected_vocab_size = len(tokenizer)
+    if checkpoint_path and os.path.exists(os.path.join(checkpoint_path, "adapter_config.json")):
+        # Try to detect vocab size from adapter weights
+        adapter_file = os.path.join(checkpoint_path, "adapter_model.safetensors")
+        if os.path.exists(adapter_file):
+            with safe_open(adapter_file, framework="pt") as f:
+                # Check lm_head size to determine expected vocab size
+                for key in f.keys():
+                    if "lm_head" in key and "base_layer.weight" in key:
+                        tensor_shape = f.get_tensor(key).shape
+                        detected_vocab_size = tensor_shape[0]
+                        if detected_vocab_size != len(tokenizer):
+                            logger.warning(
+                                "Detected vocab size mismatch: tokenizer has %d tokens, "
+                                "but checkpoint LoRA weights expect %d tokens. "
+                                "Will resize to match checkpoint.",
+                                len(tokenizer), detected_vocab_size
+                            )
+                            expected_vocab_size = detected_vocab_size
+                        break
+    
     if cfg.model.use_qlora:
         logger.info("Loading base model with QLoRA quantization...")
         quantization_config = BitsAndBytesConfig(
@@ -44,6 +78,12 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
             torch_dtype="auto",
             quantization_config=quantization_config,
         )
+        
+        # Resize embeddings BEFORE preparing for kbit training
+        logger.info("Resizing token embeddings to %d", expected_vocab_size)
+        llm.resize_token_embeddings(expected_vocab_size)
+        logger.info("Model vocabulary size after resize: %d", llm.get_input_embeddings().weight.shape[0])
+        
         llm = prepare_model_for_kbit_training(llm)
     else:
         logger.info("Loading base model without quantization...")
@@ -51,8 +91,7 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
             cfg.model.model_name,
             torch_dtype="auto",
         )
-
-    llm.resize_token_embeddings(len(tokenizer))
+        llm.resize_token_embeddings(expected_vocab_size)
 
     has_lora_adapters = (
         os.path.exists(os.path.join(checkpoint_path, "adapter_config.json"))
