@@ -14,9 +14,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-/data/musdb18hq_processed
+data/
 
-/data/
 # C extensions
 *.so
 
