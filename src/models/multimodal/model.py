@@ -33,6 +33,9 @@ class ModularMultimodalModel(nn.Module):
         self.tokenizer = tokenizer
         self.config = llm.config
 
+        # Add attributes needed for HuggingFace Trainer compatibility
+        self._keys_to_ignore_on_save = []
+
         if encoder_config is None:
             encoder_config = {
                 "model_name": "facebook/encodec_24khz",

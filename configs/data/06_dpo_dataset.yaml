@@ -1,0 +1,66 @@
+# DPO Dataset Configuration
+# Converts existing mixing dataset into DPO (Direct Preference Optimization) format
+
+# Input paths - existing datasets
+input:
+  train_jsonl: data/musdb18hq_processed/train/training_samples.jsonl
+  test_jsonl: data/musdb18hq_processed/test/test_samples.jsonl
+
+# Output paths - DPO datasets
+output:
+  train_dpo_jsonl: data/musdb18hq_processed/train/training_samples_dpo.jsonl
+  test_dpo_jsonl: data/musdb18hq_processed/test/test_samples_dpo.jsonl
+  stats_file: data/musdb18hq_processed/dpo_statistics.txt
+
+# Response templates (from 05_musdb_expanded.yaml)
+response_templates:
+  no_error:
+    - "The mix is well-balanced. No adjustments needed."
+  
+  quiet:
+    - "The {target_stem} is a little too quiet. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to bring it up to the proper balance."
+  
+  very_quiet:
+    - "The {target_stem} is barely audible. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to bring it forward."
+  
+  loud:
+    - "The {target_stem} is a little too loud. Reduce the {target_stem} level between {min_gain_db} and {max_gain_db} dB to balance the mix."
+  
+  very_loud:
+    - "The {target_stem} is overwhelming. Reduce the {target_stem} level between {min_gain_db} and {max_gain_db} dB to balance the mix."
+
+# Error category dB ranges (from 05_musdb_expanded.yaml)
+# These are the applied error ranges; responses show the correction needed
+error_ranges_db:
+  quiet: [-6, -3]      # Applied: -6 to -3 dB, Response: increase by 3 to 6 dB
+  very_quiet: [-12, -6]  # Applied: -12 to -6 dB, Response: increase by 6 to 12 dB
+  loud: [3, 6]         # Applied: +3 to +6 dB, Response: reduce by 3 to 6 dB
+  very_loud: [6, 12]   # Applied: +6 to +12 dB, Response: reduce by 6 to 12 dB
+
+# Available stems (typically in dataset)
+stems:
+  - vocals
+  - drums
+  - bass
+  - other
+
+# Error categories
+error_categories:
+  - no_error
+  - quiet
+  - very_quiet
+  - loud
+  - very_loud
+
+# Processing options
+processing:
+  # Generate all possible alternative responses as rejected samples
+  generate_all_alternatives: true
+  
+  # Whether to include pairs where rejected is also correct (same error but different stem)
+  # Set to false to only include truly incorrect responses
+  exclude_similar_errors: false
+  
+  # Random seed for reproducibility
+  seed: 42
+

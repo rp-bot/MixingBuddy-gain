@@ -1,0 +1,67 @@
+================================================================================
+COMPREHENSIVE RESPONSE ACCURACY ANALYSIS
+================================================================================
+
+Overall Statistics:
+  Total samples: 100
+  Correct direction (problem): 68 (68.0%)
+  Correct stem: 63 (63.0%)
+  Correct solution direction (increase/reduce): 68 (68.0%)
+  Correct magnitude: 77 (77.0%)
+  Correct both (direction + stem): 54 (54.0%)
+  Correct all components (direction + stem + magnitude): 54 (54.0%)
+  Exact match with ground truth: 40 (40.0%)
+
+Breakdown by Error Category:
+
+  loud:
+    Total: 16
+    Correct direction (problem): 15 (93.8%)
+    Correct stem: 12 (75.0%)
+    Correct solution direction (increase/reduce): 15 (93.8%)
+    Correct magnitude: 16 (100.0%)
+    Correct both: 12 (75.0%)
+    Correct all components: 12 (75.0%)
+    Exact match: 7 (43.8%)
+
+  no_error:
+    Total: 20
+    Correct direction (problem): 1 (5.0%)
+    Correct stem: 7 (35.0%)
+    Correct solution direction (increase/reduce): 1 (5.0%)
+    Correct magnitude: 1 (5.0%)
+    Correct both: 0 (0.0%)
+    Correct all components: 0 (0.0%)
+    Exact match: 1 (5.0%)
+
+  quiet:
+    Total: 16
+    Correct direction (problem): 11 (68.8%)
+    Correct stem: 8 (50.0%)
+    Correct solution direction (increase/reduce): 11 (68.8%)
+    Correct magnitude: 15 (93.8%)
+    Correct both: 8 (50.0%)
+    Correct all components: 8 (50.0%)
+    Exact match: 3 (18.8%)
+
+  very_loud:
+    Total: 30
+    Correct direction (problem): 28 (93.3%)
+    Correct stem: 27 (90.0%)
+    Correct solution direction (increase/reduce): 28 (93.3%)
+    Correct magnitude: 30 (100.0%)
+    Correct both: 25 (83.3%)
+    Correct all components: 25 (83.3%)
+    Exact match: 21 (70.0%)
+
+  very_quiet:
+    Total: 18
+    Correct direction (problem): 13 (72.2%)
+    Correct stem: 9 (50.0%)
+    Correct solution direction (increase/reduce): 13 (72.2%)
+    Correct magnitude: 15 (83.3%)
+    Correct both: 9 (50.0%)
+    Correct all components: 9 (50.0%)
+    Exact match: 8 (44.4%)
+
+================================================================================

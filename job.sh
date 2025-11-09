@@ -53,11 +53,18 @@ echo "NVIDIA GPU Status (nvidia-smi):"
 srun nvidia-smi
 echo "---------------------------------------"
 
-# Test imports and CUDA availability
+# # Test imports and CUDA availability
+# echo "---------------------------------------"
+# echo "Testing imports and CUDA availability..."
+# echo "---------------------------------------"
+# python scripts/06_train_model.py
+# echo "---------------------------------------"
+export CUDA_LAUNCH_BLOCKING=1
+# run the dpo training
 echo "---------------------------------------"
-echo "Testing imports and CUDA availability..."
+echo "Running 08_train_dpo.py..."
 echo "---------------------------------------"
-python scripts/06_train_model.py
+python scripts/08_train_dpo.py
 echo "---------------------------------------"
 
 # --- Your code goes here ---

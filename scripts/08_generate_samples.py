@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="15_eval_mert_cross_attention",
+    config_name="16_eval_dpo",
     version_base=None,
 )
 def main(cfg: DictConfig):

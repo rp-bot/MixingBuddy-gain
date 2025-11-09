@@ -1,0 +1,67 @@
+================================================================================
+COMPREHENSIVE RESPONSE ACCURACY ANALYSIS
+================================================================================
+
+Overall Statistics:
+  Total samples: 100
+  Correct direction (problem): 71 (71.0%)
+  Correct stem: 74 (74.0%)
+  Correct solution direction (increase/reduce): 71 (71.0%)
+  Correct magnitude: 78 (78.0%)
+  Correct both (direction + stem): 62 (62.0%)
+  Correct all components (direction + stem + magnitude): 62 (62.0%)
+  Exact match with ground truth: 47 (47.0%)
+
+Breakdown by Error Category:
+
+  loud:
+    Total: 16
+    Correct direction (problem): 15 (93.8%)
+    Correct stem: 12 (75.0%)
+    Correct solution direction (increase/reduce): 15 (93.8%)
+    Correct magnitude: 16 (100.0%)
+    Correct both: 12 (75.0%)
+    Correct all components: 12 (75.0%)
+    Exact match: 7 (43.8%)
+
+  no_error:
+    Total: 20
+    Correct direction (problem): 0 (0.0%)
+    Correct stem: 10 (50.0%)
+    Correct solution direction (increase/reduce): 0 (0.0%)
+    Correct magnitude: 0 (0.0%)
+    Correct both: 0 (0.0%)
+    Correct all components: 0 (0.0%)
+    Exact match: 0 (0.0%)
+
+  quiet:
+    Total: 16
+    Correct direction (problem): 14 (87.5%)
+    Correct stem: 13 (81.2%)
+    Correct solution direction (increase/reduce): 14 (87.5%)
+    Correct magnitude: 15 (93.8%)
+    Correct both: 13 (81.2%)
+    Correct all components: 13 (81.2%)
+    Exact match: 7 (43.8%)
+
+  very_loud:
+    Total: 30
+    Correct direction (problem): 28 (93.3%)
+    Correct stem: 28 (93.3%)
+    Correct solution direction (increase/reduce): 28 (93.3%)
+    Correct magnitude: 30 (100.0%)
+    Correct both: 26 (86.7%)
+    Correct all components: 26 (86.7%)
+    Exact match: 24 (80.0%)
+
+  very_quiet:
+    Total: 18
+    Correct direction (problem): 14 (77.8%)
+    Correct stem: 11 (61.1%)
+    Correct solution direction (increase/reduce): 14 (77.8%)
+    Correct magnitude: 17 (94.4%)
+    Correct both: 11 (61.1%)
+    Correct all components: 11 (61.1%)
+    Exact match: 9 (50.0%)
+
+================================================================================
