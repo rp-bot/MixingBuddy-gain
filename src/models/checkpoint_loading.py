@@ -122,13 +122,16 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
     else:
         projection_path = f"{checkpoint_path}/audio_projection.bin"
         logger.info("Loading audio projection weights from %s", projection_path)
-        map_location = cfg.evaluation.model_loading.map_location
+        # Get model_loading config with defaults
+        model_loading = cfg.evaluation.get("model_loading", {})
+        map_location = model_loading.get("map_location", "auto")
         if map_location == "auto":
             map_location = "cuda" if torch.cuda.is_available() else "cpu"
         state_dict = torch.load(projection_path, map_location=map_location)
+        strict_loading = model_loading.get("strict_loading", True)
         model.audio_projection.load_state_dict(
             state_dict,
-            strict=cfg.evaluation.model_loading.strict_loading,
+            strict=strict_loading,
         )
 
     # Load MERT encoder weights if available (contains trainable layer_weights)

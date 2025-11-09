@@ -1,0 +1,30 @@
+# @package _global_
+
+# Training config with MERT encoder and cross-attention projection
+# Experiment 15: MERT + cross-attention projection + unfrozen layer weights
+# Similar to experiment 11 but uses cross-attention instead of MLP
+# Trains only: cross-attention projection + 25 MERT layer weights
+
+defaults:
+  - data: 05_musdb_expanded
+  - model: qwen2_7b_mert_cross_attention
+  - training: 12_training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}
+

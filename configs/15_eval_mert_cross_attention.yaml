@@ -1,13 +1,14 @@
 # @package _global_
 
-# Evaluation config for Experiment 13: Frozen projection + strategic LoRA adapters
-# Evaluates model trained with frozen exp 11 projection and LoRA adapters on output layers
-
+# Evaluation config for MERT + cross-attention projection (experiment 15)
+# This evaluates the model trained with MERT encoder, cross-attention projection, and unfrozen layer weights
+# Trains only: cross-attention projection + 25 MERT layer weights
+# LLM is completely frozen (no LoRA adapters)
 defaults:
   - data: 05_musdb_expanded
-  - model: qwen2_7b_mert_lora_outputs
+  - model: qwen2_7b_mert_cross_attention
   - evaluation: evaluation
-  - training: training # Include training config for trainer compatibility
+  - training: 12_training # Include training config for trainer compatibility
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - plotting: plotting
@@ -20,22 +21,22 @@ env:
   # Output directory will be determined by checkpoint run name
 
 # Model checkpoint settings
-# Set this to the path of your trained experiment 13 model checkpoint
+# Set this to the path of your trained MERT + cross-attention model checkpoint
 # Options:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
-checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-lora-outputs-r8a16-musdb/checkpoint-2000" # Update this to the trained experiment 13 checkpoint path
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-cross-attention-r16a32-musdb/checkpoint-1200" # Update this to the trained checkpoint path
 
 # IMPORTANT: The evaluation output directory will be automatically determined
 # from the checkpoint path. For example, if checkpoint is:
-# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-lora-outputs-r16a32-musdb-XXXX-XXXX/checkpoint-XXX"
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-cross-attention-r16a32-musdb-XXXX-XXXX/checkpoint-XXX"
 # Then evaluation will be saved to:
-# "outputs/evaluation/qlora-qwen2-7b-mert-lora-outputs-r16a32-musdb-XXXX-XXXX/predictions/"
+# "outputs/evaluation/qlora-qwen2-7b-mert-cross-attention-r16a32-musdb-XXXX-XXXX/predictions/"
 
 # Predictions file path for metrics computation
 # If not specified, the script will use the new evaluation structure
-# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-lora-outputs-r16a32-musdb-XXXX-XXXX/predictions/predictions.jsonl"
+# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-cross-attention-r16a32-musdb-XXXX-XXXX/predictions/predictions.jsonl"
 
 # Plotting configuration
 plotting:
@@ -48,9 +49,9 @@ experiment_tracking:
   use_wandb: false
   use_mlflow: false
 
-# Evaluation-specific overrides
+# Evaluation-specific overrides for MERT + cross-attention model
 evaluation:
-  # Use the trained projection weights (frozen from exp 11) + trained LoRA adapters
+  # Use the trained cross-attention projection weights
   use_random_projection: false # Use the trained projection weights
 
   # Generation samples for evaluation
@@ -59,10 +60,4 @@ evaluation:
   # Memory settings - MERT should be memory efficient
   memory:
     max_memory_usage_gb: 8.0 # MERT is efficient but still needs some headroom
-
-# Training resume config (needed for projection/encoder weight loading during eval)
-training:
-  resume:
-    enabled: false
-    checkpoint_path: null # Will be set to the same as checkpoint_path during evaluation
 

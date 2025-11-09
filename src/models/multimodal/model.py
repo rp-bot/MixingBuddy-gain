@@ -7,6 +7,7 @@ import torch.nn as nn
 from src.models.encoders.encodec import EncodecEncoder
 from src.models.encoders.mert import MERTEncoder
 from src.models.projections import MLPProjection
+from src.models.projections.cross_attention import CrossAttentionProjection
 
 
 logger = logging.getLogger(__name__)
@@ -79,10 +80,24 @@ class ModularMultimodalModel(nn.Module):
             self.audio_projection = MLPProjection(
                 input_dim=audio_hidden_size, output_dim=llm_hidden_size, **mlp_config
             )
+        elif projection_config.get("type") == "cross_attention":
+            cross_attn_config = dict(projection_config)
+            cross_attn_config.pop("type", None)
+            cross_attn_config.pop("use_auxiliary_loss", None)
+            cross_attn_config.pop("auxiliary_loss_weight", None)
+            cross_attn_config.pop("freeze_projection", None)  # Not a parameter for CrossAttentionProjection
+            self.audio_projection = CrossAttentionProjection(
+                feature_dim=audio_hidden_size, output_dim=llm_hidden_size, **cross_attn_config
+            )
+            self.use_cross_attention = True
         else:
             raise ValueError(
                 f"Unsupported projection type: {projection_config.get('type')}"
             )
+        
+        # Track if we're using cross-attention projection
+        if not hasattr(self, "use_cross_attention"):
+            self.use_cross_attention = False
 
         llm_device = self.llm.device
         llm_dtype = next(self.llm.get_input_embeddings().parameters()).dtype
@@ -178,12 +193,41 @@ class ModularMultimodalModel(nn.Module):
         attention_mask = kwargs.get("attention_mask")
         audio = kwargs.get("audio")
         labels = kwargs.get("labels")
+        anchor_audio = kwargs.get("anchor_audio", None)
+        mix_audio = kwargs.get("mix_audio", None)
 
-        audio_features = self.encode_audio(audio)
-        audio_features = audio_features.to(
-            dtype=next(self.audio_projection.parameters()).dtype
-        )
-        projected_audio_embeds = self.audio_projection(audio_features)
+        # Handle cross-attention projection which needs anchor and mix separately
+        if self.use_cross_attention:
+            if anchor_audio is not None and mix_audio is not None:
+                # Use provided anchor and mix audio
+                anchor_features = self.encode_audio(anchor_audio)
+                mix_features = self.encode_audio(mix_audio)
+                anchor_features = anchor_features.to(
+                    dtype=next(self.audio_projection.parameters()).dtype
+                )
+                mix_features = mix_features.to(
+                    dtype=next(self.audio_projection.parameters()).dtype
+                )
+                projected_audio_embeds = self.audio_projection(
+                    anchor_features=anchor_features, mix_features=mix_features
+                )
+            else:
+                # Fallback: use the same audio for both anchor and mix
+                # This is a temporary solution until dataset provides them separately
+                audio_features = self.encode_audio(audio)
+                audio_features = audio_features.to(
+                    dtype=next(self.audio_projection.parameters()).dtype
+                )
+                projected_audio_embeds = self.audio_projection(
+                    anchor_features=audio_features, mix_features=audio_features
+                )
+        else:
+            # Standard projection (linear or MLP)
+            audio_features = self.encode_audio(audio)
+            audio_features = audio_features.to(
+                dtype=next(self.audio_projection.parameters()).dtype
+            )
+            projected_audio_embeds = self.audio_projection(audio_features)
 
         text_embeds = self.llm.get_input_embeddings()(input_ids)
 
@@ -242,11 +286,23 @@ class ModularMultimodalModel(nn.Module):
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(device)
         audio = audio.to(device)
 
-        audio_features = self.encode_audio(audio)
-        audio_features = audio_features.to(
-            dtype=next(self.audio_projection.parameters()).dtype
-        )
-        projected_audio_embeds = self.audio_projection(audio_features)
+        # Handle cross-attention projection in generate method
+        if self.use_cross_attention:
+            # For generation, use the same audio for both anchor and mix
+            # (In future, could accept anchor_audio and mix_audio as parameters)
+            audio_features = self.encode_audio(audio)
+            audio_features = audio_features.to(
+                dtype=next(self.audio_projection.parameters()).dtype
+            )
+            projected_audio_embeds = self.audio_projection(
+                anchor_features=audio_features, mix_features=audio_features
+            )
+        else:
+            audio_features = self.encode_audio(audio)
+            audio_features = audio_features.to(
+                dtype=next(self.audio_projection.parameters()).dtype
+            )
+            projected_audio_embeds = self.audio_projection(audio_features)
 
         text_embeds = self.llm.get_input_embeddings()(model_inputs.input_ids)
         projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)

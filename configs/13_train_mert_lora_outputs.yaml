@@ -27,8 +27,8 @@ experiment_tracking:
 training:
   # Resume configuration to load pre-trained projection weights
   resume:
-    enabled: true # Don't resume training, just load projection/encoder weights
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-lora-outputs-r8a16-musdb/checkpoint-800" # Experiment 11 checkpoint
+    enabled: false # Don't resume training, just load projection/encoder weights
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-lora-outputs-r8a16-musdb/checkpoint-2000" # Experiment 11 checkpoint
 
 hydra:
   run:

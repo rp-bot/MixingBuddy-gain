@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="13_train_mert_lora_outputs",
+    config_name="11_train_mert_musdb_expanded",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -133,11 +133,12 @@ def main(cfg: DictConfig):
     resume_from_checkpoint: str | None = None
     if cfg.training.resume.enabled:
         checkpoint_path = PROJECT_ROOT / cfg.training.resume.checkpoint_path
+        weight_only = cfg.training.resume.get("weight_only", False)
         if checkpoint_path.exists():
             # Detect if this is a full HF checkpoint (has optimizer/scheduler/state)
             has_trainer_state = (checkpoint_path / "trainer_state.json").exists()
             has_optimizer = (checkpoint_path / "optimizer.pt").exists()
-            if has_trainer_state and has_optimizer:
+            if has_trainer_state and has_optimizer and not weight_only:
                 # Before resuming, ensure model architecture is compatible. If projection shapes differ,
                 # skip full resume and do a weight-only warm start instead.
                 model_bin = checkpoint_path / "pytorch_model.bin"
@@ -183,10 +184,16 @@ def main(cfg: DictConfig):
                     # Fall through to weight-only warm start below
                     # (do not set resume_from_checkpoint)
             else:
-                logger.info(
-                    "Checkpoint found but missing optimizer/scheduler; performing weight-only warm start from: %s",
-                    checkpoint_path,
-                )
+                if weight_only:
+                    logger.info(
+                        "Weight-only mode enabled; performing weight-only warm start from: %s",
+                        checkpoint_path,
+                    )
+                else:
+                    logger.info(
+                        "Checkpoint found but missing optimizer/scheduler; performing weight-only warm start from: %s",
+                        checkpoint_path,
+                    )
                 # Weight-only warm start
                 projection_path = checkpoint_path / "audio_projection.bin"
                 if projection_path.exists():

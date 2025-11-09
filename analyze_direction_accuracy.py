@@ -544,7 +544,7 @@ def analyze_predictions(predictions_path):
 
 if __name__ == "__main__":
     predictions_path = Path(
-        "outputs/evaluation/qlora-qwen2-7b-mert-lora-outputs-r8a16-musdb/predictions/predictions.jsonl"
+        "outputs/evaluation/qlora-qwen2-7b-mert-cross-attention-r16a32-musdb/predictions/predictions.jsonl"
     )
     analyze_predictions(predictions_path)
 
