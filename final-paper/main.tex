@@ -12,17 +12,16 @@
 \usepackage{cite}
 \hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
 
-\title{Fine-Tuning LLMs for Multi-Track Audio Analysis: A Framework for Music Mixing Assistance}
+\title{MixingBuddy: A Multimodal LLM for Mix Critique and Advice}
 
-\author{Pratham Vadhulas and Alexander Lerch
-        % <-this % stops a space
-% \thanks{This work was supported by [Funding Source].}% <-this % stops a space
-% \thanks{Manuscript received [Date]; revised [Date].}
-}
+\author{Pratham Vadhulas%
+\thanks{Pratham Vadhulas is with the Georgia Institute of Technology, Atlanta, GA, USA (email: pvadhulas3@gatech.edu).}%
+, \and Alexander Lerch%
+\thanks{Alexander Lerch is with the Georgia Institute of Technology, Atlanta, GA, USA (email: alexander.lerch@gatech.edu).}}
 
 % The paper headers
-\markboth{Preprint, [Month]~2025}%
-{Fine-Tuning LLMs for Multi-Track Audio Analysis: A Framework for Music Mixing Assistance}
+\markboth{Preprint, November 2025}%
+{MixingBuddy: A Multimodal LLM for Mix Critique and Advice}
 
 % \IEEEpubid{0000--0000/00$00.00~\copyright~2025 IEEE}
 
@@ -30,9 +29,9 @@
 
 \maketitle
 
-% \begin{abstract}
-% [Abstract goes here.]
-% \end{abstract}
+\begin{abstract}
+\input{sections/00_abstract}
+\end{abstract}
 
 % \begin{IEEEkeywords}
 % Automatic mixing, Large Language Models, Multi-track audio, Music production, Audio analysis, Machine learning.
@@ -40,10 +39,7 @@
 
 % Main sections
 \input{sections/01_introduction}
-\input{sections/02_motivation}
-\input{sections/03_related_work_min}
-\input{sections/04_proposed_method}
-\input{sections/05_proposed_evaluation}
+
 % \input{sections/06_novelty}
 % \input{sections/07_required_resources}
 % \input{sections/08_deliverables}
@@ -52,8 +48,8 @@
 \IEEEpubidadjcol
 
 % Bibliography
-\bibliographystyle{IEEEtran}
-\bibliography{references}
+% \bibliographystyle{IEEEtran}
+% \bibliography{references}
 
 \end{document}
 

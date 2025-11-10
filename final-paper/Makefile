@@ -22,7 +22,7 @@ all: $(MAIN).pdf
 # Compile the document
 $(MAIN).pdf: $(MAIN).tex sections/*.tex references.bib | $(OUTDIR)
 	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
-	$(BIBTEX) $(OUTDIR)/$(MAIN)
+	-$(BIBTEX) $(OUTDIR)/$(MAIN) || true
 	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
 	$(LATEX) -output-directory=$(OUTDIR) -interaction=nonstopmode $(MAIN).tex
 	cp $(OUTDIR)/$(MAIN).pdf .
