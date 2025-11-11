@@ -1,19 +1,10 @@
 \section{Related Work}
 \label{sec:related_work}
 
-This section reviews the evolution of automatic mixing systems, from rule-based approaches to deep learning architectures, and examines the emerging paradigm of semantic and language-driven methods.
-We then survey multimodal audio-language models that enable explainable, reasoning-based audio processing, positioning our work within this landscape.
-
-\subsection{Automatic Mixing Systems}
-
-\subsubsection{Rule-Based and Traditional Machine Learning Approaches}
-
 Early automatic mixing research centered on systems that captured expert knowledge through explicit mixing rules and heuristics.
 \cite{Perez_Gonzalez_Reiss_2013} developed an autonomous mixing system based on knowledge engineering principles, demonstrating that rule-based approaches could achieve reasonable results for specific mixing tasks.
 Subsequent work explored machine learning techniques for instrument-specific effects, such as \cite{Chourdakis_Reiss_2017}'s approach to intelligent artificial reverberation application.
 While these methods provided interpretable control and domain-specific optimization, they were limited in their ability to generalize across diverse musical styles and lacked the flexibility to adapt to novel mixing scenarios.
-
-\subsubsection{Deep Learning Architectures}
 
 The advent of deep learning brought significant advances in automatic mixing, with models capable of learning complex mappings from raw audio to mixing parameters.
 \cite{waveunet} introduced Wave-U-Net autoencoders for automatic mixing, demonstrating that end-to-end neural architectures could produce professional-quality mixes.
@@ -21,25 +12,15 @@ The advent of deep learning brought significant advances in automatic mixing, wi
 These deep learning approaches achieved notable success in terms of accuracy (matching professional mixes), controllability (allowing high-level parameter adjustment), and diversity (accommodating different genres and styles).
 However, a critical limitation of these systems is their ``black box'' nature: while they can perform the mix, they cannot explain their reasoning or provide linguistic feedback about mixing decisions.
 
-\subsection{Semantic and Language-Driven Approaches}
-
-\subsubsection{Language-Audio Integration}
-
 Recognizing the need to bridge the semantic gap between audio processing and human understanding, researchers began exploring word-embedding approaches that link natural language descriptions to audio effect parameters.
 \cite{Venkatesh_Moffat_Miranda_2022} demonstrated word embeddings for automatic equalization in audio mixing, while \cite{Chu_OReilly_Barnett_Pardo_2025} developed Text2FX, which harnesses CLAP embeddings for text-guided audio effects.
 Early semantic mixing approaches \cite{semantic-mixing} laid the groundwork for understanding how high-level, semantic knowledge could inform mixing decisions.
 These methods represented initial attempts to make mixing systems more interpretable and user-friendly by connecting linguistic descriptions to audio processing parameters.
 
-\subsubsection{Prompt-Driven Interfaces}
-
 Building on language-audio integration, recent work has explored prompt-driven interfaces that map natural language instructions directly to mixing tasks.
 \cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025} investigated whether large language models can predict audio effects parameters from natural language, while \cite{Melechovsky_Mehrish_Herremans_2025} developed SonicMaster, a controllable all-in-one music restoration and mastering system.
 \cite{Clemens_Marasovic_2025} introduced MixAssist, an audio-language dataset for co-creative AI assistance in music mixing, demonstrating the potential for collaborative human-AI mixing workflows.
 These approaches represent an evolution toward more natural interaction paradigms, where users can express mixing intentions in natural language rather than manipulating low-level parameters.
-
-\subsection{Multimodal Audio-Language Models}
-
-\subsubsection{Unified Tokenization Approaches}
 
 Multimodal audio-language models have emerged as a powerful paradigm for combining audio understanding with language reasoning capabilities.
 One architectural approach, direct tokenization (also known as the unified approach), converts raw audio into discrete tokens via audio codecs and extends the LLM vocabulary to include these audio tokens.
@@ -47,20 +28,11 @@ This enables the language model to process audio and text within a unified frame
 Key works in this direction include \cite{Rubenstein_Asawaroengchai_Nguyen_Bapna_Borsos_Quitry_Chen_Badawy_Han_Kharitonov_etal_2023}'s AudioPaLM, \cite{Du_Wang_Chen_Chu_Gao_Li_Hu_Zhou_Xu_Ma_etal_2024}'s LauraGPT, and \cite{Zhang_Li_Zhang_Zhan_Wang_Zhou_Qiu_2023}'s SpeechGPT.
 The unified approach offers the advantage of treating audio and text as first-class citizens within the same model architecture, potentially enabling more seamless cross-modal reasoning.
 
-\subsubsection{Cascade Feature Extraction Approaches}
-
 An alternative architectural paradigm, the cascade (or feature extraction) approach, uses audio-specific encoders and decoders with the LLM serving as a central backbone.
 In this framework, audio is first encoded into feature representations that are then processed by the language model, which can generate text responses or guide audio generation.
 Examples include \cite{Liu_Hussain_Wu_Sun_Shan_2024}'s M$^{2}$UGen and \cite{Gong_Luo_Liu_Karlinsky_Glass_2024}'s Listen, Think, and Understand (LTU).
 The cascade approach allows for specialized audio processing while leveraging the reasoning capabilities of large language models, making it particularly relevant for tasks requiring both audio understanding and linguistic explanation, such as mix critique and advice.
 
-\subsection{Gap Analysis and Positioning}
-
-While existing approaches have made significant progress in automatic mixing, deep learning architectures, and language-audio integration, there remains a critical gap: the lack of systems that can provide explainable, reasoning-based mix critique.
-Rule-based and deep learning mixing systems can perform mixing tasks but cannot explain their decisions.
-Semantic approaches connect language to parameters but do not enable conversational reasoning about mixes.
 Multimodal audio-language models show promise for explainable audio processing, but their application to mix critique and advice remains largely unexplored.
-
-Our work, MixingBuddy, addresses this gap by leveraging multimodal audio-language models to provide linguistic feedback and reasoning about mixes.
-By combining the audio understanding capabilities of cascade architectures with the reasoning and explanation abilities of large language models, we enable a new paradigm where AI systems can not only perform mixing tasks but also discuss, critique, and advise on mixing decisions in natural language.
-This positions MixingBuddy as a step toward explainable, co-creative mixing systems that bridge the gap between automated processing and human understanding.
+Our work addresses this gap by leveraging multimodal audio-language models to provide linguistic feedback and reasoning about mixes.
+This positions our work as a step toward explainable, co-creative mixing systems that bridge the gap between automated processing and human understanding.
