@@ -28,7 +28,7 @@ hydra:
 
 training:
   resume:
-    enabled: true
+    enabled: false
     weight_only: true  # For DPO, load weights only (fresh optimizer state needed)
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-600"
+    checkpoint_path: null
 

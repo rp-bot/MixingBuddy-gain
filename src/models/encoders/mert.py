@@ -20,6 +20,7 @@ class MERTEncoder(nn.Module):
         model_name: str = "m-a-p/MERT-v1-330M",
         freeze: bool = True,
         freeze_layer_weights: bool = False,
+        unfreeze_top_n_layers: int = 0,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
     ):
@@ -39,12 +40,33 @@ class MERTEncoder(nn.Module):
             self.model.eval()
             for param in self.model.parameters():
                 param.requires_grad = False
+            
+            # Selectively unfreeze top N layers if requested
+            if unfreeze_top_n_layers > 0:
+                # MERT is based on Wav2Vec2 architecture
+                # The encoder layers are in model.encoder.layers
+                if hasattr(self.model, "encoder") and hasattr(self.model.encoder, "layers"):
+                    total_layers = len(self.model.encoder.layers)
+                    layers_to_unfreeze = min(unfreeze_top_n_layers, total_layers)
+                    
+                    # Unfreeze the top N layers (higher indices = later/top layers)
+                    for i in range(total_layers - layers_to_unfreeze, total_layers):
+                        for param in self.model.encoder.layers[i].parameters():
+                            param.requires_grad = True
+                    
+                    # Set model to train mode for the unfrozen layers
+                    self.model.train()
+                    
+                    print(f"Unfroze top {layers_to_unfreeze} layers (layers {total_layers - layers_to_unfreeze} to {total_layers - 1}) of MERT encoder")
+                else:
+                    print(f"Warning: Could not find encoder layers to unfreeze. Model structure: {type(self.model)}")
         else:
             # Enable gradient checkpointing only if model is trainable
             if hasattr(self.model, "gradient_checkpointing_enable"):
                 self.model.gradient_checkpointing_enable()
 
         self.frozen = freeze
+        self.unfreeze_top_n_layers = unfreeze_top_n_layers
         self.model_name = model_name
         self.input_sample_rate = input_sample_rate
 
@@ -104,7 +126,8 @@ class MERTEncoder(nn.Module):
             input_values = input_values.squeeze(1)  # Remove extra dimension if present
 
         # Extract features with all hidden states
-        if self.frozen:
+        # Don't use no_grad if we have unfrozen layers
+        if self.frozen and self.unfreeze_top_n_layers == 0:
             with torch.no_grad():
                 outputs = self.model(
                     input_values,
@@ -173,6 +196,7 @@ class MERTEncoder(nn.Module):
         return {
             "model_name": self.model_name,
             "frozen": self.frozen,
+            "unfreeze_top_n_layers": self.unfreeze_top_n_layers,
             "output_dim": self.output_dim,
             "sample_rate": self.sample_rate,
             "input_sample_rate": self.input_sample_rate,
@@ -187,6 +211,7 @@ def create_mert_encoder(
     model_name: str = "m-a-p/MERT-v1-330M",
     freeze: bool = True,
     freeze_layer_weights: bool = False,
+    unfreeze_top_n_layers: int = 0,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
 ) -> MERTEncoder:
@@ -194,6 +219,7 @@ def create_mert_encoder(
         model_name=model_name,
         freeze=freeze,
         freeze_layer_weights=freeze_layer_weights,
+        unfreeze_top_n_layers=unfreeze_top_n_layers,
         device=device,
         input_sample_rate=input_sample_rate,
     )

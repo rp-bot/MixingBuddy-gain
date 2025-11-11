@@ -6,11 +6,11 @@ training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
   num_train_epochs: 3  # DPO typically needs fewer epochs than SFT
   per_device_train_batch_size: 1  # DPO requires 2x memory (chosen + rejected)
-  gradient_accumulation_steps: 16  # Increased to maintain effective batch size
+  gradient_accumulation_steps: 32  # or even 64  # Increased to maintain effective batch size
   lr_scheduler_type: "cosine"
-  learning_rate: 5e-7  # Lower LR for DPO (typically 1/10 to 1/2 of SFT LR)
+  learning_rate:  2e-7  # Lower LR for DPO (typically 1/10 to 1/2 of SFT LR)
   weight_decay: 0.01
-  warmup_ratio: 0
+  warmup_ratio: 0  # Small warmup to stabilize initial training
   max_grad_norm: 1.0
   logging_steps: 5
   save_steps: 200
@@ -26,7 +26,7 @@ training_args:
 
 # DPO-specific parameters
 dpo:
-  beta: 0.1  # Temperature parameter (higher = stronger preference optimization)
+  beta: 0.5  # Temperature parameter (higher = stronger preference optimization) - Increased from 0.1 to overcome length bias
   loss_type: "sigmoid"  # Options: "sigmoid", "hinge", "ipo"
   label_smoothing: 0.0  # Label smoothing for DPO loss
 

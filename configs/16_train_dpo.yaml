@@ -28,7 +28,7 @@ hydra:
 
 training:
   resume:
-    enabled: true
-    weight_only: false  # For DPO, load weights only (fresh optimizer state needed)
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-dpo-r8a16-musdb/checkpoint-800/"
+    enabled: true  # Disabled: Need to retrain from scratch with new templates
+    weight_only: true  # For DPO, load weights only (fresh optimizer state needed)
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-600"
 

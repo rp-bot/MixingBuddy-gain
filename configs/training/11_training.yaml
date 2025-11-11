@@ -6,7 +6,7 @@ training_args:
   per_device_eval_batch_size: 16 # Increased for H100 memory
   gradient_accumulation_steps: 4 # Reduced since batch size increased (effective batch size = 16*4 = 64)
   lr_scheduler_type: "cosine" # Better for fine-tuning
-  learning_rate: 1e-6 # Reduced for more stable training
+  learning_rate: 1e-5 # Reduced for more stable training
   weight_decay: 0.05 # L2 regularization strength to prevent overfitting
   warmup_ratio: 0 # 1% warmup = 2,310 steps instead of 23,100
   max_grad_norm: 1 # Higher gradient clipping for more aggressive learning

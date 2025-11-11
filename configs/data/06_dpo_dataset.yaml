@@ -13,9 +13,10 @@ output:
   stats_file: data/musdb18hq_processed/dpo_statistics.txt
 
 # Response templates (from 05_musdb_expanded.yaml)
+# NOTE: All templates are length-balanced (~18-22 tokens) to avoid DPO length bias
 response_templates:
   no_error:
-    - "The mix is well-balanced. No adjustments needed."
+    - "After analyzing the mix, all stems are at appropriate levels and the balance is correct. The mix is well-balanced. No adjustments needed."
   
   quiet:
     - "The {target_stem} is a little too quiet. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to bring it up to the proper balance."

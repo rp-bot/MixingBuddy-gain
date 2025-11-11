@@ -197,11 +197,11 @@ class DPOTrainer(Trainer):
         # Mask out ignored tokens (set to 0 for -100 labels)
         per_token_logps = per_token_logps * loss_mask.float()
         
-        # Sum log probs for each sequence (average over non-masked tokens)
-        # Avoid division by zero
-        loss_mask_sum = loss_mask.sum(-1).float()
-        loss_mask_sum = torch.clamp(loss_mask_sum, min=1.0)  # At least 1 to avoid division by zero
-        sequence_logps = per_token_logps.sum(-1) / loss_mask_sum
+        # Average log probs for each sequence to avoid length bias
+        # This normalizes for different sequence lengths between chosen/rejected
+        num_tokens = loss_mask.sum(-1).float()
+        num_tokens = torch.clamp(num_tokens, min=1.0)  # Avoid division by zero
+        sequence_logps = per_token_logps.sum(-1) / num_tokens
         
         return sequence_logps
 
@@ -253,6 +253,63 @@ class DPOTrainer(Trainer):
         loss = losses.mean()
         
         return loss, policy_chosen_rewards, policy_rejected_rewards
+
+    def training_step(
+        self,
+        model: nn.Module,
+        inputs: Dict[str, torch.Tensor],
+        num_items_in_batch: Optional[int] = None,
+    ) -> torch.Tensor:
+        """
+        Override training_step to compute and store DPO-specific metrics for logging.
+        
+        Args:
+            model: The model being trained
+            inputs: Batch of training inputs
+            num_items_in_batch: Optional number of items in batch (for newer transformers versions)
+        """
+        model.train()
+        inputs = self._prepare_inputs(inputs)
+
+        with self.compute_loss_context_manager():
+            loss, metrics = self.compute_loss(model, inputs, return_outputs=True)
+
+        if self.args.n_gpu > 1:
+            loss = loss.mean()
+
+        # Backward pass through accelerator
+        self.accelerator.backward(loss)
+
+        # Store DPO metrics for logging (will be picked up by log() method)
+        if not hasattr(self, "_stored_metrics"):
+            self._stored_metrics = {}
+        
+        for key, value in metrics.items():
+            if key != "loss":  # Loss is already handled by Trainer
+                if isinstance(value, torch.Tensor):
+                    self._stored_metrics[f"train/{key}"] = value.detach().cpu().item()
+                else:
+                    self._stored_metrics[f"train/{key}"] = value
+
+        return loss.detach() / self.args.gradient_accumulation_steps
+
+    def log(self, logs: Dict[str, float], start_time: Optional[float] = None, **kwargs) -> None:
+        """
+        Override log to include stored DPO metrics.
+        This respects the logging_steps configuration from TrainingArguments.
+        
+        Args:
+            logs: Dictionary of metrics to log
+            start_time: Optional start time for computing training speed
+            **kwargs: Additional arguments passed by Trainer
+        """
+        # Add any stored metrics to the logs
+        if hasattr(self, "_stored_metrics") and self._stored_metrics:
+            logs.update(self._stored_metrics)
+            self._stored_metrics = {}
+        
+        # Call parent's log method which handles the actual logging
+        super().log(logs, start_time, **kwargs)
 
     def prediction_step(
         self,

@@ -33,11 +33,13 @@ class DPOMultimodalDataCollator:
         - audio: Audio tensor
         - chosen_messages: Messages list for chosen response
         - rejected_messages: Messages list for rejected response
+        - global_uid: (optional) Sample identifier
         
         Returns:
         - audio: Padded audio tensor (shared for both chosen and rejected)
         - chosen_input_ids, chosen_attention_mask, chosen_labels
         - rejected_input_ids, rejected_attention_mask, rejected_labels
+        - global_uid: (optional) Sample identifiers
         """
         # Extract data
         audio_list = [f["audio"] for f in features]
@@ -69,6 +71,10 @@ class DPOMultimodalDataCollator:
             **chosen_batch,
             **rejected_batch,
         }
+        
+        # Pass through global_uid if available (for logging)
+        if "global_uid" in features[0]:
+            batch["global_uid"] = [f["global_uid"] for f in features]
 
         return batch
 

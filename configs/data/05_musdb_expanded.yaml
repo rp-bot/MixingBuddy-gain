@@ -19,8 +19,8 @@ error:
     very_loud: 0.20
   # Fixed dB ranges for each category (no IQR scaling)
   ranges_db:
-    quiet: [-6, -3]
-    very_quiet: [-12, -6]
+    quiet: [-3, -6]
+    very_quiet: [-6, -12]
     loud: [3, 6]
     very_loud: [6, 12]
   # Overall gain limits for safety
@@ -86,13 +86,13 @@ instruction_templates:
 
 response_templates:
   no_error:
-    - "The mix is well-balanced. No adjustments needed."
+    - "After analyzing the mix, all stems are at appropriate levels and the balance is correct. The mix is well-balanced. No adjustments needed."
 
   quiet:
-    - "The {target_stem} is a little too quiet. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to bring it up to the proper balance."
+    - "The {target_stem} is a little too quiet. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to balance the mix."
 
   very_quiet:
-    - "The {target_stem} is barely audible. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to bring it forward."
+    - "The {target_stem} is barely audible. Increase the {target_stem} level between {min_gain_db} and {max_gain_db} dB to balance the mix."
 
   loud:
     - "The {target_stem} is a little too loud. Reduce the {target_stem} level between {min_gain_db} and {max_gain_db} dB to balance the mix."
