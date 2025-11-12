@@ -2,9 +2,13 @@
 \label{sec:related_work}
 
 Early automatic mixing research centered on systems that captured expert knowledge through explicit mixing rules and heuristics.
-\cite{Perez_Gonzalez_Reiss_2013} developed an autonomous mixing system based on knowledge engineering principles, demonstrating that rule-based approaches could achieve reasonable results for specific mixing tasks.
+\cite{Perez_Gonzalez_Reiss_2013} developed an autonomous mixing system based on knowledge engineering principles.
+\cite{bocko2010automatic} employed probabilistic expert systems, a formal knowledge-based approach from early AI research, for automatic music production.
 Subsequent work explored machine learning techniques for instrument-specific effects, such as \cite{Chourdakis_Reiss_2017}'s approach to intelligent artificial reverberation application.
-While these methods provided interpretable control and domain-specific optimization, they were limited in their ability to generalize across diverse musical styles and lacked the flexibility to adapt to novel mixing scenarios.
+\cite{Benito_Reiss_2017} presented intelligent multitrack reverberation based on hinge-loss Markov random fields, demonstrating the application of statistical modeling tools to mixing tasks.
+\cite{Hilsamer_Herzog_2014} described a statistical approach to automated offline dynamic processing in the audio mastering process, further exemplifying the use of traditional machine learning methods.
+\cite{Kolasinski_2008} introduced a framework that uses genetic optimization with timbral similarity measures.
+While these methods provided interpretable control and domain-specific optimization, they were limited in their ability to generalize across diverse musical styles and lacked the flexibility to adapt to unseen mixing scenarios.
 
 The advent of deep learning brought significant advances in automatic mixing, with models capable of learning complex mappings from raw audio to mixing parameters.
 \cite{waveunet} introduced Wave-U-Net autoencoders for automatic mixing, demonstrating that end-to-end neural architectures could produce professional-quality mixes.

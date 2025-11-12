@@ -1,0 +1,24 @@
+\section{Methodology}
+\label{sec:methodology}
+To address this gap, we propose a multimodal audio-language model that takes a flawed mix as input and generates structured textual feedback identifying mixing flaws and suggesting corrective gain adjustments.
+Our approach focuses on relative gain relationships among multitrack stems, as gain balancing represents a fundamental and foundational aspect of mixing that directly addresses the core challenge of establishing proper balance between elements in a mix.
+This focus allows us to investigate whether the model can learn the relative nature of gain relationships where multiple valid solutions exist depending on the chosen anchor stem while providing a tractable starting point before extending to more complex mixing parameters such as equalization or dynamic processing.
+This methodology enables us to investigate our primary research question.
+
+\subsection{Dataset}
+\label{sec:dataset}
+For this work we will be using MUSDB18HQ as our ground truth dataset. 
+We will be augmenting this dataset for our SFT training and DPO training. 
+we know that the musdb18 dataset has 4 stems per track. 
+these 4 stems are bass, drums, other and vocals. 
+we can create flawed mixes by injecting errors into one of the stems and summing them.
+as a starting point we can choose one track and one type of mixing error that is gain.
+another thing we considered was that out of the 4 stems, other tends to be inconsistent, therefore we wont be using it as a target stem. 
+Another thing to note, we know that gain balancing is a relative task, meaning there could be 2 solutions. 
+for example, kick stem is set to be too loud.
+one solution is reducing kick.
+another solution is to increase all the other stems to match the kick. 
+so theoretically, if we provide the model with an anchor stem, the model should be able to deduce which solution to suggest. 
+again we didnt use other as an anchor in any of the sampels due to its inconsistency. 
+
+
