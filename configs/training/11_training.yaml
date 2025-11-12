@@ -1,12 +1,12 @@
 # Training arguments
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
-  num_train_epochs: 20 # Longer training run
+  num_train_epochs: 5 # Longer training run
   per_device_train_batch_size: 16 # Increased for H100 memory (can go up to 32-48 if needed)
   per_device_eval_batch_size: 16 # Increased for H100 memory
   gradient_accumulation_steps: 4 # Reduced since batch size increased (effective batch size = 16*4 = 64)
   lr_scheduler_type: "cosine" # Better for fine-tuning
-  learning_rate: 1e-5 # Reduced for more stable training
+  learning_rate: 2e-7 # Reduced for more stable training
   weight_decay: 0.05 # L2 regularization strength to prevent overfitting
   warmup_ratio: 0 # 1% warmup = 2,310 steps instead of 23,100
   max_grad_norm: 1 # Higher gradient clipping for more aggressive learning
@@ -33,7 +33,7 @@ early_stopping:
   patience: 3
 
 # Resume training configuration
-# resume:
-#   enabled: true
-#   weight_only: true  # Set to true for weight-only resume (loads weights but starts fresh training)
-#   checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-34000" # Path to checkpoint
+resume:
+  enabled: true
+  weight_only: true  # Set to true for weight-only resume (loads weights but starts fresh training)
+  checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-1400" # Path to checkpoint

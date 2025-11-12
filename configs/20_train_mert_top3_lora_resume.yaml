@@ -1,13 +1,13 @@
 # @package _global_
 
-# Training config with MERT encoder and multi-anchor data
-# Experiment 11: MERT + multi-anchor MUSDB data
-# Tests MERT audio encoder with the new multi-anchor dataset configuration
+# Training config - Resume from checkpoint 600 of Experiment 19
+# Experiment 20: Continue training MERT top3 + LoRA adapters from checkpoint 600
+# Goal: Train to ~1000 steps to achieve better convergence before DPO
 
 defaults:
-  - data: 05_musdb_expanded
+  - data: 07_dpo_data
   - model: qwen2_7b_mert_top3_musdb_expanded_lora
-  - training: 11_training
+  - training: 13_dpo_training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - _self_
@@ -30,5 +30,5 @@ hydra:
 training:
   resume:
     enabled: true
-    weight_only: false  # Set to true for weight-only resume (loads weights but starts fresh training)
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-top3-musdb-expanded-lora-r16a32-musdb/checkpoint-1200"
+    weight_only: true  # Full resume to continue training state
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-top3-musdb-expanded-lora-r16a32-musdb/checkpoint-600"

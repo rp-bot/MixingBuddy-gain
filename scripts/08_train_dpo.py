@@ -94,7 +94,7 @@ def load_dpo_datasets(cfg: DictConfig, tokenizer):
 
 @hydra.main(
     config_path="../configs",
-    config_name="16_train_dpo",
+    config_name="21_train_dpo_fixed",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -229,10 +229,43 @@ def main(cfg: DictConfig):
                     model.audio_encoder.load_state_dict(mert_state_dict)
                 
                 # Load LoRA adapters if they exist
-                if hasattr(model.llm, "peft_config") and (checkpoint_path / "adapter_config.json").exists():
-                    logger.info("Loading LoRA adapters from %s", checkpoint_path)
-                    from peft import PeftModel
-                    model.llm = PeftModel.from_pretrained(model.llm, str(checkpoint_path))
+                adapter_path = checkpoint_path / "adapter_model.safetensors"
+                if adapter_path.exists():
+                    logger.info("Loading LoRA adapter weights from %s", adapter_path)
+                    from safetensors.torch import load_file
+                    
+                    # Load the adapter weights
+                    adapter_state_dict = load_file(str(adapter_path))
+                    
+                    # Model already has LoRA initialized, load weights into existing structure
+                    model_state = model.llm.state_dict()
+                    filtered_state = {}
+                    
+                    # Log sample keys for debugging
+                    adapter_sample = list(adapter_state_dict.keys())[0]
+                    model_sample = list(model_state.keys())[0]
+                    logger.info(f"Adapter key sample: {adapter_sample}")
+                    logger.info(f"Model key sample: {model_sample}")
+                    
+                    for key, value in adapter_state_dict.items():
+                        # Try different key transformations to match model structure
+                        candidate_keys = [
+                            key,  # Try original key first
+                            key.replace("base_model.model.", ""),  # Remove one level of nesting
+                            # Add .default adapter name if missing (PEFT saves without it, but loads with it)
+                            key.replace(".lora_A.weight", ".lora_A.default.weight").replace(".lora_B.weight", ".lora_B.default.weight"),
+                            # Try both transformations combined
+                            key.replace("base_model.model.", "").replace(".lora_A.weight", ".lora_A.default.weight").replace(".lora_B.weight", ".lora_B.default.weight"),
+                        ]
+                        
+                        for candidate_key in candidate_keys:
+                            if candidate_key in model_state and model_state[candidate_key].shape == value.shape:
+                                filtered_state[candidate_key] = value
+                                break
+                    
+                    missing, unexpected = model.llm.load_state_dict(filtered_state, strict=False)
+                    logger.info(f"Loaded {len(filtered_state)} LoRA parameters")
+                    logger.info(f"Missing: {len(missing)}, Unexpected: {len(unexpected)}")
             else:
                 # Full resume (not recommended for DPO from SFT checkpoint)
                 resume_from_checkpoint = str(checkpoint_path)

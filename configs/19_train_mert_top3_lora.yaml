@@ -1,12 +1,12 @@
 # @package _global_
 
-# Training config with MERT encoder and multi-anchor data
-# Experiment 11: MERT + multi-anchor MUSDB data
-# Tests MERT audio encoder with the new multi-anchor dataset configuration
+# Training config with MERT encoder (top 3 layers unfrozen) + LoRA adapters
+# Experiment 19: MERT top3 + multi-anchor MUSDB data + LoRA adapters
+# Tests MERT audio encoder with top layers unfrozen and LoRA adapters on LLM
 
 defaults:
   - data: 05_musdb_expanded
-  - model: qwen2_7b_mert_top3_musdb_expanded_lora
+  - model: qwen2_7b_mert_top3_bottom2_musdb_expanded_lora
   - training: 11_training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
@@ -28,7 +28,10 @@ hydra:
     dir: ${env.output_dir}
 
 training:
+  training_args:
+    num_train_epochs: 15  # Reduced from 20 since we're training LoRA adapters + projection + MERT layers
   resume:
-    enabled: true
+    enabled: false
     weight_only: false  # Set to true for weight-only resume (loads weights but starts fresh training)
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-top3-musdb-expanded-lora-r16a32-musdb/checkpoint-1200"
+    checkpoint_path: null
+

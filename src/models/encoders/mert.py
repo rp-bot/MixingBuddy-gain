@@ -21,6 +21,7 @@ class MERTEncoder(nn.Module):
         freeze: bool = True,
         freeze_layer_weights: bool = False,
         unfreeze_top_n_layers: int = 0,
+        unfreeze_bottom_n_layers: int = 0,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
     ):
@@ -41,23 +42,44 @@ class MERTEncoder(nn.Module):
             for param in self.model.parameters():
                 param.requires_grad = False
             
-            # Selectively unfreeze top N layers if requested
-            if unfreeze_top_n_layers > 0:
+            # Selectively unfreeze layers if requested
+            if unfreeze_top_n_layers > 0 or unfreeze_bottom_n_layers > 0:
                 # MERT is based on Wav2Vec2 architecture
                 # The encoder layers are in model.encoder.layers
                 if hasattr(self.model, "encoder") and hasattr(self.model.encoder, "layers"):
                     total_layers = len(self.model.encoder.layers)
-                    layers_to_unfreeze = min(unfreeze_top_n_layers, total_layers)
                     
-                    # Unfreeze the top N layers (higher indices = later/top layers)
-                    for i in range(total_layers - layers_to_unfreeze, total_layers):
-                        for param in self.model.encoder.layers[i].parameters():
-                            param.requires_grad = True
+                    # Validate no overlap between bottom and top layers
+                    bottom_end = unfreeze_bottom_n_layers
+                    top_start = total_layers - unfreeze_top_n_layers
+                    if bottom_end > top_start:
+                        print(f"Warning: Overlap detected between bottom and top unfrozen layers!")
+                        print(f"  Bottom layers: 0 to {bottom_end - 1}")
+                        print(f"  Top layers: {top_start} to {total_layers - 1}")
+                        print(f"  Adjusting to prevent overlap...")
+                        # Adjust to prevent overlap: prioritize top layers
+                        max_bottom = min(unfreeze_bottom_n_layers, top_start)
+                        unfreeze_bottom_n_layers = max_bottom
+                        bottom_end = unfreeze_bottom_n_layers
+                    
+                    # Unfreeze bottom N layers (indices 0 to N-1)
+                    if unfreeze_bottom_n_layers > 0:
+                        bottom_layers_to_unfreeze = min(unfreeze_bottom_n_layers, total_layers)
+                        for i in range(bottom_layers_to_unfreeze):
+                            for param in self.model.encoder.layers[i].parameters():
+                                param.requires_grad = True
+                        print(f"Unfroze bottom {bottom_layers_to_unfreeze} layers (layers 0 to {bottom_layers_to_unfreeze - 1}) of MERT encoder")
+                    
+                    # Unfreeze top N layers (higher indices = later/top layers)
+                    if unfreeze_top_n_layers > 0:
+                        top_layers_to_unfreeze = min(unfreeze_top_n_layers, total_layers)
+                        for i in range(total_layers - top_layers_to_unfreeze, total_layers):
+                            for param in self.model.encoder.layers[i].parameters():
+                                param.requires_grad = True
+                        print(f"Unfroze top {top_layers_to_unfreeze} layers (layers {total_layers - top_layers_to_unfreeze} to {total_layers - 1}) of MERT encoder")
                     
                     # Set model to train mode for the unfrozen layers
                     self.model.train()
-                    
-                    print(f"Unfroze top {layers_to_unfreeze} layers (layers {total_layers - layers_to_unfreeze} to {total_layers - 1}) of MERT encoder")
                 else:
                     print(f"Warning: Could not find encoder layers to unfreeze. Model structure: {type(self.model)}")
         else:
@@ -67,6 +89,7 @@ class MERTEncoder(nn.Module):
 
         self.frozen = freeze
         self.unfreeze_top_n_layers = unfreeze_top_n_layers
+        self.unfreeze_bottom_n_layers = unfreeze_bottom_n_layers
         self.model_name = model_name
         self.input_sample_rate = input_sample_rate
 
@@ -126,8 +149,8 @@ class MERTEncoder(nn.Module):
             input_values = input_values.squeeze(1)  # Remove extra dimension if present
 
         # Extract features with all hidden states
-        # Don't use no_grad if we have unfrozen layers
-        if self.frozen and self.unfreeze_top_n_layers == 0:
+        # Don't use no_grad if we have unfrozen layers (top or bottom)
+        if self.frozen and self.unfreeze_top_n_layers == 0 and self.unfreeze_bottom_n_layers == 0:
             with torch.no_grad():
                 outputs = self.model(
                     input_values,
@@ -197,6 +220,7 @@ class MERTEncoder(nn.Module):
             "model_name": self.model_name,
             "frozen": self.frozen,
             "unfreeze_top_n_layers": self.unfreeze_top_n_layers,
+            "unfreeze_bottom_n_layers": self.unfreeze_bottom_n_layers,
             "output_dim": self.output_dim,
             "sample_rate": self.sample_rate,
             "input_sample_rate": self.input_sample_rate,
@@ -212,6 +236,7 @@ def create_mert_encoder(
     freeze: bool = True,
     freeze_layer_weights: bool = False,
     unfreeze_top_n_layers: int = 0,
+    unfreeze_bottom_n_layers: int = 0,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
 ) -> MERTEncoder:
@@ -220,6 +245,7 @@ def create_mert_encoder(
         freeze=freeze,
         freeze_layer_weights=freeze_layer_weights,
         unfreeze_top_n_layers=unfreeze_top_n_layers,
+        unfreeze_bottom_n_layers=unfreeze_bottom_n_layers,
         device=device,
         input_sample_rate=input_sample_rate,
     )

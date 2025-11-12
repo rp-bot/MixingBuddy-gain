@@ -92,6 +92,62 @@ def normalize_quiet_very_quiet_in_jsonl(file_path: Path) -> int:
     print(f"- {file_path}: normalized {fixed} quiet/very_quiet responses (backup at {backup_path.name})")
     return fixed
 
+def normalize_quiet_very_quiet_dpo(file_path: Path) -> int:
+    """
+    Normalize quiet and very_quiet responses in DPO JSONL:
+    - For chosen/rejected fields with quiet: use QUIET_SENTENCE with 3 and 6
+    - For chosen/rejected fields with very_quiet: use VERY_QUIET_SENTENCE with 6 and 12
+    """
+    if not file_path.exists():
+        print(f"- Skipping missing file: {file_path}")
+        return 0
+    fixed = 0
+    tmp_path = file_path.with_suffix(file_path.suffix + ".tmp_dpo")
+    with file_path.open("r") as infile, tmp_path.open("w") as outfile:
+        for line in infile:
+            data = json.loads(line)
+            meta = data.get("meta", {})
+            
+            # Fix chosen field
+            chosen_category = meta.get("chosen_error_category")
+            chosen_stem = meta.get("chosen_target_stem")
+            chosen_text = data.get("chosen")
+            if isinstance(chosen_text, str) and chosen_stem:
+                if chosen_category == "quiet":
+                    desired = QUIET_SENTENCE.format(target_stem=chosen_stem, min_gain_db=3, max_gain_db=6)
+                    if chosen_text != desired:
+                        data["chosen"] = desired
+                        fixed += 1
+                elif chosen_category == "very_quiet":
+                    desired = VERY_QUIET_SENTENCE.format(target_stem=chosen_stem, min_gain_db=6, max_gain_db=12)
+                    if chosen_text != desired:
+                        data["chosen"] = desired
+                        fixed += 1
+            
+            # Fix rejected field
+            rejected_category = meta.get("rejected_error_category")
+            rejected_stem = meta.get("rejected_target_stem")
+            rejected_text = data.get("rejected")
+            if isinstance(rejected_text, str) and rejected_stem:
+                if rejected_category == "quiet":
+                    desired = QUIET_SENTENCE.format(target_stem=rejected_stem, min_gain_db=3, max_gain_db=6)
+                    if rejected_text != desired:
+                        data["rejected"] = desired
+                        fixed += 1
+                elif rejected_category == "very_quiet":
+                    desired = VERY_QUIET_SENTENCE.format(target_stem=rejected_stem, min_gain_db=6, max_gain_db=12)
+                    if rejected_text != desired:
+                        data["rejected"] = desired
+                        fixed += 1
+            
+            outfile.write(json.dumps(data) + "\n")
+    backup_path = file_path.with_suffix(file_path.suffix + ".bak_dpo")
+    file_path.rename(backup_path)
+    tmp_path.rename(file_path)
+    print(f"- {file_path}: normalized {fixed} quiet/very_quiet responses in DPO format (backup at {backup_path.name})")
+    return fixed
+
+
 def fix_yaml_file(yaml_path: Path) -> None:
     """Edit YAML text safely with regex replacements while preserving comments/formatting."""
     text = yaml_path.read_text()
@@ -134,18 +190,26 @@ def main():
     repo_root = Path(__file__).resolve().parent.parent
     train_jsonl = repo_root / "data/musdb18hq_processed/train/training_samples.jsonl"
     test_jsonl = repo_root / "data/musdb18hq_processed/test/test_samples.jsonl"
+    train_dpo_jsonl = repo_root / "data/musdb18hq_processed/train/training_samples_dpo.jsonl"
+    test_dpo_jsonl = repo_root / "data/musdb18hq_processed/test/test_samples_dpo.jsonl"
     yaml_path = repo_root / "configs/data/05_musdb_expanded.yaml"
 
-    print("Fixing JSONL datasets...")
-    replace_no_error_in_jsonl(train_jsonl)
-    replace_no_error_in_jsonl(test_jsonl)
-    normalize_quiet_very_quiet_in_jsonl(train_jsonl)
-    normalize_quiet_very_quiet_in_jsonl(test_jsonl)
+    # print("Fixing SFT JSONL datasets...")
+    # replace_no_error_in_jsonl(train_jsonl)
+    # replace_no_error_in_jsonl(test_jsonl)
+    # normalize_quiet_very_quiet_in_jsonl(train_jsonl)
+    # normalize_quiet_very_quiet_in_jsonl(test_jsonl)
 
-    print("Fixing YAML templates and ranges...")
+    print("Fixing DPO JSONL datasets...")
+    replace_no_error_in_jsonl(train_dpo_jsonl)
+    replace_no_error_in_jsonl(test_dpo_jsonl)
+    normalize_quiet_very_quiet_dpo(train_dpo_jsonl)
+    normalize_quiet_very_quiet_dpo(test_dpo_jsonl)
+
+    print("\nFixing YAML templates and ranges...")
     fix_yaml_file(yaml_path)
 
-    print("✅ Done.")
+    print("\n✅ Done.")
 
 
 if __name__ == "__main__":

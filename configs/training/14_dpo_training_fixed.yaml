@@ -1,0 +1,48 @@
+# DPO Training Arguments - FIXED VERSION
+# Key fixes: beta=0.1 (was 0.5), max_grad_norm=5.0 (was 1.0), lower LR
+
+# Standard training arguments
+training_args:
+  output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
+  num_train_epochs: 1  # Start with 1 epoch, can increase if needed
+  per_device_train_batch_size: 1  # DPO requires 2x memory (chosen + rejected)
+  gradient_accumulation_steps: 32  # Effective batch size = 32
+  lr_scheduler_type: "cosine"
+  learning_rate: 1e-7  # REDUCED from 2e-7 for stability
+  weight_decay: 0.01
+  warmup_steps: 100  # Use absolute warmup steps instead of ratio
+  max_grad_norm: 5.0  # INCREASED from 1.0 to handle spikes better
+  logging_steps: 5
+  save_steps: 200
+  logging_first_step: true
+  logging_strategy: "steps"
+  save_total_limit: 3  # Keep last 3 checkpoints
+  save_strategy: "steps"
+  eval_strategy: "no"  # Keep disabled - too expensive with large dataset
+  load_best_model_at_end: false
+  report_to: "none"
+  run_name: null
+  disable_tqdm: false
+
+# DPO-specific parameters - CRITICAL FIXES
+dpo:
+  beta: 0.1  # REDUCED from 0.5 (standard DPO value from paper)
+  loss_type: "sigmoid"  # Options: "sigmoid", "hinge", "ipo"
+  label_smoothing: 0.0  # No smoothing needed
+
+# Mixed precision training
+mixed_precision:
+  enabled: true
+  dtype: "bf16"
+
+# Early stopping
+early_stopping:
+  enabled: false  # Disabled since evaluation is disabled
+  patience: 3
+
+# Resume settings
+resume:
+  enabled: true
+  weight_only: true  # Load weights but not optimizer state
+  checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-top3-musdb-expanded-lora-r16a32-musdb/checkpoint-600"
+

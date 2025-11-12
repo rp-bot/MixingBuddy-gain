@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -J h100_job                 # Job name
+#SBATCH -J h100_dpo_job                 # Job name
 #SBATCH -N1 --ntasks-per-node=1        # 1 node and 1 core
 #SBATCH --gres=gpu:H100:1              # Request 1 H100 GPU
 #SBATCH --mem-per-gpu=224GB            # Recommended memory for H100
 #SBATCH -t10:00:00                      # 10 hours of walltime
-#SBATCH -o outputs/logs/h100_report-%j.out          # Output file name (%j = job ID)
+#SBATCH -o outputs/logs/h100_dpo_report-%j.out          # Output file name (%j = job ID)
 
 # --- Optional Email Notifications ---
 #SBATCH --mail-type=END,BEGIN,FAIL           # Send email on job END or FAIL

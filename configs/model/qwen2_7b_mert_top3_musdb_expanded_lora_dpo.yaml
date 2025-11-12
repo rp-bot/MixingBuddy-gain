@@ -1,19 +1,20 @@
 # @package model
 
-# Model configuration - NO LoRA adapters, train audio projection + top 3 MERT encoder layers
+# Model configuration for DPO - WITH LoRA adapters
+# Same architecture as SFT, but config_name includes "-dpo" for separate checkpoint directory
 # MERT provides 25 layers * 1024 features -> learnable weighted average -> 1024 dimensional output
 # Top 3 encoder layers (22, 23, 24) are unfrozen to learn high-level semantic features
-# This should help the model distinguish "no_error" cases from "needs adjustment" cases
+# LoRA adapters are enabled on LLM to allow fine-tuning while keeping base model frozen
 model_name: "Qwen/Qwen2-7B-Instruct"
-config_name: "qwen2_7b_mert_musdb_expanded_unfreeze_top3"
+config_name: "qwen2_7b_mert_top3_musdb_expanded_lora_dpo"  # Changed from "..._lora" to "..._lora_dpo"
 use_qlora: true
 
-# LoRA configuration with NO target modules
-# The LLM is completely frozen
+# LoRA configuration with extended target modules
+# Enables LoRA adapters on attention and MLP layers
 lora:
   r: 16
   lora_alpha: 32
-  target_modules: [] # Empty list = no LoRA adapters!
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   lora_dropout: 0.1
   bias: "none"
   task_type: "CAUSAL_LM"
@@ -48,7 +49,7 @@ projection:
   use_layer_norm: true
   use_residual: false
   freeze_projection: false
-  # Auxiliary loss is CRITICAL here since projection is the only trainable component
+  # Auxiliary loss is CRITICAL here since projection is trainable
   use_auxiliary_loss: true
   auxiliary_loss_weight: 0.05 # Increased weight since it's more important
 
