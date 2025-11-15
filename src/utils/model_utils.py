@@ -2,12 +2,22 @@
 Shared utilities for model initialization and configuration.
 """
 
+import os
 import warnings
 import logging
 from typing import Optional
+from pathlib import Path
 from omegaconf import DictConfig
+from dotenv import load_dotenv
 
 from transformers import AutoTokenizer
+
+# Load environment variables from .env file if it exists
+# Look for .env in project root (2 levels up from src/utils/)
+project_root = Path(__file__).resolve().parents[2]
+env_path = project_root / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
 
 
 # Suppress warnings
@@ -15,9 +25,11 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
-def initialize_tokenizer(model_name: str):
+def initialize_tokenizer(model_name: str, token: Optional[str] = None):
     """Initializes and configures the tokenizer."""
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # Use provided token, or check environment variable, or use None (will use cached login)
+    hf_token = token or os.getenv("HF_TOKEN")
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return tokenizer
@@ -58,10 +70,14 @@ def initialize_lora_model(cfg: DictConfig, lora_config, tokenizer):
 
     print("Loading model with standard LoRA...")
 
+    # Get Hugging Face token from config or environment
+    hf_token = cfg.model.get("hf_token") or os.getenv("HF_TOKEN")
+
     # Load model without quantization
     llm = AutoModelForCausalLM.from_pretrained(
         cfg.model.model_name,
         torch_dtype="auto",
+        token=hf_token,
     )
 
     # Apply LoRA
@@ -89,11 +105,15 @@ def initialize_qlora_model(cfg: DictConfig, lora_config, tokenizer):
         bnb_4bit_use_double_quant=cfg.model.quantization.bnb_4bit_use_double_quant,
     )
 
+    # Get Hugging Face token from config or environment
+    hf_token = cfg.model.get("hf_token") or os.getenv("HF_TOKEN")
+
     # Load model with quantization
     llm = AutoModelForCausalLM.from_pretrained(
         cfg.model.model_name,
         torch_dtype="auto",
         quantization_config=quantization_config,
+        token=hf_token,
     )
 
     # Prepare for k-bit training

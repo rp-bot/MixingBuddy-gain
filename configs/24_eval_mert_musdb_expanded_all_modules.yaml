@@ -1,0 +1,61 @@
+# @package _global_
+
+# Evaluation config for MERT + multi-anchor training with reduced no_error dataset (experiment 24)
+# This evaluates the model trained with MERT encoder and multi-anchor MUSDB data (reduced no_error: 2x other categories, projection only)
+defaults:
+  - data: 08_musdb_expanded_augmented_variations
+  - model: qwen2_7b_mert_musdb_expanded_all_modules
+  - evaluation: evaluation
+  - training: training # Include training config for trainer compatibility
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - plotting: plotting
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  # Output directory will be determined by checkpoint run name
+
+# Model checkpoint settings
+# Set this to the path of your trained MERT + multi-anchor reduced model checkpoint
+# Options:
+# - null: Use base model (no trained weights)
+# - "latest": Automatically use the latest checkpoint
+# - "path/to/checkpoint": Use specific checkpoint
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-all-modules-r16a32-musdb/checkpoint-1600" # Update this to the trained MERT + multi-anchor reduced checkpoint path
+
+# IMPORTANT: The evaluation output directory will be automatically determined
+# from the checkpoint path. For example, if checkpoint is:
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-reduced-XXXX-XXXX/checkpoint-XXX"
+# Then evaluation will be saved to:
+# "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-reduced-XXXX-XXXX/predictions/"
+
+# Predictions file path for metrics computation
+# If not specified, the script will use the new evaluation structure
+# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-reduced-XXXX-XXXX/predictions/predictions.jsonl"
+
+# Plotting configuration
+plotting:
+  # These will be automatically set based on checkpoint path
+  metrics_file: null # Will be set to {output_dir}/predictions/metrics_results_detailed.json
+  output_dir: null # Will be set to {output_dir}/predictions/
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+# Evaluation-specific overrides for MERT + multi-anchor model
+evaluation:
+  # Use the trained MERT projection weights
+  use_random_projection: false # Use the trained projection weights
+
+  # Generation samples for evaluation
+  num_generation_samples: 1000 # Multiple samples for better statistical significance
+
+  # Memory settings - MERT should be memory efficient
+  memory:
+    max_memory_usage_gb: 8.0 # MERT is efficient but still needs some headroom
+

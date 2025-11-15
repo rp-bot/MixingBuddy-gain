@@ -1,17 +1,18 @@
 # @package model
 
-# Model configuration - NO LoRA adapters, ONLY train audio projection with MERT encoder
+# Model configuration - WITH LoRA adapters on all target modules (including embed_tokens and lm_head)
 # MERT provides 25 layers * 1024 features = 25600 dimensional input
+# For DPO training with variations dataset
 model_name: "Qwen/Qwen2-7B-Instruct"
-config_name: "qwen2_7b_mert_musdb_expanded"
+config_name: "qwen2_7b_mert_musdb_expanded_all_modules_dpo"
 use_qlora: true
 
-# LoRA configuration with NO target modules
-# The LLM is completely frozen
+# LoRA configuration with all target modules
+# Enables LoRA adapters on all attention, MLP linear layers, embed_tokens, and lm_head
 lora:
   r: 16
   lora_alpha: 32
-  target_modules: [] # Empty list = no LoRA adapters!
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "embed_tokens", "lm_head"]
   lora_dropout: 0.1
   bias: "none"
   task_type: "CAUSAL_LM"
@@ -44,8 +45,8 @@ projection:
   dropout: 0.1
   use_layer_norm: true
   use_residual: false
-  freeze_projection: false
   # Auxiliary loss is CRITICAL here since projection is the only trainable component
+  freeze_projection: false
   use_auxiliary_loss: true
-  auxiliary_loss_weight: 1 # Increased weight since it's more important
+  auxiliary_loss_weight: 1
 

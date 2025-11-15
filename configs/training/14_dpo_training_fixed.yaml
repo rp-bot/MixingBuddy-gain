@@ -4,32 +4,41 @@
 # Standard training arguments
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
-  num_train_epochs: 1  # Start with 1 epoch, can increase if needed
-  per_device_train_batch_size: 1  # DPO requires 2x memory (chosen + rejected)
-  gradient_accumulation_steps: 32  # Effective batch size = 32
+  
+  # 1. Increase this to a reasonable upper limit
+  num_train_epochs: 3  # Start with 3. You can try 5, but 3 is a safer start.
+
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
   lr_scheduler_type: "cosine"
-  learning_rate: 1e-7  # REDUCED from 2e-7 for stability
+  learning_rate: 1e-7
   weight_decay: 0.01
-  warmup_steps: 100  # Use absolute warmup steps instead of ratio
-  max_grad_norm: 5.0  # INCREASED from 1.0 to handle spikes better
+  warmup_steps: 100
+  max_grad_norm: 5.0
   logging_steps: 5
+  
+  # 2. Enable evaluation
+  eval_strategy: "steps"          # Change from "no"
+  eval_steps: 200                 # Match your save_steps
+  
+  # 3. This is the most important change
+  load_best_model_at_end: true    # Will keep the best model based on eval metrics
+  
   save_steps: 200
   logging_first_step: true
   logging_strategy: "steps"
-  save_total_limit: 3  # Keep last 3 checkpoints
+  save_total_limit: 3
   save_strategy: "steps"
-  eval_strategy: "no"  # Keep disabled - too expensive with large dataset
-  load_best_model_at_end: false
   report_to: "none"
   run_name: null
   disable_tqdm: false
 
 # DPO-specific parameters - CRITICAL FIXES
 dpo:
-  beta: 0.1  # REDUCED from 0.5 (standard DPO value from paper)
-  loss_type: "sigmoid"  # Options: "sigmoid", "hinge", "ipo"
-  label_smoothing: 0.0  # No smoothing needed
-
+  beta: 0.1 
+  loss_type: "sigmoid" 
+  label_smoothing: 0.0  
+  
 # Mixed precision training
 mixed_precision:
   enabled: true

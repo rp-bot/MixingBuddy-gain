@@ -94,7 +94,7 @@ def load_dpo_datasets(cfg: DictConfig, tokenizer):
 
 @hydra.main(
     config_path="../configs",
-    config_name="21_train_dpo_fixed",
+    config_name="25_train_dpo",
     version_base=None,
 )
 def main(cfg: DictConfig):

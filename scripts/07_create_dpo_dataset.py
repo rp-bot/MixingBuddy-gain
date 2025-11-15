@@ -7,9 +7,10 @@ alternative incorrect responses (rejected) based on other stem-error combination
 """
 
 import json
+import random
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 
 # Add project root to path
@@ -44,6 +45,7 @@ def generate_response(
     error_category: str,
     templates: Dict[str, List[str]],
     error_ranges: Dict[str, List[float]],
+    use_random_template: bool = False,
 ) -> str:
     """
     Generate a response for a given stem-error combination.
@@ -51,14 +53,19 @@ def generate_response(
     Args:
         target_stem: The stem to mention in the response (e.g., "vocals", "drums")
         error_category: The error type (e.g., "quiet", "loud", "no_error")
-        templates: Response templates from config
+        templates: Response templates from config (can be list of variations)
         error_ranges: dB ranges for each error category
+        use_random_template: If True, randomly select from template variations
         
     Returns:
         Generated response string
     """
     # Get template for this error category
-    template = templates[error_category][0]  # Take first template
+    template_list = templates[error_category]
+    if use_random_template and len(template_list) > 1:
+        template = random.choice(template_list)
+    else:
+        template = template_list[0]  # Use first template
     
     # Special case: no_error doesn't reference a specific stem
     if error_category == "no_error":
@@ -68,14 +75,20 @@ def generate_response(
     error_range = error_ranges[error_category]
     
     # Calculate correction range (opposite of applied error)
+    # Note: error_range is [less_severe, more_severe]
+    # For quiet: [-3, -6] means from -3 dB (slightly quiet) to -6 dB (very quiet)
+    # For loud: [3, 6] means from +3 dB (slightly loud) to +6 dB (very loud)
     if error_category in ["quiet", "very_quiet"]:
         # Error was negative gain, so correction is positive increase
-        min_correction = abs(error_range[1])  # abs(-3) = 3
-        max_correction = abs(error_range[0])  # abs(-6) = 6
+        # For [-3, -6], we want to correct by 3 to 6 dB (more correction for more error)
+        # max(error_range) gives -3 (less negative), min(error_range) gives -6 (more negative)
+        min_correction = abs(max(error_range))  # abs(-3) = 3 (for less severe error)
+        max_correction = abs(min(error_range))  # abs(-6) = 6 (for more severe error)
     else:  # loud, very_loud
         # Error was positive gain, so correction is reduction
-        min_correction = error_range[0]  # 3 or 6
-        max_correction = error_range[1]  # 6 or 12
+        # For [3, 6], we want to reduce by 3 to 6 dB
+        min_correction = min(error_range)  # 3 (for less severe error)
+        max_correction = max(error_range)  # 6 or 12 (for more severe error)
     
     # Fill in the template
     response = template.format(
@@ -94,6 +107,8 @@ def generate_all_alternative_responses(
     templates: Dict[str, List[str]],
     error_ranges: Dict[str, List[float]],
     error_categories: List[str],
+    use_random_template: bool = False,
+    max_rejected: Optional[int] = None,
 ) -> List[Tuple[str, str, str]]:
     """
     Generate all possible alternative (rejected) responses for a sample.
@@ -105,6 +120,8 @@ def generate_all_alternative_responses(
         templates: Response templates from config
         error_ranges: dB ranges for each error category
         error_categories: List of all error categories
+        use_random_template: If True, randomly select from template variations
+        max_rejected: Optional limit on number of rejected responses to generate
         
     Returns:
         List of tuples: (rejected_response, rejected_stem, rejected_error)
@@ -117,7 +134,7 @@ def generate_all_alternative_responses(
             # Skip if this is the chosen response
             if chosen_error == "no_error":
                 continue
-            response = generate_response(None, error_cat, templates, error_ranges)
+            response = generate_response(None, error_cat, templates, error_ranges, use_random_template)
             alternatives.append((response, "none", error_cat))
         else:
             # Generate for each available stem
@@ -126,8 +143,12 @@ def generate_all_alternative_responses(
                 if stem == chosen_stem and error_cat == chosen_error:
                     continue
                     
-                response = generate_response(stem, error_cat, templates, error_ranges)
+                response = generate_response(stem, error_cat, templates, error_ranges, use_random_template)
                 alternatives.append((response, stem, error_cat))
+    
+    # Optionally limit the number of rejected alternatives
+    if max_rejected is not None and len(alternatives) > max_rejected:
+        alternatives = random.sample(alternatives, max_rejected)
     
     return alternatives
 
@@ -137,6 +158,8 @@ def create_dpo_pairs(
     templates: Dict[str, List[str]],
     error_ranges: Dict[str, List[float]],
     error_categories: List[str],
+    use_random_template: bool = False,
+    max_rejected_per_sample: Optional[int] = None,
 ) -> List[Dict]:
     """
     Create DPO preference pairs from original dataset.
@@ -146,6 +169,8 @@ def create_dpo_pairs(
         templates: Response templates from config
         error_ranges: dB ranges for each error category
         error_categories: List of all error categories
+        use_random_template: If True, randomly select from template variations
+        max_rejected_per_sample: Optional limit on rejected responses per sample
         
     Returns:
         List of DPO pairs (one per chosen-rejected combination)
@@ -172,6 +197,8 @@ def create_dpo_pairs(
             templates=templates,
             error_ranges=error_ranges,
             error_categories=error_categories,
+            use_random_template=use_random_template,
+            max_rejected=max_rejected_per_sample,
         )
         
         # Create a DPO pair for each alternative
@@ -250,7 +277,7 @@ def generate_statistics(
 
 @hydra.main(
     config_path="../configs/data",
-    config_name="06_dpo_dataset",
+    config_name="09_dpo_dataset_variations",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -258,6 +285,22 @@ def main(cfg: DictConfig):
     print("=" * 60)
     print("Creating DPO Dataset for Direct Preference Optimization")
     print("=" * 60)
+    
+    # Set random seed for reproducibility
+    seed = cfg.processing.get("seed", 42)
+    random.seed(seed)
+    print(f"Random seed: {seed}")
+    
+    # Get processing options
+    use_random_template = cfg.processing.get("use_random_template", True)
+    max_rejected_per_sample = cfg.processing.get("max_rejected_per_sample", None)
+    max_train_samples = cfg.processing.get("max_train_samples", None)
+    
+    print(f"Use random template: {use_random_template}")
+    if max_rejected_per_sample:
+        print(f"Max rejected per sample: {max_rejected_per_sample}")
+    if max_train_samples:
+        print(f"Max training samples: {max_train_samples}")
     
     # Convert paths to absolute
     input_train = Path(cfg.input.train_jsonl)
@@ -276,11 +319,77 @@ def main(cfg: DictConfig):
     train_data = load_jsonl(input_train)
     print(f"Loaded {len(train_data)} training samples")
     
+    # Optionally limit training samples with stratified sampling to maintain distribution
+    # no_error should equal the sum of all error categories (quiet + very_quiet + loud + very_loud)
+    if max_train_samples is not None and len(train_data) > max_train_samples:
+        print(f"Sampling {max_train_samples} samples from {len(train_data)} total")
+        print("Using stratified sampling: no_error = sum of all error categories...")
+        
+        # Group samples by error category
+        samples_by_category = defaultdict(list)
+        for sample in train_data:
+            error_cat = sample["meta"]["error_category"]
+            samples_by_category[error_cat].append(sample)
+        
+        # Separate no_error from error categories
+        error_categories = [cat for cat in samples_by_category.keys() if cat != "no_error"]
+        num_error_categories = len(error_categories)
+        
+        if num_error_categories == 0:
+            # Only no_error samples, just sample directly
+            no_error_samples = samples_by_category.get("no_error", [])
+            train_data = random.sample(no_error_samples, min(max_train_samples, len(no_error_samples)))
+            print(f"  no_error: {len(train_data)} samples")
+        else:
+            # Calculate distribution: no_error = sum of all error categories
+            # So: no_error_count = error_count_per_category * num_error_categories
+            # Total = no_error_count + error_count_per_category * num_error_categories
+            # Total = error_count_per_category * (num_error_categories + num_error_categories)
+            # error_count_per_category = Total / (2 * num_error_categories)
+            error_samples_per_category = max_train_samples // (2 * num_error_categories)
+            remainder = max_train_samples % (2 * num_error_categories)
+            
+            # Distribute remainder: give extra samples to error categories first (round-robin),
+            # then adjust no_error to match the total
+            sampled_data = []
+            error_samples_total = 0
+            
+            # Sample from error categories (uniform distribution among errors)
+            for i, error_cat in enumerate(error_categories):
+                category_samples = samples_by_category[error_cat]
+                # Distribute remainder to first few error categories
+                n_samples = error_samples_per_category + (1 if i < remainder else 0)
+                n_samples = min(n_samples, len(category_samples))
+                
+                if n_samples > 0:
+                    sampled = random.sample(category_samples, n_samples)
+                    sampled_data.extend(sampled)
+                    error_samples_total += len(sampled)
+                    print(f"  {error_cat:15s}: {len(sampled):5d} / {len(category_samples):5d} samples")
+            
+            # Sample from no_error (should equal sum of error categories)
+            no_error_samples = samples_by_category.get("no_error", [])
+            no_error_count = min(error_samples_total, len(no_error_samples))
+            
+            if no_error_count > 0:
+                sampled_no_error = random.sample(no_error_samples, no_error_count)
+                sampled_data.extend(sampled_no_error)
+                print(f"  {'no_error':15s}: {len(sampled_no_error):5d} / {len(no_error_samples):5d} samples")
+            
+            # Shuffle to mix categories
+            random.shuffle(sampled_data)
+            train_data = sampled_data
+            print(f"Final sampled dataset: {len(train_data)} samples")
+            print(f"  Distribution: no_error={sum(1 for s in train_data if s['meta']['error_category'] == 'no_error')}, "
+                  f"errors={sum(1 for s in train_data if s['meta']['error_category'] != 'no_error')}")
+    
     train_dpo_pairs = create_dpo_pairs(
         original_data=train_data,
         templates=dict(cfg.response_templates),
         error_ranges=dict(cfg.error_ranges_db),
         error_categories=list(cfg.error_categories),
+        use_random_template=use_random_template,
+        max_rejected_per_sample=max_rejected_per_sample,
     )
     
     print(f"Generated {len(train_dpo_pairs)} DPO pairs")
@@ -304,6 +413,8 @@ def main(cfg: DictConfig):
         templates=dict(cfg.response_templates),
         error_ranges=dict(cfg.error_ranges_db),
         error_categories=list(cfg.error_categories),
+        use_random_template=use_random_template,
+        max_rejected_per_sample=max_rejected_per_sample,
     )
     
     print(f"Generated {len(test_dpo_pairs)} DPO pairs")

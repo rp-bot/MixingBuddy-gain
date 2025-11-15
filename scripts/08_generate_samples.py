@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="18_eval_balanced_responses",
+    config_name="24_eval_mert_musdb_expanded_all_modules",
     version_base=None,
 )
 def main(cfg: DictConfig):

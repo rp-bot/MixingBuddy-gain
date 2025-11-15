@@ -12,10 +12,44 @@ def analyze_prediction(item):
     error_category = item['error_category']
     generated_text = item['generated'].lower()
     
-    # Define keywords for directions
-    increase_keywords = ['increase', 'too quiet', 'barely audible', 'too low']
-    decrease_keywords = ['reduce', 'decrease', 'too loud', 'overwhelming', 'too high']
-    no_error_keywords = ['no adjustments', 'well-balanced', 'correct level', 'balanced', 'no changes needed']
+    # Define keywords for directions - updated to match new response template variations
+    # Increase keywords (for quiet/very_quiet) - extracted from all 10 template variations
+    increase_keywords = [
+        'increase', 'boost', 'raise', 'louder', 'quiet', 'too quiet', 'barely audible', 
+        'too low', 'needs to be slightly louder', 'somewhat quiet', 'a bit too low',
+        'requires a slight boost', 'slightly quiet', 'needs more volume', 'a little low',
+        'a little too quiet', 'should be slightly louder', 'somewhat too quiet', 
+        'too quiet to hear clearly', 'nearly inaudible', 'too low in the mix', 
+        'difficult to hear', 'almost inaudible', 'barely present in the mix', 
+        'needs significant boosting', 'too quiet to be heard properly'
+    ]
+    
+    # Decrease keywords (for loud/very_loud) - extracted from all 10 template variations
+    decrease_keywords = [
+        'reduce', 'decrease', 'lower', 'quieter', 'loud', 'too loud', 'overwhelming', 
+        'too high', 'a little too loud', 'needs to be slightly quieter', 'somewhat loud', 
+        'a bit too high', 'requires a slight reduction', 'slightly loud', 'needs less volume', 
+        'a little high', 'should be slightly quieter', 'somewhat too loud', 
+        'too loud and dominating', 'overpowering the mix', 'too high in the mix', 
+        'excessively loud', 'dominating the mix', 'overpowering', 'needs significant reduction', 
+        'too loud and needs to be brought down'
+    ]
+    
+    # No error keywords - extracted from all 10 template variations
+    no_error_keywords = [
+        'no adjustments', 'no changes', 'no modifications', 'well-balanced', 'correct level',
+        'balanced', 'properly balanced', 'proper balance', 'correctly balanced', 'balance is correct',
+        'all stems are at appropriate levels', 'all stems are properly balanced',
+        'all stems are correctly balanced', 'all stems are at proper levels', 'all stems at proper levels',
+        'all stems are at correct levels', 'levels are correct', 'balance is good', 
+        'mix is well-balanced', 'mix balance is correct', 'mix evaluation shows proper balance',
+        'mix analysis shows', 'mix analysis indicates', 'upon review', 'after evaluation',
+        'reviewing the mix', 'after careful analysis', 'after analyzing the mix',
+        'proper balance across all stems', 'each element is at the correct level',
+        'the mix levels are appropriate', 'no changes are needed', 'no adjustments required',
+        'no modifications needed', 'no adjustments are necessary', 'no changes required',
+        'no modifications are necessary'
+    ]
 
     # Determine expected direction
     if error_category in ['quiet', 'very_quiet']:
