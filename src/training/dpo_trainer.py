@@ -319,7 +319,9 @@ class DPOTrainer(Trainer):
         ignore_keys=None,
     ):
         """
-        Override prediction_step to handle DPO-specific inputs.
+        Override prediction_step to handle DPO-specific inputs and store metrics.
+        
+        Returns metrics that will be aggregated in compute_metrics().
         """
         with torch.no_grad():
             loss, metrics = self.compute_loss(model, inputs, return_outputs=True)
@@ -327,6 +329,65 @@ class DPOTrainer(Trainer):
         if prediction_loss_only:
             return (loss, None, None)
         
-        # For evaluation, we care about the metrics
-        return (loss, None, None)
+        # Store metrics for aggregation in compute_metrics()
+        # Initialize metrics storage if it doesn't exist or if it was cleared
+        if not hasattr(self, "_eval_metrics") or not self._eval_metrics["losses"]:
+            # Reset metrics at the start of a new evaluation run
+            self._eval_metrics = {
+                "losses": [],
+                "chosen_rewards": [],
+                "rejected_rewards": [],
+                "reward_accuracies": [],
+                "reward_margins": [],
+            }
+        
+        # Store metrics (convert tensors to Python scalars for aggregation)
+        self._eval_metrics["losses"].append(loss.detach().cpu().item())
+        self._eval_metrics["chosen_rewards"].append(metrics["chosen_rewards"].detach().cpu().item())
+        self._eval_metrics["rejected_rewards"].append(metrics["rejected_rewards"].detach().cpu().item())
+        self._eval_metrics["reward_accuracies"].append(metrics["reward_accuracies"].detach().cpu().item())
+        self._eval_metrics["reward_margins"].append(metrics["reward_margins"].detach().cpu().item())
+        
+        # Return dummy predictions/labels (not used for DPO, but required by Trainer)
+        # The actual metrics are stored in _eval_metrics and aggregated in compute_metrics()
+        batch_size = inputs["chosen_input_ids"].shape[0]
+        dummy_predictions = torch.zeros(batch_size, 1)  # Dummy tensor
+        dummy_labels = torch.zeros(batch_size, 1)  # Dummy tensor
+        
+        return (loss, dummy_predictions, dummy_labels)
+    
+    def compute_metrics(self, eval_pred):
+        """
+        Compute and aggregate DPO evaluation metrics.
+        
+        Args:
+            eval_pred: EvalPrediction object containing predictions and labels
+                      (not used for DPO, metrics are stored in _eval_metrics)
+        
+        Returns:
+            Dictionary of aggregated metrics with "eval/" prefix
+        """
+        if not hasattr(self, "_eval_metrics") or not self._eval_metrics["losses"]:
+            logger.warning("No evaluation metrics found. Returning empty metrics.")
+            return {}
+        
+        # Aggregate metrics across all batches
+        metrics = {
+            "eval/loss": sum(self._eval_metrics["losses"]) / len(self._eval_metrics["losses"]),
+            "eval/chosen_rewards": sum(self._eval_metrics["chosen_rewards"]) / len(self._eval_metrics["chosen_rewards"]),
+            "eval/rejected_rewards": sum(self._eval_metrics["rejected_rewards"]) / len(self._eval_metrics["rejected_rewards"]),
+            "eval/reward_accuracies": sum(self._eval_metrics["reward_accuracies"]) / len(self._eval_metrics["reward_accuracies"]),
+            "eval/reward_margins": sum(self._eval_metrics["reward_margins"]) / len(self._eval_metrics["reward_margins"]),
+        }
+        
+        # Clear stored metrics for next evaluation
+        self._eval_metrics = {
+            "losses": [],
+            "chosen_rewards": [],
+            "rejected_rewards": [],
+            "reward_accuracies": [],
+            "reward_margins": [],
+        }
+        
+        return metrics
 

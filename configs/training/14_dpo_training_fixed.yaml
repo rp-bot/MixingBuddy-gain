@@ -6,7 +6,7 @@ training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
   
   # 1. Increase this to a reasonable upper limit
-  num_train_epochs: 3  # Start with 3. You can try 5, but 3 is a safer start.
+  num_train_epochs: 3  
 
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32
@@ -19,7 +19,7 @@ training_args:
   
   # 2. Enable evaluation
   eval_strategy: "steps"          # Change from "no"
-  eval_steps: 200                 # Match your save_steps
+  eval_steps: 200                 # Match save_steps
   
   # 3. This is the most important change
   load_best_model_at_end: true    # Will keep the best model based on eval metrics
@@ -46,8 +46,14 @@ mixed_precision:
 
 # Early stopping
 early_stopping:
-  enabled: false  # Disabled since evaluation is disabled
+  enabled: true  # Enabled since evaluation is now properly implemented
   patience: 3
+
+# Validation set configuration
+# These parameters control the train/validation split for evaluation during training
+data:
+  val_split_size: 0.2  # Fraction of training data to use for validation (0.0-1.0)
+  max_val_samples: null  # Optional: maximum number of validation samples (null for no limit)
 
 # Resume settings
 resume:

@@ -1,18 +1,17 @@
 # @package model
 
-# Model configuration - WITH LoRA adapters on all target modules (including embed_tokens and lm_head)
+# Model configuration - LoRA adapters on self-attention linear layers only
 # MERT provides 25 layers * 1024 features = 25600 dimensional input
-# For reduced no_error dataset (no_error: 2x other categories)
 model_name: "Qwen/Qwen2-7B-Instruct"
-config_name: "qwen2_7b_mert_musdb_expanded_all_modules"
+config_name: "qwen2_7b_mert_musdb_expanded_lora_attention_only"
 use_qlora: true
 
-# LoRA configuration with all target modules
-# Enables LoRA adapters on all attention, MLP linear layers, embed_tokens, and lm_head
+# LoRA configuration with only self-attention target modules
+# Restricts adaptation capacity to attention to study its impact on audio grounding
 lora:
-  r: 16
-  lora_alpha: 32
-  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "embed_tokens", "lm_head"]
+  r: 8
+  lora_alpha: 16
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
   lora_dropout: 0.1
   bias: "none"
   task_type: "CAUSAL_LM"
@@ -49,4 +48,5 @@ projection:
   freeze_projection: false
   use_auxiliary_loss: true
   auxiliary_loss_weight: 0.05
+
 

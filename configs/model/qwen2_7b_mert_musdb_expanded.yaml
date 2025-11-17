@@ -47,5 +47,5 @@ projection:
   freeze_projection: false
   # Auxiliary loss is CRITICAL here since projection is the only trainable component
   use_auxiliary_loss: true
-  auxiliary_loss_weight: 1 # Increased weight since it's more important
+  auxiliary_loss_weight: 0.05 # Increased weight since it's more important
 

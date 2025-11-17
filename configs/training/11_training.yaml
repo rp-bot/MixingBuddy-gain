@@ -16,7 +16,8 @@ training_args:
   logging_strategy: "steps" # Log at every logging_steps
   save_total_limit: 2 # Keep more checkpoints
   save_strategy: "steps"
-  eval_strategy: "no" # Disable evaluation entirely
+  eval_strategy: "steps" # Enable evaluation
+  eval_steps: 200 # Evaluate every 200 steps (same as save_steps)
   load_best_model_at_end: false
   report_to: "none" # Disable tracking
   run_name: null # Will be set automatically if null
@@ -29,8 +30,12 @@ mixed_precision:
 
 # Early stopping
 early_stopping:
-  enabled: false # Disabled since evaluation is disabled
+  enabled: false # Can be enabled if needed
   patience: 3
+
+# Evaluation configuration
+evaluation:
+  max_eval_samples: 100 # Maximum number of samples to evaluate (null for all samples)
 
 # Resume training configuration
 resume:

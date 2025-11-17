@@ -45,6 +45,17 @@ def load_datasets(cfg: DictConfig, tokenizer) -> Tuple[object, object, object]:
     train_dataset = train_val_split["train"]
     val_dataset = train_val_split["test"]
 
+    # Optionally limit validation set size for faster evaluation
+    max_eval_samples = cfg.training.get("evaluation", {}).get("max_eval_samples", None)
+    if max_eval_samples is not None and len(val_dataset) > max_eval_samples:
+        logger.info(
+            "Limiting validation set from %d to %d samples for faster evaluation",
+            len(val_dataset),
+            max_eval_samples,
+        )
+        # Select first max_eval_samples (dataset is already shuffled by train_test_split)
+        val_dataset = val_dataset.select(range(max_eval_samples))
+
     logger.info(
         "Dataset sizes: Train=%d, Val=%d, Test=%d",
         len(train_dataset),

@@ -24,7 +24,7 @@ env:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
-checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-all-modules-r16a32-musdb/checkpoint-1600" # Update this to the trained MERT + multi-anchor reduced checkpoint path
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-all-modules-r16a32-musdb" # Update this to the trained MERT + multi-anchor reduced checkpoint path
 
 # IMPORTANT: The evaluation output directory will be automatically determined
 # from the checkpoint path. For example, if checkpoint is:
@@ -53,7 +53,7 @@ evaluation:
   use_random_projection: false # Use the trained projection weights
 
   # Generation samples for evaluation
-  num_generation_samples: 1000 # Multiple samples for better statistical significance
+  num_generation_samples: 100 # Multiple samples for better statistical significance
 
   # Memory settings - MERT should be memory efficient
   memory:

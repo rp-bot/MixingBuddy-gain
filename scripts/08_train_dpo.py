@@ -76,12 +76,30 @@ def load_dpo_datasets(cfg: DictConfig, tokenizer):
     )
     test_dataset = IterableDatasetWrapper(test_pytorch_dataset)
 
-    # Split training into train/val
+    # Split training into train/val with configurable split size
+    val_split_size = cfg.data.get("val_split_size", 0.2)
+    logger.info(
+        "Splitting training data: val_split_size=%.2f (%.1f%% for validation)",
+        val_split_size,
+        val_split_size * 100,
+    )
+    
     train_val_split = full_train_dataset.train_test_split(
-        test_size=0.2, seed=cfg.env.seed
+        test_size=val_split_size, seed=cfg.env.seed
     )
     train_dataset = train_val_split["train"]
     val_dataset = train_val_split["test"]
+    
+    # Optionally limit validation set size for faster evaluation
+    max_val_samples = cfg.data.get("max_val_samples", None)
+    if max_val_samples is not None and len(val_dataset) > max_val_samples:
+        logger.info(
+            "Limiting validation set from %d to %d samples for faster evaluation",
+            len(val_dataset),
+            max_val_samples,
+        )
+        # Select first max_val_samples (dataset is already shuffled by train_test_split)
+        val_dataset = val_dataset.select(range(max_val_samples))
 
     logger.info(
         "DPO Dataset sizes: Train=%d, Val=%d, Test=%d",
