@@ -170,6 +170,23 @@ class DPOTrainer(Trainer):
         logits = outputs.logits
         labels = inputs["labels"]
         
+        # Check for Inf or NaN values in logits (only log on actual problems)
+        has_inf = torch.isinf(logits).any()
+        has_nan = torch.isnan(logits).any()
+        
+        if has_inf or has_nan:
+            logits_abs_max = logits.abs().max().item()
+            logger.warning(
+                f"Logits check - Inf: {has_inf}, NaN: {has_nan}, "
+                f"abs_max: {logits_abs_max:.2f}, shape: {logits.shape}"
+            )
+            if has_inf:
+                inf_positions = torch.nonzero(torch.isinf(logits), as_tuple=False)
+                logger.warning(f"Inf positions (batch, seq, vocab): {inf_positions[:10].tolist()}")
+            if has_nan:
+                nan_positions = torch.nonzero(torch.isnan(logits), as_tuple=False)
+                logger.warning(f"NaN positions (batch, seq, vocab): {nan_positions[:10].tolist()}")
+        
         # Shift logits and labels for next-token prediction
         shift_logits = logits[..., :-1, :].contiguous()
         shift_labels = labels[..., 1:].contiguous()
@@ -189,10 +206,30 @@ class DPOTrainer(Trainer):
         # Compute log probabilities
         log_probs = F.log_softmax(shift_logits, dim=-1)
         
+        # Check log_probs for Inf/NaN (only log on actual problems)
+        log_probs_has_inf = torch.isinf(log_probs).any()
+        log_probs_has_nan = torch.isnan(log_probs).any()
+        if log_probs_has_inf or log_probs_has_nan:
+            logger.warning(
+                f"log_probs check - Inf: {log_probs_has_inf}, NaN: {log_probs_has_nan}, "
+                f"min: {log_probs.min().item():.2f}, max: {log_probs.max().item():.2f}"
+            )
+        
         # Gather log probs of the labels
         per_token_logps = torch.gather(
             log_probs, dim=2, index=shift_labels_safe.unsqueeze(2)
         ).squeeze(2)
+        
+        # Check per_token_logps for Inf/NaN (only log on actual problems)
+        per_token_has_inf = torch.isinf(per_token_logps).any()
+        per_token_has_nan = torch.isnan(per_token_logps).any()
+        if per_token_has_inf or per_token_has_nan:
+            per_token_min = per_token_logps[loss_mask].min().item() if loss_mask.any() else float('inf')
+            per_token_max = per_token_logps[loss_mask].max().item() if loss_mask.any() else float('-inf')
+            logger.warning(
+                f"per_token_logps check - Inf: {per_token_has_inf}, NaN: {per_token_has_nan}, "
+                f"min: {per_token_min:.2f}, max: {per_token_max:.2f}"
+            )
         
         # Mask out ignored tokens (set to 0 for -100 labels)
         per_token_logps = per_token_logps * loss_mask.float()
@@ -202,6 +239,15 @@ class DPOTrainer(Trainer):
         num_tokens = loss_mask.sum(-1).float()
         num_tokens = torch.clamp(num_tokens, min=1.0)  # Avoid division by zero
         sequence_logps = per_token_logps.sum(-1) / num_tokens
+        
+        # Check final sequence_logps for Inf/NaN (only log on actual problems)
+        seq_has_inf = torch.isinf(sequence_logps).any()
+        seq_has_nan = torch.isnan(sequence_logps).any()
+        if seq_has_inf or seq_has_nan:
+            logger.warning(
+                f"sequence_logps check - Inf: {seq_has_inf}, NaN: {seq_has_nan}, "
+                f"min: {sequence_logps.min().item():.2f}, max: {sequence_logps.max().item():.2f}, mean: {sequence_logps.mean().item():.2f}"
+            )
         
         return sequence_logps
 
@@ -228,8 +274,27 @@ class DPOTrainer(Trainer):
         policy_chosen_rewards = self.beta * (policy_chosen_logps - reference_chosen_logps)
         policy_rejected_rewards = self.beta * (policy_rejected_logps - reference_rejected_logps)
         
+        # Check rewards for Inf/NaN (only log on actual problems)
+        rewards_has_inf = torch.isinf(policy_chosen_rewards).any() or torch.isinf(policy_rejected_rewards).any()
+        rewards_has_nan = torch.isnan(policy_chosen_rewards).any() or torch.isnan(policy_rejected_rewards).any()
+        if rewards_has_inf or rewards_has_nan:
+            logger.warning(
+                f"Rewards check - Inf: {rewards_has_inf}, NaN: {rewards_has_nan}, "
+                f"chosen: min={policy_chosen_rewards.min().item():.2f}, max={policy_chosen_rewards.max().item():.2f}, "
+                f"rejected: min={policy_rejected_rewards.min().item():.2f}, max={policy_rejected_rewards.max().item():.2f}"
+            )
+        
         # Compute logits for the preference model
         logits = policy_chosen_rewards - policy_rejected_rewards
+        
+        # Check preference logits for Inf/NaN (only log on actual problems)
+        pref_has_inf = torch.isinf(logits).any()
+        pref_has_nan = torch.isnan(logits).any()
+        if pref_has_inf or pref_has_nan:
+            logger.warning(
+                f"Preference logits check - Inf: {pref_has_inf}, NaN: {pref_has_nan}, "
+                f"abs_max: {logits.abs().max().item():.2f}, min: {logits.min().item():.2f}, max: {logits.max().item():.2f}"
+            )
         
         # Compute loss based on loss type
         if self.loss_type == "sigmoid":
@@ -250,7 +315,23 @@ class DPOTrainer(Trainer):
                 -F.logsigmoid(-logits)
             )
         
+        # Check losses for Inf/NaN (only log on actual problems)
+        loss_has_inf = torch.isinf(losses).any()
+        loss_has_nan = torch.isnan(losses).any()
+        if loss_has_inf or loss_has_nan:
+            logger.warning(
+                f"Losses check - Inf: {loss_has_inf}, NaN: {loss_has_nan}, "
+                f"min: {losses.min().item():.2f}, max: {losses.max().item():.2f}, mean: {losses.mean().item():.2f}"
+            )
+        
         loss = losses.mean()
+        
+        # Check final loss for Inf/NaN (only log on actual problems)
+        if torch.isinf(loss) or torch.isnan(loss):
+            logger.warning(
+                f"Final loss check - Inf: {torch.isinf(loss)}, NaN: {torch.isnan(loss)}, "
+                f"value: {loss.item():.2f}"
+            )
         
         return loss, policy_chosen_rewards, policy_rejected_rewards
 
@@ -279,6 +360,27 @@ class DPOTrainer(Trainer):
 
         # Backward pass through accelerator
         self.accelerator.backward(loss)
+        
+        # Debug: Check gradients for Inf/NaN and very large values
+        grad_norm = 0.0
+        grad_inf_count = 0
+        grad_nan_count = 0
+        grad_max_abs = 0.0
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                grad = param.grad
+                grad_norm += grad.data.norm(2).item() ** 2
+                grad_inf_count += torch.isinf(grad).sum().item()
+                grad_nan_count += torch.isnan(grad).sum().item()
+                grad_max_abs = max(grad_max_abs, grad.abs().max().item())
+        grad_norm = grad_norm ** 0.5
+        
+        # Log if gradients have Inf/NaN (only log on actual problems)
+        if grad_inf_count > 0 or grad_nan_count > 0:
+            logger.warning(
+                f"Gradient check - norm: {grad_norm:.2f}, Inf count: {grad_inf_count}, "
+                f"NaN count: {grad_nan_count}, max_abs: {grad_max_abs:.2f}"
+            )
 
         # Store DPO metrics for logging (will be picked up by log() method)
         if not hasattr(self, "_stored_metrics"):

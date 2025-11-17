@@ -1,5 +1,5 @@
 # DPO Training Arguments - FIXED VERSION
-# Key fixes: beta=0.1 (was 0.5), max_grad_norm=5.0 (was 1.0), lower LR
+# Key fixes: beta=0.1 (was 0.5), max_grad_norm=20.0 (was 5.0), lower LR
 
 # Standard training arguments
 training_args:
@@ -14,7 +14,7 @@ training_args:
   learning_rate: 1e-7
   weight_decay: 0.01
   warmup_steps: 100
-  max_grad_norm: 5.0
+  max_grad_norm: 20.0
   logging_steps: 5
   
   # 2. Enable evaluation
