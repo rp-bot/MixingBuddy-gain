@@ -1,0 +1,17 @@
+\subsection{Training Strategy}
+\label{sec:training-strategy}
+We will be using the supervised fine-tuning (SFT) approach to train the model.
+We will be using the Qwen2-7B-Instruct model as the backbone LLM.
+We will be training the audio projection layer from scratch.
+We will be training the model using the PEFT (Parameter-Efficient Fine-Tuning) approach.
+We will be using the QLoRA (Quantized Low-Rank Adaptation) approach to train the model.
+We will be using the auxiliary loss to train the model.
+we will be training the model for 3 epochs since SFT usually takes 3 epochs to converge (cite the papers) and considering the size of the dataset 3 epochs is a good starting point.
+we will use cosine annealing without warmup to train the model.
+we will start with a learning rate of 1e-5 and a weight decay of 0.01.
+we will use a batch size of 4 and a gradient accumulation steps of 16.
+we will use a gradient clipping of 0.8.
+we will use a logging steps of 5.
+
+
+
