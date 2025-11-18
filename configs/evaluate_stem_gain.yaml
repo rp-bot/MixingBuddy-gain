@@ -1,0 +1,23 @@
+# @package _global_
+
+# Evaluation config for stem_gain model
+
+defaults:
+  - data: stem_gain_data
+  - model: stem_gain_model
+  - training: stem_gain_training
+  - evaluation: evaluation
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+env:
+  seed: 42
+  project_name: "stem-gain-eval"
+  output_dir: "outputs/evaluation/stem_gain"
+
+# Path to trained stem_gain checkpoint directory
+# Example: "outputs/checkpoints/stem_gain_model/some-run-name/checkpoint-1000"
+checkpoint_path: null
+
+

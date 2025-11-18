@@ -1,0 +1,46 @@
+# @package model
+
+# Model configuration for stem classification and gain regression
+# Architecture: Audio Encoder -> (Optional Projection) -> Classification Head + Regression Head
+
+# Name used by run-name utilities / logging
+model_name: "stem_gain"
+
+# Number of classes:
+#   0: vocals
+#   1: drums
+#   2: bass
+#   3: no_error  (mix is balanced, no adjustment needed)
+num_classes: 4
+
+# Feature pooling method: "mean", "max", or "attention"
+pooling_method: "mean"
+
+# Audio encoder configuration - MERT
+encoder:
+  model_name: "m-a-p/MERT-v1-330M"
+  freeze: true
+  device: cuda
+  input_sample_rate: 24000  # Match dataset sample rate (MERT's native rate is 24kHz)
+  freeze_layer_weights: false
+
+# Optional projection layer
+# Set to null to skip projection (encoder -> heads directly)
+# Or configure a projection layer
+projection: null
+# Example projection config (uncomment to use):
+# projection:
+#   type: "mlp"  # or "linear"
+#   output_dim: 512  # Feature dimension for heads
+#   hidden_dims: [256, 512]  # For MLP only
+#   activation: "relu"
+#   dropout: 0.1
+
+# Task head configuration (classification and regression)
+# Configurable depth and architecture
+head:
+  hidden_dims: [768, 512, 256]  # 3-layer: 1024 -> 768 -> 512 -> 256 -> output
+  dropout: 0.1
+  activation: "relu"  # Options: "relu", "gelu", "tanh"
+# Default (if head is null): [512] (2-layer: 1024 -> 512 -> output)
+

@@ -167,17 +167,11 @@ def generate_run_name(cfg: DictConfig):
             model_config_name, model_config_name.replace("_", "-")
         )
     else:
-        # Fallback to original logic
-        model_name = cfg.model.model_name
+        # Fallback to model_name when no config_name is present
+        model_name = getattr(cfg.model, "model_name", "model")
         model_abbr = cfg.experiment_naming.naming.components.model_abbr.get(
             model_name, model_name.lower().replace("-instruct", "").replace("-", "")
         )
-
-    # LoRA configuration
-    lora_config = cfg.model.lora
-    rank = lora_config.r
-    alpha = lora_config.lora_alpha
-    lora_str = f"r{rank}a{alpha}"
 
     # Dataset identifier from config mapping
     dataset_path = cfg.data.train_jsonl_path
@@ -186,11 +180,23 @@ def generate_run_name(cfg: DictConfig):
     else:
         dataset_abbr = "custom"
 
-    # Experiment type from config mapping
-    if cfg.model.use_qlora:
-        exp_type = cfg.experiment_naming.naming.components.exp_type.qlora
+    # Determine if this is a LoRA/QLoRA experiment or a non-LoRA model (e.g., stem_gain)
+    if hasattr(cfg.model, "lora"):
+        # LoRA configuration
+        lora_config = cfg.model.lora
+        rank = lora_config.r
+        alpha = lora_config.lora_alpha
+        lora_str = f"r{rank}a{alpha}"
+
+        # Experiment type from config mapping
+        if getattr(cfg.model, "use_qlora", False):
+            exp_type = cfg.experiment_naming.naming.components.exp_type.qlora
+        else:
+            exp_type = cfg.experiment_naming.naming.components.exp_type.lora
     else:
-        exp_type = cfg.experiment_naming.naming.components.exp_type.lora
+        # Non-LoRA model (e.g., pure encoder+heads like stem_gain)
+        lora_str = "none"
+        exp_type = cfg.experiment_naming.naming.components.exp_type.full
 
     # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}
     run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}"

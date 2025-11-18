@@ -134,9 +134,21 @@ class MERTEncoder(nn.Module):
             audio = self.resampler(audio)
 
         # Prepare inputs using processor
-        # Processor expects audio on CPU
+        # Processor expects audio on CPU as numpy array or list
+        # Convert to numpy if needed
+        if isinstance(audio, torch.Tensor):
+            audio_cpu = audio.cpu()
+            # Convert to numpy - handle both 1D and 2D
+            if audio_cpu.dim() == 1:
+                audio_np = audio_cpu.numpy()
+            else:
+                # For batched input, convert to list of numpy arrays
+                audio_np = [audio_cpu[i].numpy() for i in range(audio_cpu.shape[0])]
+        else:
+            audio_np = audio
+        
         inputs = self.processor(
-            raw_speech=audio.cpu(),
+            raw_speech=audio_np,
             sampling_rate=self.processor.sampling_rate,
             return_tensors="pt",
         )
@@ -145,8 +157,26 @@ class MERTEncoder(nn.Module):
         input_values = inputs.input_values.to(self.device)
 
         # Ensure input_values is 2D: [batch_size, sequence_length]
-        if input_values.dim() == 3:
-            input_values = input_values.squeeze(1)  # Remove extra dimension if present
+        # Handle any extra dimensions that might have been added
+        original_shape = input_values.shape
+        while input_values.dim() > 2:
+            # Remove singleton dimensions
+            if input_values.shape[0] == 1:
+                input_values = input_values.squeeze(0)
+            elif input_values.shape[1] == 1:
+                input_values = input_values.squeeze(1)
+            else:
+                # If no singleton dims, flatten extra dimensions
+                # Keep first dim as batch, flatten the rest
+                batch_size = input_values.shape[0]
+                input_values = input_values.view(batch_size, -1)
+        
+        # Final safety check
+        if input_values.dim() != 2:
+            raise ValueError(
+                f"Expected 2D input_values after processing, but got shape {input_values.shape} "
+                f"(original shape: {original_shape}). Audio input shape was {audio.shape if isinstance(audio, torch.Tensor) else type(audio)}"
+            )
 
         # Extract features with all hidden states
         # Don't use no_grad if we have unfrozen layers (top or bottom)
