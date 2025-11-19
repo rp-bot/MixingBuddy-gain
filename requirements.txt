@@ -54,3 +54,4 @@ resampy>=0.4.0
 sentence-transformers>=2.2.0
 
 nnAudio>=0.3.0
+hear21passt

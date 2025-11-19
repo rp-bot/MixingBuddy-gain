@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Union
 
 import torch
 import librosa
+import numpy as np
 from torch.utils.data import Dataset
 
 
@@ -43,6 +44,7 @@ class StemGainDataset(Dataset):
         sample_rate: int = 32000,
         limit: Optional[int] = None,
         random_seed: Optional[int] = None,
+        augmentation_config: Optional[Dict] = None,
     ):
         """
         Args:
@@ -51,10 +53,12 @@ class StemGainDataset(Dataset):
             sample_rate: Target sample rate for audio
             limit: Optional limit on number of samples to load
             random_seed: Optional random seed for reproducible random sampling
+            augmentation_config: Configuration for on-the-fly augmentation
         """
         self.jsonl_path = Path(jsonl_path)
         self.audio_root = Path(audio_root)
         self.sample_rate = sample_rate
+        self.augmentation_config = augmentation_config
         
         # Load data
         self.data = load_jsonl(self.jsonl_path)
@@ -75,6 +79,8 @@ class StemGainDataset(Dataset):
         print(f"Loaded {len(self.data)} samples from {self.jsonl_path}")
         print(f"Class distribution (vocals/drums/bass/no_error): {self._get_label_distribution()}")
         print(f"Error category distribution: {self._get_error_category_distribution()}")
+        if self.augmentation_config and self.augmentation_config.get("enable_gain_augmentation"):
+            print(f"Augmentation enabled: Gain range +/- {self.augmentation_config.get('gain_augment_range_db', 2.0)} dB")
     
     def _get_label_distribution(self) -> Dict[str, int]:
         """Get distribution of classification labels (including no_error)."""
@@ -110,6 +116,25 @@ class StemGainDataset(Dataset):
         flawed_mix_path = Path(item["flawed_mix_path"])
         audio = librosa.load(str(flawed_mix_path), sr=self.sample_rate, mono=True)[0]
         
+        # Get intended gain in dB
+        intended_gain_db = float(item["meta"]["intended_gain_db"])
+        
+        # Apply augmentation if enabled
+        if self.augmentation_config and self.augmentation_config.get("enable_gain_augmentation"):
+            range_db = self.augmentation_config.get("gain_augment_range_db", 2.0)
+            # Generate random gain in dB
+            random_gain_db = random.uniform(-range_db, range_db)
+            
+            # Apply gain to audio: gain_linear = 10^(db/20)
+            gain_linear = 10 ** (random_gain_db / 20.0)
+            audio = audio * gain_linear
+            
+            # DO NOT ADJUST intended_gain_db!
+            # The relative balance of stems within the mix has not changed.
+            # If vocals were 5dB louder than drums before global gain, they are still 5dB louder.
+            # The required correction (e.g. -3dB on vocals) remains the same.
+            # intended_gain_db = intended_gain_db  <-- Remains unchanged
+        
         # Build classification label:
         #  - If error_category == "no_error": label = "no_error"
         #  - Else: label = target_stem (vocals/drums/bass)
@@ -120,9 +145,6 @@ class StemGainDataset(Dataset):
         else:
             target_stem = item["meta"]["target_stem"]
             stem_index = self.STEM_TO_INDEX[target_stem]
-        
-        # Get intended gain in dB
-        intended_gain_db = float(item["meta"]["intended_gain_db"])
         
         return {
             "audio": torch.from_numpy(audio).float(),
@@ -135,4 +157,3 @@ class StemGainDataset(Dataset):
     def get_sample_info(self, idx: int) -> Dict:
         """Get metadata for a sample without loading audio (for debugging)."""
         return self.data[idx]
-

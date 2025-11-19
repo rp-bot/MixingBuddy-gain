@@ -237,5 +237,22 @@
         "generated": "The vocals is too low. Increase the level of the vocals by 6 to 12 decibels for a balanced mix."
       }
     ]
+  },
+  "macro_accuracies": {
+    "by_error_category": {
+      "both_correct_macro": 16.22,
+      "stem_correct_macro": 61.22,
+      "direction_correct_macro": 22.58
+    },
+    "by_target_stem": {
+      "both_correct_macro": 18.34,
+      "stem_correct_macro": 61.49,
+      "direction_correct_macro": 25.68
+    },
+    "by_direction_type": {
+      "both_correct_macro": 24.13,
+      "stem_correct_macro": 60.62,
+      "direction_correct_macro": 30.19
+    }
   }
 }

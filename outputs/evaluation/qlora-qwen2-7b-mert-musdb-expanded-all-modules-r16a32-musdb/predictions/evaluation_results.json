@@ -237,5 +237,22 @@
         "generated": "The bass is overwhelming. Reduce the bass level between 6 and 12 dB to balance the mix."
       }
     ]
+  },
+  "macro_accuracies": {
+    "by_error_category": {
+      "both_correct_macro": 38.83,
+      "stem_correct_macro": 52.17,
+      "direction_correct_macro": 44.94
+    },
+    "by_target_stem": {
+      "both_correct_macro": 45.7,
+      "stem_correct_macro": 56.85,
+      "direction_correct_macro": 50.55
+    },
+    "by_direction_type": {
+      "both_correct_macro": 36.11,
+      "stem_correct_macro": 46.12,
+      "direction_correct_macro": 40.24
+    }
   }
 }

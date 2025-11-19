@@ -1,0 +1,27 @@
+# @package _global_
+
+# Training config for stem gain model with frozen MERT layer weights
+
+defaults:
+  - data: stem_gain_data
+  - model: stem_gain_model_frozen
+  - training: stem_gain_training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "stem-gain-model-frozen"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}
+

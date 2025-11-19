@@ -1,15 +1,14 @@
 #!/bin/bash
 #SBATCH -J stem_gain_job                 # Job name
 #SBATCH -N1 --ntasks-per-node=1          # 1 node and 1 core
-#SBATCH -C V100-32GB                   # Request node with a 32GB V100
-#SBATCH --gres=gpu:1                   # Request 1 generic GPU (Slurm will match with -C)
-#SBATCH --mem-per-cpu=8G               # 8 GB of memory for the core
+#SBATCH --gres=gpu:H100:1              # Request 1 H100 GPU
+#SBATCH --mem-per-gpu=224GB            # Recommended memory for H100
 #SBATCH -t10:00:00                       # 10 hours of walltime
 #SBATCH -o outputs/logs/stem_gain_report-%j.out   # Output file name (%j = job ID)
 
 # --- Optional Email Notifications ---
-##SBATCH --mail-type=END,BEGIN,FAIL      # Send email on job END or FAIL
-##SBATCH --mail-user=pvadhulas3@gatech.edu     # Email address (set if you want notifications)
+#SBATCH --mail-type=END,BEGIN,FAIL      # Send email on job END or FAIL
+#SBATCH --mail-user=pvadhulas3@gatech.edu     # Email address (set if you want notifications)
 
 # --- Job Commands ---
 

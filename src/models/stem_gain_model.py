@@ -13,6 +13,7 @@ import torch.nn as nn
 
 from src.models.encoders.encodec import EncodecEncoder
 from src.models.encoders.mert import MERTEncoder
+from src.models.encoders.passt import PaSSTEncoder
 from src.models.projections.mlp import MLPProjection
 from src.models.projections.linear import LinearProjection
 
@@ -66,11 +67,16 @@ class StemGainModel(nn.Module):
             }
         
         encoder_model_name = encoder_config.get("model_name", "")
-        if "MERT" in encoder_config.get("model_name", "") or "m-a-p/MERT" in encoder_config.get("model_name", ""):
+        if "MERT" in encoder_model_name or "m-a-p/MERT" in encoder_model_name:
             logger.info(f"Using MERT encoder: {encoder_model_name}")
             if "input_sample_rate" not in encoder_config:
                 encoder_config["input_sample_rate"] = 32000
             self.audio_encoder = MERTEncoder(**encoder_config)
+        elif "passt" in encoder_model_name.lower():
+            logger.info(f"Using PaSST encoder: {encoder_model_name}")
+            if "input_sample_rate" not in encoder_config:
+                encoder_config["input_sample_rate"] = 32000
+            self.audio_encoder = PaSSTEncoder(**encoder_config)
         else:
             logger.info(f"Using EnCodec encoder: {encoder_model_name}")
             self.audio_encoder = EncodecEncoder(**encoder_config)

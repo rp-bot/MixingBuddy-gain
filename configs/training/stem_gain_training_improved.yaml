@@ -1,6 +1,7 @@
 # @package training
 
 # Training arguments for stem classification and gain regression
+# Improved configuration for better capacity utilization
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
   
@@ -9,8 +10,8 @@ training_args:
   per_device_eval_batch_size: 64   # Increased from 8 for V100 32GB
   gradient_accumulation_steps: 2   # Reduced from 4 (effective batch: 16*2=32, same as before)
   
-  learning_rate: 7.5e-5  # Reduced from 1e-4 to reduce overfitting
-  weight_decay: 0.1  # Increased from 0.05 to reduce train/eval gap
+  learning_rate: 1e-4  # Increased from 7.5e-5 to allow faster learning with more capacity
+  weight_decay: 0.1     # Keep regularization strong
   lr_scheduler_type: "cosine"
   warmup_steps: 500
   max_grad_norm: 1.0
@@ -18,7 +19,7 @@ training_args:
   logging_steps: 20
   eval_steps: 500
   save_steps: 500
-  save_total_limit: 3
+  save_total_limit: 2
   
   eval_strategy: "steps"
   save_strategy: "steps"
@@ -33,7 +34,7 @@ training_args:
 
 # Loss weights for multi-task learning
 classification_weight: 1.0
-regression_weight: 0.1  # Increased from 0.05 for better gain prediction balance
+regression_weight: 0.15  # Increased from 0.1 to give regression task more weight
 
 # Evaluation settings
 evaluation:
@@ -42,8 +43,8 @@ evaluation:
 
 # Early stopping
 early_stopping:
-  enabled: false
-  patience: 3
+  enabled: true   # Enable early stopping to prevent overfitting
+  patience: 5     # Wait 5 eval cycles (2500 steps) before stopping
 
 # Resume settings
 resume:

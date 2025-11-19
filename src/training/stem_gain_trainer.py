@@ -40,7 +40,7 @@ class StemGainTrainer(Trainer):
         # Store outputs from last training step to extract losses for logging
         self._last_outputs = None
     
-    def training_step(self, model, inputs):
+    def training_step(self, model, inputs, num_items_in_batch=None):
         """Override training_step to capture outputs for logging."""
         model.train()
         inputs = self._prepare_inputs(inputs)
@@ -71,7 +71,7 @@ class StemGainTrainer(Trainer):
         
         return loss.detach()
     
-    def log(self, logs: Dict[str, float]) -> None:
+    def log(self, logs: Dict[str, float], start_time: Optional[float] = None) -> None:
         """Override log to add individual losses to logs."""
         # Add individual losses from last outputs if available
         if self._last_outputs is not None:
@@ -93,7 +93,10 @@ class StemGainTrainer(Trainer):
             self._last_outputs = None
         
         # Call parent log method
-        super().log(logs)
+        if start_time is not None:
+            super().log(logs, start_time)
+        else:
+            super().log(logs)
     
     def compute_loss(
         self,
@@ -161,40 +164,42 @@ class StemGainTrainer(Trainer):
             labels: Tuple(stem_labels, gain_labels) or None
         """
         has_labels = "stem_label" in inputs and "gain_label" in inputs
-        
-        # Forward pass
-        audio = inputs["audio"]
-        outputs = model(audio=audio)
-        
-        # Extract predictions
-        classification_logits = outputs["classification_logits"]  # [batch, num_classes]
-        gain_predictions = outputs["gain_prediction"].squeeze(-1)  # [batch]
-        
-        # Compute loss if labels available
-        loss = None
-        stem_labels = None
-        gain_labels = None
-        if has_labels:
-            stem_labels = inputs["stem_label"]
-            gain_labels = inputs["gain_label"]
+
+        # Ensure no gradients/activations are kept during evaluation to avoid OOM
+        with torch.no_grad():
+            # Forward pass
+            audio = inputs["audio"]
+            outputs = model(audio=audio)
             
-            # Classification loss
-            cls_loss = nn.functional.cross_entropy(classification_logits, stem_labels)
+            # Extract predictions
+            classification_logits = outputs["classification_logits"]  # [batch, num_classes]
+            gain_predictions = outputs["gain_prediction"].squeeze(-1)  # [batch]
             
-            # Regression loss
-            reg_loss = nn.functional.mse_loss(gain_predictions, gain_labels)
+            # Compute loss if labels available
+            loss = None
+            stem_labels = None
+            gain_labels = None
+            if has_labels:
+                stem_labels = inputs["stem_label"]
+                gain_labels = inputs["gain_label"]
+                
+                # Classification loss
+                cls_loss = nn.functional.cross_entropy(classification_logits, stem_labels)
+                
+                # Regression loss
+                reg_loss = nn.functional.mse_loss(gain_predictions, gain_labels)
+                
+                # Combined loss
+                loss = (
+                    self.classification_weight * cls_loss +
+                    self.regression_weight * reg_loss
+                )
             
-            # Combined loss
-            loss = (
-                self.classification_weight * cls_loss +
-                self.regression_weight * reg_loss
-            )
-        
-        # Pack logits and labels as tuples so Trainer/EvalPrediction can handle them
-        logits = (classification_logits, gain_predictions)
-        labels = None
-        if has_labels:
-            labels = (stem_labels, gain_labels)
+            # Pack logits and labels as tuples so Trainer/EvalPrediction can handle them
+            logits = (classification_logits, gain_predictions)
+            labels = None
+            if has_labels:
+                labels = (stem_labels, gain_labels)
         
         return (loss, logits, labels)
 

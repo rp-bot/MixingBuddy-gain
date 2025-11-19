@@ -60,11 +60,7 @@ class LoggingCallback(TrainerCallback):
     
     def on_log(self, args, state, control, logs=None, **kwargs):
         """Log metrics to stdout."""
-        if logs is not None:
-            # Format metrics for printing
-            metrics_str = ", ".join([f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" 
-                                    for k, v in logs.items()])
-            logger.info(f"Step {state.global_step}: {metrics_str}")
+        logger.info(f"Step {state.global_step}")
 
 
 class StemGainCheckpointCallback(TrainerCallback):
@@ -157,7 +153,7 @@ def compute_metrics(eval_pred: EvalPrediction) -> dict:
 
 @hydra.main(
     config_path="../configs",
-    config_name="train_stem_gain",
+    config_name="train_stem_gain_passt",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -183,6 +179,7 @@ def main(cfg: DictConfig):
         sample_rate=cfg.data.audio.sample_rate,
         limit=cfg.data.get("limit"),
         random_seed=cfg.data.get("random_seed"),
+        augmentation_config=cfg.data.get("augmentation"),
     )
     
     # Create validation dataset if paths are provided
@@ -194,6 +191,8 @@ def main(cfg: DictConfig):
             sample_rate=cfg.data.audio.sample_rate,
             limit=cfg.data.get("limit"),
             random_seed=cfg.data.get("random_seed"),
+            # Do not use augmentation for validation set
+            augmentation_config=None,
         )
 
     # Optionally cap validation set size for faster evaluation
@@ -223,8 +222,11 @@ def main(cfg: DictConfig):
         # Use shared naming utility (now supports non-LoRA models like stem_gain)
         run_name = generate_run_name(cfg)
     
-    base_output_dir = training_args_dict["output_dir"]
-    training_args_dict["output_dir"] = f"{base_output_dir}/{run_name}"
+    base_output_dir_cfg = training_args_dict["output_dir"]
+    base_output_dir_path = Path(base_output_dir_cfg)
+    if not base_output_dir_path.is_absolute():
+        base_output_dir_path = (PROJECT_ROOT / base_output_dir_path).resolve()
+    training_args_dict["output_dir"] = str(base_output_dir_path / run_name)
     logger.info("Checkpoints will be saved to: %s", training_args_dict["output_dir"])
     
     training_args = TrainingArguments(**training_args_dict)
@@ -271,21 +273,91 @@ def main(cfg: DictConfig):
             weight_only = cfg.training.resume.get("weight_only", False)
             
             if checkpoint_path.exists():
+                # Detect if this is a full HF checkpoint (has optimizer/scheduler/state)
                 has_trainer_state = (checkpoint_path / "trainer_state.json").exists()
                 has_optimizer = (checkpoint_path / "optimizer.pt").exists()
                 
                 if has_trainer_state and has_optimizer and not weight_only:
-                    resume_from_checkpoint = str(checkpoint_path)
-                    logger.info(
-                        "Resuming full training state from checkpoint: %s",
-                        resume_from_checkpoint,
-                    )
+                    # Before resuming, ensure model architecture is compatible
+                    architecture_compatible = True
+                    model_bin = checkpoint_path / "pytorch_model.bin"
+                    model_safe = checkpoint_path / "model.safetensors"
+                    
+                    if model_bin.exists() or model_safe.exists():
+                        try:
+                            if model_bin.exists():
+                                ckpt_state = torch.load(model_bin, map_location="cpu", weights_only=True)
+                            else:
+                                try:
+                                    from safetensors.torch import load_file as safe_load_file
+                                    ckpt_state = safe_load_file(str(model_safe))
+                                except Exception as se:
+                                    logger.warning("Failed to read model.safetensors: %s", se)
+                                    ckpt_state = None
+                            
+                            if ckpt_state is None:
+                                architecture_compatible = False
+                            else:
+                                # Check head architectures for compatibility
+                                current_cls_sd = model.classification_head.state_dict()
+                                current_reg_sd = model.regression_head.state_dict()
+                                
+                                for k, v in ckpt_state.items():
+                                    # Check classification head
+                                    if k.startswith("classification_head."):
+                                        key = k.replace("classification_head.", "")
+                                        if key in current_cls_sd and current_cls_sd[key].shape != v.shape:
+                                            architecture_compatible = False
+                                            logger.info(
+                                                "Classification head shape mismatch for %s: checkpoint %s vs current %s",
+                                                key, v.shape, current_cls_sd[key].shape
+                                            )
+                                            break
+                                    # Check regression head
+                                    elif k.startswith("regression_head."):
+                                        key = k.replace("regression_head.", "")
+                                        if key in current_reg_sd and current_reg_sd[key].shape != v.shape:
+                                            architecture_compatible = False
+                                            logger.info(
+                                                "Regression head shape mismatch for %s: checkpoint %s vs current %s",
+                                                key, v.shape, current_reg_sd[key].shape
+                                            )
+                                            break
+                        except Exception as arch_err:
+                            logger.warning("Failed to validate checkpoint architecture: %s", arch_err)
+                            architecture_compatible = False
+                    else:
+                        # No model weights file to validate against; avoid full resume
+                        architecture_compatible = False
+                    
+                    if architecture_compatible:
+                        resume_from_checkpoint = str(checkpoint_path)
+                        logger.info(
+                            "Resuming full training state from checkpoint: %s (epoch, step, LR scheduler)",
+                            resume_from_checkpoint,
+                        )
+                    else:
+                        logger.info(
+                            "Detected architecture mismatch; performing weight-only warm start from: %s",
+                            checkpoint_path,
+                        )
+                        # Fall through to weight-only warm start below
+                        # (do not set resume_from_checkpoint)
                 else:
-                    logger.info(
-                        "Performing weight-only warm start from: %s",
-                        checkpoint_path,
-                    )
-                    # Load custom components
+                    if weight_only:
+                        logger.info(
+                            "Weight-only mode enabled; performing weight-only warm start from: %s",
+                            checkpoint_path,
+                        )
+                    else:
+                        logger.info(
+                            "Checkpoint found but missing optimizer/scheduler; performing weight-only warm start from: %s",
+                            checkpoint_path,
+                        )
+                    # Weight-only warm start (fall through to load custom components)
+                
+                # Load custom components for weight-only resume
+                if resume_from_checkpoint is None:
                     _load_custom_components(model, checkpoint_path)
             else:
                 logger.warning(
@@ -298,10 +370,46 @@ def main(cfg: DictConfig):
     # Start training
     logger.info("Starting training...")
     try:
-        if resume_from_checkpoint is not None:
-            trainer.train(resume_from_checkpoint=resume_from_checkpoint)
-        else:
-            trainer.train()
+        def _attempt_train(resume_path: str | None) -> None:
+            if resume_path is not None:
+                # Pre-validate rng_state compatibility with PyTorch 2.6 weights_only semantics
+                try:
+                    rng_file = Path(resume_path) / "rng_state.pth"
+                    if rng_file.exists():
+                        try:
+                            _ = torch.load(rng_file, weights_only=True)
+                        except Exception:
+                            try:
+                                _ = torch.load(rng_file, weights_only=False)
+                            except Exception:
+                                logger.warning(
+                                    "Incompatible rng_state.pth detected; deleting to proceed with resume."
+                                )
+                                try:
+                                    rng_file.unlink()
+                                except Exception as unlink_err:
+                                    logger.warning(
+                                        "Failed to delete rng_state.pth (%s); continuing without it may still fail.",
+                                        unlink_err,
+                                    )
+                except Exception as rng_check_err:
+                    logger.debug("RNG state pre-check failed: %s", rng_check_err)
+                trainer.train(resume_from_checkpoint=resume_path)
+            else:
+                trainer.train()
+        
+        try:
+            _attempt_train(resume_from_checkpoint)
+        except RuntimeError as re:
+            msg = str(re)
+            if "size mismatch" in msg and ("classification_head" in msg or "regression_head" in msg) and resume_from_checkpoint is not None:
+                logger.warning(
+                    "Resume failed due to head shape mismatch; retrying with weight-only warm start and fresh trainer state."
+                )
+                resume_from_checkpoint = None
+                _attempt_train(None)
+            else:
+                raise
         logger.info("Training finished successfully.")
     except Exception as e:
         logger.error(f"Training failed with error: {e}")
@@ -326,39 +434,111 @@ def main(cfg: DictConfig):
 
 
 def _load_custom_components(model: StemGainModel, checkpoint_path: Path):
-    """Load custom model components from checkpoint."""
+    """Load custom model components from checkpoint with shape mismatch handling."""
     # Load classification head
     cls_path = checkpoint_path / "classification_head.bin"
     if cls_path.exists():
         logger.info("Loading classification head from %s", cls_path)
-        state_dict = torch.load(cls_path, map_location="cpu")
-        model.classification_head.load_state_dict(state_dict, strict=False)
+        state_dict = torch.load(cls_path, map_location="cpu", weights_only=True)
+        # Filter keys to only those that exist and have matching shapes
+        current_sd = model.classification_head.state_dict()
+        filtered_state_dict = {}
+        skipped_mismatch = []
+        for k, v in state_dict.items():
+            if k in current_sd and current_sd[k].shape == v.shape:
+                filtered_state_dict[k] = v
+            elif k in current_sd:
+                skipped_mismatch.append(k)
+        
+        if skipped_mismatch:
+            logger.info(
+                "Skipping %d classification head params with shape mismatch (e.g., different head architecture): %s",
+                len(skipped_mismatch),
+                ", ".join(skipped_mismatch[:5]) + ("..." if len(skipped_mismatch) > 5 else ""),
+            )
+        
+        missing_after = set(current_sd.keys()) - set(filtered_state_dict.keys())
+        if missing_after:
+            logger.info(
+                "Classification head params not initialized from checkpoint: %d (will use default init)",
+                len(missing_after),
+            )
+        
+        model.classification_head.load_state_dict(filtered_state_dict, strict=False)
     
     # Load regression head
     reg_path = checkpoint_path / "regression_head.bin"
     if reg_path.exists():
         logger.info("Loading regression head from %s", reg_path)
-        state_dict = torch.load(reg_path, map_location="cpu")
-        model.regression_head.load_state_dict(state_dict, strict=False)
+        state_dict = torch.load(reg_path, map_location="cpu", weights_only=True)
+        # Filter keys to only those that exist and have matching shapes
+        current_sd = model.regression_head.state_dict()
+        filtered_state_dict = {}
+        skipped_mismatch = []
+        for k, v in state_dict.items():
+            if k in current_sd and current_sd[k].shape == v.shape:
+                filtered_state_dict[k] = v
+            elif k in current_sd:
+                skipped_mismatch.append(k)
+        
+        if skipped_mismatch:
+            logger.info(
+                "Skipping %d regression head params with shape mismatch (e.g., different head architecture): %s",
+                len(skipped_mismatch),
+                ", ".join(skipped_mismatch[:5]) + ("..." if len(skipped_mismatch) > 5 else ""),
+            )
+        
+        missing_after = set(current_sd.keys()) - set(filtered_state_dict.keys())
+        if missing_after:
+            logger.info(
+                "Regression head params not initialized from checkpoint: %d (will use default init)",
+                len(missing_after),
+            )
+        
+        model.regression_head.load_state_dict(filtered_state_dict, strict=False)
     
     # Load projection if used
     if model.use_projection:
         proj_path = checkpoint_path / "projection.bin"
         if proj_path.exists():
             logger.info("Loading projection from %s", proj_path)
-            state_dict = torch.load(proj_path, map_location="cpu")
-            model.projection.load_state_dict(state_dict, strict=False)
+            state_dict = torch.load(proj_path, map_location="cpu", weights_only=True)
+            # Filter keys to only those that exist and have matching shapes
+            current_sd = model.projection.state_dict()
+            filtered_state_dict = {}
+            skipped_mismatch = []
+            for k, v in state_dict.items():
+                if k in current_sd and current_sd[k].shape == v.shape:
+                    filtered_state_dict[k] = v
+                elif k in current_sd:
+                    skipped_mismatch.append(k)
+            
+            if skipped_mismatch:
+                logger.info(
+                    "Skipping %d projection params with shape mismatch (e.g., different projection architecture): %s",
+                    len(skipped_mismatch),
+                    ", ".join(skipped_mismatch[:5]) + ("..." if len(skipped_mismatch) > 5 else ""),
+                )
+            
+            missing_after = set(current_sd.keys()) - set(filtered_state_dict.keys())
+            if missing_after:
+                logger.info(
+                    "Projection params not initialized from checkpoint: %d (will use default init)",
+                    len(missing_after),
+                )
+            
+            model.projection.load_state_dict(filtered_state_dict, strict=False)
     
     # Load encoder weights
     mert_path = checkpoint_path / "mert_encoder.bin"
     encoder_path = checkpoint_path / "encoder.bin"
     if mert_path.exists():
         logger.info("Loading MERT encoder weights from %s", mert_path)
-        state_dict = torch.load(mert_path, map_location="cpu")
+        state_dict = torch.load(mert_path, map_location="cpu", weights_only=True)
         model.audio_encoder.load_state_dict(state_dict, strict=False)
     elif encoder_path.exists():
         logger.info("Loading encoder weights from %s", encoder_path)
-        state_dict = torch.load(encoder_path, map_location="cpu")
+        state_dict = torch.load(encoder_path, map_location="cpu", weights_only=True)
         model.audio_encoder.load_state_dict(state_dict, strict=False)
 
 
@@ -401,4 +581,3 @@ def _save_custom_components(model: StemGainModel, output_dir: str):
 
 if __name__ == "__main__":
     main()
-
