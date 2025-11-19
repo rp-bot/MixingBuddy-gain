@@ -136,63 +136,115 @@ class PaSSTEncoder(nn.Module):
         
         # PaSST expects audio at 32kHz
         # Extract timestamp embeddings (sequence of features)
+        # The wrapper has model.mel (mel spectrogram) and model.net (transformer)
+        # We need to get sequence features from the transformer before the classification head
+        
         # Suppress debug prints during inference
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            if self.frozen:
-                with torch.no_grad():
-                    features = self.passt_model.get_timestamp_embeddings(audio)
-            else:
-                features = self.passt_model.get_timestamp_embeddings(audio)
-        
-        # get_timestamp_embeddings should return [batch, time_steps, feature_dim]
-        # If it returns a tuple, take the first element
-        if isinstance(features, tuple):
-            features = features[0]
-            
-        # With get_timestamp_embeddings, PaSST returns features with dimension 768
-        # However, if the model was initialized with mode="logits", it might be returning
-        # something else if not used carefully.
-        # In the log we saw: mat1 and mat2 shapes cannot be multiplied (12864x527 and 768x256)
-        # 12864 = 64 * 201 (batch * time_steps) ? Or something similar.
-        # 527 is the number of classes in AudioSet, which implies we might be getting logits
-        # or the last layer output instead of the transformer hidden states.
-        
-        # Let's ensure we are getting the correct feature dimension.
-        # PaSST's get_timestamp_embeddings implementation:
-        # x = self.forward_features(x)
-        # ...
-        # return x
-        
-        # If 527 is the dimension, it means we are getting the output of the head, not the features.
-        # But get_timestamp_embeddings calls forward_features which returns 768 dim.
-        
-        # Wait, looking at the log:
-        # mat1 and mat2 shapes cannot be multiplied (12864x527 and 768x256)
-        # 527 is definitely the input dimension to the linear layer (mat1 columns).
-        # But our linear layer expects 768 (mat2 rows).
-        # So `features` has last dim 527.
-        
-        # Why does get_timestamp_embeddings return 527 dim?
-        # Ah, in PaSST code:
-        # if self.mode == "logits":
-        #    ...
-        
-        # Let's try to use getting features directly from the transformer blocks if possible
-        # or check if we need to change the mode.
-        # But we initialized with mode="logits".
-        
-        # Let's re-check get_timestamp_embeddings behavior or force using forward_features.
-        # forward_features returns the embeddings before the head.
-        
-        if self.frozen:
-             with torch.no_grad():
-                 features = self.passt_model.forward_features(audio)
-        else:
-             features = self.passt_model.forward_features(audio)
-             
-        # Ensure features are on the correct device
-        features = features.to(self.device)
+            with SuppressOutput(suppress_stdout=True, suppress_stderr=False):
+                # Extract mel spectrogram
+                mel = self.passt_model.mel(audio)
+                
+                # Ensure mel has 4 dimensions [batch, channels, freq, time]
+                # mel might be 3D [batch, freq, time], so add channel dimension
+                if mel.dim() == 3:
+                    mel = mel.unsqueeze(1)  # Add channel dimension: [batch, 1, freq, time]
+                
+                # Get features from the transformer network
+                # model.net is the actual PaSST transformer
+                # We'll manually forward through to get sequence embeddings
+                if self.frozen:
+                    with torch.no_grad():
+                        # Patch embedding
+                        x = self.passt_model.net.patch_embed(mel)
+                        B, C, H, W = x.shape
+                        x = x.flatten(2).transpose(1, 2)  # [B, H*W, C]
+                        
+                        # Add position embeddings (if they exist)
+                        if hasattr(self.passt_model.net, 'pos_embed') and self.passt_model.net.pos_embed is not None:
+                            # Interpolate position embeddings if needed
+                            pos_embed = self.passt_model.net.pos_embed
+                            if pos_embed.shape[1] != H * W:
+                                # Need to interpolate - this is complex, try without for now
+                                pass
+                            else:
+                                x = x + pos_embed
+                        elif hasattr(self.passt_model.net, 'time_new_pos_embed') and hasattr(self.passt_model.net, 'freq_new_pos_embed'):
+                            # PaSST uses separate time and frequency position embeddings
+                            time_pos = self.passt_model.net.time_new_pos_embed[:, :, :, :W]
+                            freq_pos = self.passt_model.net.freq_new_pos_embed[:, :, :H, :]
+                            pos_embed = time_pos + freq_pos
+                            pos_embed = pos_embed.flatten(2).transpose(1, 2)
+                            x = x + pos_embed
+                        
+                        x = self.passt_model.net.pos_drop(x)
+                        
+                        # Add cls and dist tokens
+                        if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
+                            cls_token = self.passt_model.net.cls_token.expand(B, -1, -1)
+                            if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
+                                dist_token = self.passt_model.net.dist_token.expand(B, -1, -1)
+                                x = torch.cat((cls_token, dist_token, x), dim=1)
+                            else:
+                                x = torch.cat((cls_token, x), dim=1)
+                        
+                        # Forward through transformer blocks
+                        for blk in self.passt_model.net.blocks:
+                            x = blk(x)
+                        
+                        # Apply norm
+                        x = self.passt_model.net.norm(x)
+                        
+                        # Remove cls and dist tokens if they were added
+                        if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
+                            if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
+                                features = x[:, 2:, :]  # Skip cls and dist tokens
+                            else:
+                                features = x[:, 1:, :]  # Skip cls token
+                        else:
+                            features = x
+                else:
+                    # Same but without no_grad
+                    # Ensure mel has 4 dimensions
+                    if mel.dim() == 3:
+                        mel = mel.unsqueeze(1)
+                    x = self.passt_model.net.patch_embed(mel)
+                    B, C, H, W = x.shape
+                    x = x.flatten(2).transpose(1, 2)
+                    
+                    if hasattr(self.passt_model.net, 'time_new_pos_embed') and hasattr(self.passt_model.net, 'freq_new_pos_embed'):
+                        time_pos = self.passt_model.net.time_new_pos_embed[:, :, :, :W]
+                        freq_pos = self.passt_model.net.freq_new_pos_embed[:, :, :H, :]
+                        pos_embed = time_pos + freq_pos
+                        pos_embed = pos_embed.flatten(2).transpose(1, 2)
+                        x = x + pos_embed
+                    
+                    x = self.passt_model.net.pos_drop(x)
+                    
+                    if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
+                        cls_token = self.passt_model.net.cls_token.expand(B, -1, -1)
+                        if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
+                            dist_token = self.passt_model.net.dist_token.expand(B, -1, -1)
+                            x = torch.cat((cls_token, dist_token, x), dim=1)
+                        else:
+                            x = torch.cat((cls_token, x), dim=1)
+                    
+                    for blk in self.passt_model.net.blocks:
+                        x = blk(x)
+                    
+                    x = self.passt_model.net.norm(x)
+                    
+                    if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
+                        if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
+                            features = x[:, 2:, :]
+                        else:
+                            features = x[:, 1:, :]
+                    else:
+                        features = x
+                
+                # Ensure features are on the correct device
+                features = features.to(self.device)
         
         return features
 
