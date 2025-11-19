@@ -434,16 +434,11 @@ def main():
     plot_summary_dashboard(results, plots_dir / 'summary_dashboard.png')
     
     # Generate confusion matrix (need predictions JSONL file)
-    predictions_jsonl_path = json_path.parent / 'predictions-600.jsonl'
+    predictions_jsonl_path = json_path.parent / 'predictions.jsonl'
     if predictions_jsonl_path.exists():
         plot_confusion_matrix(json_path, predictions_jsonl_path, plots_dir / 'confusion_matrix.png')
     else:
-        # Try to find any predictions.jsonl file
-        predictions_files = list(json_path.parent.glob('predictions*.jsonl'))
-        if predictions_files:
-            plot_confusion_matrix(json_path, predictions_files[0], plots_dir / 'confusion_matrix.png')
-        else:
-            print("  ⚠ Warning: Could not find predictions JSONL file for confusion matrix")
+        print("  ⚠ Warning: Could not find predictions.jsonl file for confusion matrix")
     
     print("-" * 60)
     print(f"\n✓ All plots generated successfully!")

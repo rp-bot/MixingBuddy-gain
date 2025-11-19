@@ -416,11 +416,6 @@ def main():
         predictions_path = json_path.parent / 'predictions.jsonl'
         if predictions_path.exists():
             predictions_paths[model_name] = predictions_path
-        else:
-            # Try to find any predictions*.jsonl file
-            pred_files = list(json_path.parent.glob('predictions*.jsonl'))
-            if pred_files:
-                predictions_paths[model_name] = pred_files[0]
     
     if not results_dict:
         print("Error: No valid evaluation results files found!")
