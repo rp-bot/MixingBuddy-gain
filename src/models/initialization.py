@@ -1,9 +1,11 @@
 import logging
 import os
 from typing import Tuple
+from pathlib import Path
 
 import torch
 from omegaconf import DictConfig
+from dotenv import load_dotenv
 
 from src.models.modular_multimodal_model import ModularMultimodalModel
 from src.utils.model_utils import (
@@ -13,6 +15,13 @@ from src.utils.model_utils import (
     initialize_tokenizer,
 )
 
+# Load environment variables from .env file if it exists
+# Look for .env in project root (2 levels up from src/models/)
+project_root = Path(__file__).resolve().parents[2]
+env_path = project_root / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +30,12 @@ def initialize_model_and_tokenizer(
     cfg: DictConfig,
 ) -> Tuple[ModularMultimodalModel, object]:
     """Initialize model, tokenizer, and LoRA configuration."""
+    import os
     logger.info("Initializing model and tokenizer...")
-    tokenizer = initialize_tokenizer(cfg.model.model_name)
+    
+    # Get Hugging Face token from config or environment
+    hf_token = cfg.model.get("hf_token") or os.getenv("HF_TOKEN")
+    tokenizer = initialize_tokenizer(cfg.model.model_name, token=hf_token)
 
     target_modules = cfg.model.lora.get("target_modules", [])
     use_lora = len(target_modules) > 0
@@ -49,12 +62,14 @@ def initialize_model_and_tokenizer(
                 cfg.model.model_name,
                 torch_dtype="auto",
                 quantization_config=quantization_config,
+                token=hf_token,
             )
         else:
             logger.info("Loading base model without quantization (no LoRA adapters)...")
             llm = AutoModelForCausalLM.from_pretrained(
                 cfg.model.model_name,
                 torch_dtype="auto",
+                token=hf_token,
             )
 
         for param in llm.parameters():

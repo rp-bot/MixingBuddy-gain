@@ -2,12 +2,22 @@
 Shared utilities for model initialization and configuration.
 """
 
+import os
 import warnings
 import logging
 from typing import Optional
+from pathlib import Path
 from omegaconf import DictConfig
+from dotenv import load_dotenv
 
 from transformers import AutoTokenizer
+
+# Load environment variables from .env file if it exists
+# Look for .env in project root (2 levels up from src/utils/)
+project_root = Path(__file__).resolve().parents[2]
+env_path = project_root / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
 
 
 # Suppress warnings
@@ -15,9 +25,11 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
-def initialize_tokenizer(model_name: str):
+def initialize_tokenizer(model_name: str, token: Optional[str] = None):
     """Initializes and configures the tokenizer."""
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # Use provided token, or check environment variable, or use None (will use cached login)
+    hf_token = token or os.getenv("HF_TOKEN")
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return tokenizer
@@ -58,10 +70,14 @@ def initialize_lora_model(cfg: DictConfig, lora_config, tokenizer):
 
     print("Loading model with standard LoRA...")
 
+    # Get Hugging Face token from config or environment
+    hf_token = cfg.model.get("hf_token") or os.getenv("HF_TOKEN")
+
     # Load model without quantization
     llm = AutoModelForCausalLM.from_pretrained(
         cfg.model.model_name,
         torch_dtype="auto",
+        token=hf_token,
     )
 
     # Apply LoRA
@@ -89,11 +105,15 @@ def initialize_qlora_model(cfg: DictConfig, lora_config, tokenizer):
         bnb_4bit_use_double_quant=cfg.model.quantization.bnb_4bit_use_double_quant,
     )
 
+    # Get Hugging Face token from config or environment
+    hf_token = cfg.model.get("hf_token") or os.getenv("HF_TOKEN")
+
     # Load model with quantization
     llm = AutoModelForCausalLM.from_pretrained(
         cfg.model.model_name,
         torch_dtype="auto",
         quantization_config=quantization_config,
+        token=hf_token,
     )
 
     # Prepare for k-bit training
@@ -147,17 +167,11 @@ def generate_run_name(cfg: DictConfig):
             model_config_name, model_config_name.replace("_", "-")
         )
     else:
-        # Fallback to original logic
-        model_name = cfg.model.model_name
+        # Fallback to model_name when no config_name is present
+        model_name = getattr(cfg.model, "model_name", "model")
         model_abbr = cfg.experiment_naming.naming.components.model_abbr.get(
             model_name, model_name.lower().replace("-instruct", "").replace("-", "")
         )
-
-    # LoRA configuration
-    lora_config = cfg.model.lora
-    rank = lora_config.r
-    alpha = lora_config.lora_alpha
-    lora_str = f"r{rank}a{alpha}"
 
     # Dataset identifier from config mapping
     dataset_path = cfg.data.train_jsonl_path
@@ -166,11 +180,23 @@ def generate_run_name(cfg: DictConfig):
     else:
         dataset_abbr = "custom"
 
-    # Experiment type from config mapping
-    if cfg.model.use_qlora:
-        exp_type = cfg.experiment_naming.naming.components.exp_type.qlora
+    # Determine if this is a LoRA/QLoRA experiment or a non-LoRA model (e.g., stem_gain)
+    if hasattr(cfg.model, "lora"):
+        # LoRA configuration
+        lora_config = cfg.model.lora
+        rank = lora_config.r
+        alpha = lora_config.lora_alpha
+        lora_str = f"r{rank}a{alpha}"
+
+        # Experiment type from config mapping
+        if getattr(cfg.model, "use_qlora", False):
+            exp_type = cfg.experiment_naming.naming.components.exp_type.qlora
+        else:
+            exp_type = cfg.experiment_naming.naming.components.exp_type.lora
     else:
-        exp_type = cfg.experiment_naming.naming.components.exp_type.lora
+        # Non-LoRA model (e.g., pure encoder+heads like stem_gain)
+        lora_str = "none"
+        exp_type = cfg.experiment_naming.naming.components.exp_type.full
 
     # Construct run name: {exp_type}-{model_abbr}-{lora_config}-{dataset_abbr}
     run_name = f"{exp_type}-{model_abbr}-{lora_str}-{dataset_abbr}"

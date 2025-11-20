@@ -1,0 +1,41 @@
+# @package model
+
+# Model configuration for stem classification and gain regression with PaSST encoder
+# Architecture: Audio Encoder (PaSST) -> (Optional Projection) -> Classification Head + Regression Head
+
+# Name used by run-name utilities / logging
+model_name: "stem_gain_passt"
+
+# Number of classes:
+#   0: vocals
+#   1: drums
+#   2: bass
+#   3: no_error  (mix is balanced, no adjustment needed)
+num_classes: 4
+
+# Feature pooling method: "mean", "max", or "attention"
+# PaSST outputs a sequence of embeddings, so we need to pool them
+pooling_method: "attention"
+
+# Audio encoder configuration - PaSST
+encoder:
+  model_name: "hear21passt"
+  freeze: true
+  device: cuda
+  input_sample_rate: 24000  # Input data is 24kHz, encoder will resample to 32kHz
+
+# Optional projection layer
+# Set to null to skip projection (encoder -> heads directly)
+# Or configure a projection layer
+projection:
+  type: "linear"
+  output_dim: 256  # Bottleneck: 768 -> 256 to strip song identity info
+  dropout: 0.2     # Regularize the projection features
+
+# Task head configuration (classification and regression)
+# Configurable depth and architecture
+head:
+  hidden_dims: [128]  # Simple structure: 256 -> 128 -> output
+  dropout: 0.3        # High dropout to force generalization
+  activation: "relu"  # Options: "relu", "gelu", "tanh"
+

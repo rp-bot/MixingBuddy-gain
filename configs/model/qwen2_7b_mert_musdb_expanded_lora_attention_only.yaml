@@ -1,0 +1,52 @@
+# @package model
+
+# Model configuration - LoRA adapters on self-attention linear layers only
+# MERT provides 25 layers * 1024 features = 25600 dimensional input
+model_name: "Qwen/Qwen2-7B-Instruct"
+config_name: "qwen2_7b_mert_musdb_expanded_lora_attention_only"
+use_qlora: true
+
+# LoRA configuration with only self-attention target modules
+# Restricts adaptation capacity to attention to study its impact on audio grounding
+lora:
+  r: 8
+  lora_alpha: 16
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+  lora_dropout: 0.1
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+# QLoRA quantization configuration
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+
+# Audio encoder configuration - MERT-v1-330M
+encoder:
+  model_name: "m-a-p/MERT-v1-330M"
+  freeze: true
+  device: cuda # Will be set automatically based on LLM device
+  input_sample_rate: 24000 # Our data is at 24kHz, MERT will resample to 24kHz
+  freeze_layer_weights: false
+
+# Audio projection configuration
+# MERT uses learnable weighted average of 25 layers -> 1024 dimensional output
+# Need to project to LLM hidden size (typically 3584 for Qwen2-7B)
+# With smaller input (1024), we can use a deeper, more expressive projection
+projection:
+  type: "mlp"
+  # Deep projection: 1024 -> 2048 -> 4096 -> 2048 -> llm_hidden_size
+  # More capacity since we saved memory with weighted averaging
+  hidden_dims: [2048, 4096, 4096, 2048]
+  activation: "relu"
+  dropout: 0.1
+  use_layer_norm: true
+  use_residual: false
+  # Auxiliary loss is CRITICAL here since projection is the only trainable component
+  freeze_projection: false
+  use_auxiliary_loss: true
+  auxiliary_loss_weight: 0.05
+
+

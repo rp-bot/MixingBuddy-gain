@@ -1,0 +1,63 @@
+# DPO Training Arguments - FIXED VERSION
+# Key fixes: beta=0.1 (was 0.5), max_grad_norm=20.0 (was 5.0), lower LR
+
+# Standard training arguments
+training_args:
+  output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
+  
+  # 1. Increase this to a reasonable upper limit
+  num_train_epochs: 3  
+
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  lr_scheduler_type: "cosine"
+  learning_rate: 1e-7
+  weight_decay: 0.01
+  warmup_steps: 100
+  max_grad_norm: 20.0
+  logging_steps: 5
+  
+  # 2. Enable evaluation
+  eval_strategy: "steps"          # Change from "no"
+  eval_steps: 200                 # Match save_steps
+  
+  # 3. This is the most important change
+  load_best_model_at_end: true    # Will keep the best model based on eval metrics
+  
+  save_steps: 200
+  logging_first_step: true
+  logging_strategy: "steps"
+  save_total_limit: 3
+  save_strategy: "steps"
+  report_to: "none"
+  run_name: null
+  disable_tqdm: false
+
+# DPO-specific parameters - CRITICAL FIXES
+dpo:
+  beta: 0.1 
+  loss_type: "sigmoid" 
+  label_smoothing: 0.0  
+  
+# Mixed precision training
+mixed_precision:
+  enabled: true
+  dtype: "bf16"
+
+# Early stopping
+early_stopping:
+  enabled: true  # Enabled since evaluation is now properly implemented
+  patience: 3
+
+# Validation set configuration
+# These parameters control the train/validation split for evaluation during training
+data:
+  val_split_size: 0.2  # Fraction of training data to use for validation (0.0-1.0)
+  max_val_samples: null  # Optional: maximum number of validation samples (null for no limit)
+
+# Resume settings
+resume:
+  enabled: true
+  weight_only: true  # Load weights but not optimizer state
+  checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-top3-musdb-expanded-lora-r16a32-musdb/checkpoint-600"
+

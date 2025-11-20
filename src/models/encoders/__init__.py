@@ -2,5 +2,7 @@
 
 from .encodec import EncodecEncoder
 from .mert import MERTEncoder
+from .passt import PaSSTEncoder
+from .wav2vec import Wav2VecEncoder
 
-__all__ = ["EncodecEncoder", "MERTEncoder"]
+__all__ = ["EncodecEncoder", "MERTEncoder", "PaSSTEncoder", "Wav2VecEncoder"]

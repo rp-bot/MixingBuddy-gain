@@ -1,0 +1,31 @@
+# DPO Dataset Configuration for Training
+# Points to the DPO-formatted datasets with preference pairs
+
+# Dataset paths - DPO format
+train_dpo_jsonl_path: data/musdb18hq_processed/train/training_samples_dpo.jsonl
+train_audio_root: data/musdb18hq_processed/train/flawed_mixes
+test_dpo_jsonl_path: data/musdb18hq_processed/test/test_samples_dpo.jsonl
+test_audio_root: data/musdb18hq_processed/test/flawed_mixes
+
+# Legacy paths (for compatibility with generate_run_name function)
+train_jsonl_path: data/musdb18hq_processed/train/training_samples_dpo.jsonl
+test_jsonl_path: data/musdb18hq_processed/test/test_samples_dpo.jsonl
+
+# Audio parameters
+audio:
+  sample_rate: 24000
+  bit_depth: 24
+
+# Chunk parameters
+chunk:
+  sec: 10.0
+
+# System message for the model
+system_message: "You are a mixing engineer. You are given a segment of a track and you need to provide gain balancing advice."
+
+# Data loading parameters
+limit: null  # Set to a number to limit dataset size for testing
+
+# Environment
+env:
+  seed: 42

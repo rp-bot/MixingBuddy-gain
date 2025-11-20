@@ -29,6 +29,7 @@ encoder:
   freeze: true
   device: cuda # Will be set automatically based on LLM device
   input_sample_rate: 24000 # Our data is at 24kHz, MERT will resample to 24kHz
+  freeze_layer_weights: false
 
 # Audio projection configuration
 # MERT uses learnable weighted average of 25 layers -> 1024 dimensional output
@@ -43,6 +44,7 @@ projection:
   dropout: 0.1
   use_layer_norm: true
   use_residual: false
+  freeze_projection: false
   # Auxiliary loss is CRITICAL here since projection is the only trainable component
   use_auxiliary_loss: true
   auxiliary_loss_weight: 0.05 # Increased weight since it's more important

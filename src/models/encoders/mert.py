@@ -1,9 +1,12 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union
+import logging
 
 from transformers import Wav2Vec2FeatureExtractor, AutoModel
 import torchaudio.transforms as T
+
+logger = logging.getLogger(__name__)
 
 
 class MERTEncoder(nn.Module):
@@ -20,6 +23,8 @@ class MERTEncoder(nn.Module):
         model_name: str = "m-a-p/MERT-v1-330M",
         freeze: bool = True,
         freeze_layer_weights: bool = False,
+        unfreeze_top_n_layers: int = 0,
+        unfreeze_bottom_n_layers: int = 0,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
     ):
@@ -39,12 +44,55 @@ class MERTEncoder(nn.Module):
             self.model.eval()
             for param in self.model.parameters():
                 param.requires_grad = False
+            
+            # Selectively unfreeze layers if requested
+            if unfreeze_top_n_layers > 0 or unfreeze_bottom_n_layers > 0:
+                # MERT is based on Wav2Vec2 architecture
+                # The encoder layers are in model.encoder.layers
+                if hasattr(self.model, "encoder") and hasattr(self.model.encoder, "layers"):
+                    total_layers = len(self.model.encoder.layers)
+                    
+                    # Validate no overlap between bottom and top layers
+                    bottom_end = unfreeze_bottom_n_layers
+                    top_start = total_layers - unfreeze_top_n_layers
+                    if bottom_end > top_start:
+                        logger.warning(f"Overlap detected between bottom and top unfrozen layers!")
+                        logger.warning(f"  Bottom layers: 0 to {bottom_end - 1}")
+                        logger.warning(f"  Top layers: {top_start} to {total_layers - 1}")
+                        logger.warning(f"  Adjusting to prevent overlap...")
+                        # Adjust to prevent overlap: prioritize top layers
+                        max_bottom = min(unfreeze_bottom_n_layers, top_start)
+                        unfreeze_bottom_n_layers = max_bottom
+                        bottom_end = unfreeze_bottom_n_layers
+                    
+                    # Unfreeze bottom N layers (indices 0 to N-1)
+                    if unfreeze_bottom_n_layers > 0:
+                        bottom_layers_to_unfreeze = min(unfreeze_bottom_n_layers, total_layers)
+                        for i in range(bottom_layers_to_unfreeze):
+                            for param in self.model.encoder.layers[i].parameters():
+                                param.requires_grad = True
+                        logger.info(f"Unfroze bottom {bottom_layers_to_unfreeze} layers (layers 0 to {bottom_layers_to_unfreeze - 1}) of MERT encoder")
+                    
+                    # Unfreeze top N layers (higher indices = later/top layers)
+                    if unfreeze_top_n_layers > 0:
+                        top_layers_to_unfreeze = min(unfreeze_top_n_layers, total_layers)
+                        for i in range(total_layers - top_layers_to_unfreeze, total_layers):
+                            for param in self.model.encoder.layers[i].parameters():
+                                param.requires_grad = True
+                        logger.info(f"Unfroze top {top_layers_to_unfreeze} layers (layers {total_layers - top_layers_to_unfreeze} to {total_layers - 1}) of MERT encoder")
+                    
+                    # Set model to train mode for the unfrozen layers
+                    self.model.train()
+                else:
+                    logger.warning(f"Could not find encoder layers to unfreeze. Model structure: {type(self.model)}")
         else:
             # Enable gradient checkpointing only if model is trainable
             if hasattr(self.model, "gradient_checkpointing_enable"):
                 self.model.gradient_checkpointing_enable()
 
         self.frozen = freeze
+        self.unfreeze_top_n_layers = unfreeze_top_n_layers
+        self.unfreeze_bottom_n_layers = unfreeze_bottom_n_layers
         self.model_name = model_name
         self.input_sample_rate = input_sample_rate
 
@@ -89,9 +137,21 @@ class MERTEncoder(nn.Module):
             audio = self.resampler(audio)
 
         # Prepare inputs using processor
-        # Processor expects audio on CPU
+        # Processor expects audio on CPU as numpy array or list
+        # Convert to numpy if needed
+        if isinstance(audio, torch.Tensor):
+            audio_cpu = audio.cpu()
+            # Convert to numpy - handle both 1D and 2D
+            if audio_cpu.dim() == 1:
+                audio_np = audio_cpu.numpy()
+            else:
+                # For batched input, convert to list of numpy arrays
+                audio_np = [audio_cpu[i].numpy() for i in range(audio_cpu.shape[0])]
+        else:
+            audio_np = audio
+        
         inputs = self.processor(
-            raw_speech=audio.cpu(),
+            raw_speech=audio_np,
             sampling_rate=self.processor.sampling_rate,
             return_tensors="pt",
         )
@@ -100,11 +160,30 @@ class MERTEncoder(nn.Module):
         input_values = inputs.input_values.to(self.device)
 
         # Ensure input_values is 2D: [batch_size, sequence_length]
-        if input_values.dim() == 3:
-            input_values = input_values.squeeze(1)  # Remove extra dimension if present
+        # Handle any extra dimensions that might have been added
+        original_shape = input_values.shape
+        while input_values.dim() > 2:
+            # Remove singleton dimensions
+            if input_values.shape[0] == 1:
+                input_values = input_values.squeeze(0)
+            elif input_values.shape[1] == 1:
+                input_values = input_values.squeeze(1)
+            else:
+                # If no singleton dims, flatten extra dimensions
+                # Keep first dim as batch, flatten the rest
+                batch_size = input_values.shape[0]
+                input_values = input_values.view(batch_size, -1)
+        
+        # Final safety check
+        if input_values.dim() != 2:
+            raise ValueError(
+                f"Expected 2D input_values after processing, but got shape {input_values.shape} "
+                f"(original shape: {original_shape}). Audio input shape was {audio.shape if isinstance(audio, torch.Tensor) else type(audio)}"
+            )
 
         # Extract features with all hidden states
-        if self.frozen:
+        # Don't use no_grad if we have unfrozen layers (top or bottom)
+        if self.frozen and self.unfreeze_top_n_layers == 0 and self.unfreeze_bottom_n_layers == 0:
             with torch.no_grad():
                 outputs = self.model(
                     input_values,
@@ -173,6 +252,8 @@ class MERTEncoder(nn.Module):
         return {
             "model_name": self.model_name,
             "frozen": self.frozen,
+            "unfreeze_top_n_layers": self.unfreeze_top_n_layers,
+            "unfreeze_bottom_n_layers": self.unfreeze_bottom_n_layers,
             "output_dim": self.output_dim,
             "sample_rate": self.sample_rate,
             "input_sample_rate": self.input_sample_rate,
@@ -187,6 +268,8 @@ def create_mert_encoder(
     model_name: str = "m-a-p/MERT-v1-330M",
     freeze: bool = True,
     freeze_layer_weights: bool = False,
+    unfreeze_top_n_layers: int = 0,
+    unfreeze_bottom_n_layers: int = 0,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
 ) -> MERTEncoder:
@@ -194,6 +277,8 @@ def create_mert_encoder(
         model_name=model_name,
         freeze=freeze,
         freeze_layer_weights=freeze_layer_weights,
+        unfreeze_top_n_layers=unfreeze_top_n_layers,
+        unfreeze_bottom_n_layers=unfreeze_bottom_n_layers,
         device=device,
         input_sample_rate=input_sample_rate,
     )

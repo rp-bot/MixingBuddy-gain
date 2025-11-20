@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="11_train_mert_musdb_expanded",
+    config_name="26_train_mert_musdb_expanded_augmented_lora_attention",
     version_base=None,
 )
 def main(cfg: DictConfig):

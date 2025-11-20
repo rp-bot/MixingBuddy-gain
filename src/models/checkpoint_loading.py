@@ -5,12 +5,20 @@ from typing import Any
 
 import torch
 from omegaconf import DictConfig
+from dotenv import load_dotenv
 from peft import PeftModel, prepare_model_for_kbit_training
 from safetensors import safe_open
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
 from src.models.modular_multimodal_model import ModularMultimodalModel
 from src.utils.model_utils import find_latest_checkpoint, initialize_tokenizer
+
+# Load environment variables from .env file if it exists
+# Look for .env in project root (2 levels up from src/models/)
+project_root = Path(__file__).resolve().parents[2]
+env_path = project_root / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
 
 
 logger = logging.getLogger(__name__)
@@ -28,14 +36,17 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
                 "No checkpoint found when checkpoint_path is set to 'latest'"
             )
     
+    # Get Hugging Face token from config or environment
+    hf_token = cfg.model.get("hf_token") or os.getenv("HF_TOKEN")
+    
     # Load tokenizer from checkpoint if available, otherwise use base tokenizer
     # This ensures vocabulary size matches what was used during training
     if checkpoint_path and os.path.exists(os.path.join(checkpoint_path, "tokenizer_config.json")):
         logger.info("Loading tokenizer from checkpoint: %s", checkpoint_path)
-        tokenizer = initialize_tokenizer(checkpoint_path)
+        tokenizer = initialize_tokenizer(checkpoint_path, token=hf_token)
     else:
         logger.info("Loading base tokenizer from: %s", cfg.model.model_name)
-        tokenizer = initialize_tokenizer(cfg.model.model_name)
+        tokenizer = initialize_tokenizer(cfg.model.model_name, token=hf_token)
 
     logger.info("Tokenizer vocabulary size: %d", len(tokenizer))
     
@@ -77,6 +88,7 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
             cfg.model.model_name,
             torch_dtype="auto",
             quantization_config=quantization_config,
+            token=hf_token,
         )
         
         # Resize embeddings BEFORE preparing for kbit training
@@ -90,6 +102,7 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
         llm = AutoModelForCausalLM.from_pretrained(
             cfg.model.model_name,
             torch_dtype="auto",
+            token=hf_token,
         )
         llm.resize_token_embeddings(expected_vocab_size)
 

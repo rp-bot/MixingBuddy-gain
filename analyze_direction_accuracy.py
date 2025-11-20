@@ -544,7 +544,51 @@ def analyze_predictions(predictions_path):
 
 if __name__ == "__main__":
     predictions_path = Path(
-        "outputs/evaluation/qlora-qwen2-7b-mert-cross-attention-r16a32-musdb/predictions/predictions.jsonl"
+        "outputs/evaluation/qlora-qwen2-7b-mert-dpo-r8a16-musdb/predictions/predictions.jsonl"
     )
-    analyze_predictions(predictions_path)
+    stats = analyze_predictions(predictions_path)
+    
+    # Save results in the same directory as predictions
+    predictions_dir = predictions_path.parent
+    results_json_path = predictions_dir / "analysis_results.json"
+    results_txt_path = predictions_dir / "analysis_results.txt"
+    
+    # Save JSON results (convert defaultdict to dict for JSON serialization)
+    stats_for_json = dict(stats)
+    stats_for_json["by_error_category"] = {k: dict(v) for k, v in stats["by_error_category"].items()}
+    with open(results_json_path, "w") as f:
+        json.dump(stats_for_json, f, indent=2)
+    print(f"\nResults saved to: {results_json_path}")
+    
+    # Save human-readable text report
+    with open(results_txt_path, "w") as f:
+        f.write("=" * 80 + "\n")
+        f.write("COMPREHENSIVE RESPONSE ACCURACY ANALYSIS\n")
+        f.write("=" * 80 + "\n")
+        f.write(f"\nOverall Statistics:\n")
+        f.write(f"  Total samples: {stats['total']}\n")
+        f.write(f"  Correct direction (problem): {stats['correct_direction']} ({100*stats['correct_direction']/stats['total']:.1f}%)\n")
+        f.write(f"  Correct stem: {stats['correct_stem']} ({100*stats['correct_stem']/stats['total']:.1f}%)\n")
+        f.write(f"  Correct solution direction (increase/reduce): {stats['correct_solution_direction']} ({100*stats['correct_solution_direction']/stats['total']:.1f}%)\n")
+        f.write(f"  Correct magnitude: {stats['correct_magnitude']} ({100*stats['correct_magnitude']/stats['total']:.1f}%)\n")
+        f.write(f"  Correct both (direction + stem): {stats['correct_both']} ({100*stats['correct_both']/stats['total']:.1f}%)\n")
+        f.write(f"  Correct all components (direction + stem + magnitude): {stats['correct_all_components']} ({100*stats['correct_all_components']/stats['total']:.1f}%)\n")
+        f.write(f"  Exact match with ground truth: {stats['exact_match']} ({100*stats['exact_match']/stats['total']:.1f}%)\n")
+        
+        f.write(f"\nBreakdown by Error Category:\n")
+        for category in sorted(stats["by_error_category"].keys()):
+            cat_stats = stats["by_error_category"][category]
+            if cat_stats["total"] > 0:
+                f.write(f"\n  {category}:\n")
+                f.write(f"    Total: {cat_stats['total']}\n")
+                f.write(f"    Correct direction (problem): {cat_stats['correct_direction']} ({100*cat_stats['correct_direction']/cat_stats['total']:.1f}%)\n")
+                f.write(f"    Correct stem: {cat_stats['correct_stem']} ({100*cat_stats['correct_stem']/cat_stats['total']:.1f}%)\n")
+                f.write(f"    Correct solution direction (increase/reduce): {cat_stats['correct_solution_direction']} ({100*cat_stats['correct_solution_direction']/cat_stats['total']:.1f}%)\n")
+                f.write(f"    Correct magnitude: {cat_stats['correct_magnitude']} ({100*cat_stats['correct_magnitude']/cat_stats['total']:.1f}%)\n")
+                f.write(f"    Correct both: {cat_stats['correct_both']} ({100*cat_stats['correct_both']/cat_stats['total']:.1f}%)\n")
+                f.write(f"    Correct all components: {cat_stats['correct_all_components']} ({100*cat_stats['correct_all_components']/cat_stats['total']:.1f}%)\n")
+                f.write(f"    Exact match: {cat_stats['exact_match']} ({100*cat_stats['exact_match']/cat_stats['total']:.1f}%)\n")
+        
+        f.write("\n" + "=" * 80 + "\n")
+    print(f"Text report saved to: {results_txt_path}")
 
