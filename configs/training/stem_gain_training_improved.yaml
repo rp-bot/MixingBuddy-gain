@@ -52,3 +52,4 @@ resume:
   weight_only: true  # Use weight-only since we changed regularization (dropout, weight_decay, lr)
   checkpoint_path: null
 
+

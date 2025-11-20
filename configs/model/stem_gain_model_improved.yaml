@@ -40,3 +40,4 @@ head:
   activation: "relu"        # Options: "relu", "gelu", "tanh"
 # Default (if head is null): [512] (2-layer: 1024 -> 512 -> output)
 
+

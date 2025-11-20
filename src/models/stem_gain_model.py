@@ -14,6 +14,7 @@ import torch.nn as nn
 from src.models.encoders.encodec import EncodecEncoder
 from src.models.encoders.mert import MERTEncoder
 from src.models.encoders.passt import PaSSTEncoder
+from src.models.encoders.wav2vec import Wav2VecEncoder
 from src.models.projections.mlp import MLPProjection
 from src.models.projections.linear import LinearProjection
 
@@ -77,6 +78,11 @@ class StemGainModel(nn.Module):
             if "input_sample_rate" not in encoder_config:
                 encoder_config["input_sample_rate"] = 32000
             self.audio_encoder = PaSSTEncoder(**encoder_config)
+        elif "wav2vec" in encoder_model_name.lower():
+            logger.info(f"Using Wav2Vec encoder: {encoder_model_name}")
+            if "input_sample_rate" not in encoder_config:
+                encoder_config["input_sample_rate"] = 32000 # Default to something, Wav2VecEncoder will auto-resample to 16k
+            self.audio_encoder = Wav2VecEncoder(**encoder_config)
         else:
             logger.info(f"Using EnCodec encoder: {encoder_model_name}")
             self.audio_encoder = EncodecEncoder(**encoder_config)

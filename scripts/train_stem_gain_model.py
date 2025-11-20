@@ -153,7 +153,7 @@ def compute_metrics(eval_pred: EvalPrediction) -> dict:
 
 @hydra.main(
     config_path="../configs",
-    config_name="train_stem_gain_passt",
+    config_name="train_stem_gain_wav2vec",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -264,13 +264,18 @@ def main(cfg: DictConfig):
     final_model_dir = training_args.output_dir
     
     # Handle resume from checkpoint
+    # Check top-level resume config first, then fall back to training.resume
+    resume_config = cfg.get("resume")
+    if resume_config is None:
+        resume_config = cfg.training.resume
+    
     resume_from_checkpoint: str | None = None
-    if cfg.training.resume.enabled:
-        if cfg.training.resume.checkpoint_path is None:
+    if resume_config.enabled:
+        if resume_config.checkpoint_path is None:
             logger.warning("Resume enabled but checkpoint_path is None; starting from scratch")
         else:
-            checkpoint_path = PROJECT_ROOT / cfg.training.resume.checkpoint_path
-            weight_only = cfg.training.resume.get("weight_only", False)
+            checkpoint_path = PROJECT_ROOT / resume_config.checkpoint_path
+            weight_only = resume_config.get("weight_only", False)
             
             if checkpoint_path.exists():
                 # Detect if this is a full HF checkpoint (has optimizer/scheduler/state)

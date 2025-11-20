@@ -1,12 +1,11 @@
 # @package _global_
 
-# Main training config for stem classification and gain regression model
-# Improved version with increased capacity and better hyperparameters
+# Training config for stem gain model with Wav2Vec2 encoder
 
 defaults:
   - data: stem_gain_data
-  - model: stem_gain_model_improved
-  - training: stem_gain_training_improved
+  - model: stem_gain_wav2vec
+  - training: stem_gain_training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - _self_
@@ -14,7 +13,7 @@ defaults:
 # Environment settings
 env:
   seed: 42
-  project_name: "stem-gain-model-improved"
+  project_name: "stem-gain-model-wav2vec"
   output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
 
 # Experiment tracking settings
@@ -25,5 +24,4 @@ experiment_tracking:
 hydra:
   run:
     dir: ${env.output_dir}
-
 
