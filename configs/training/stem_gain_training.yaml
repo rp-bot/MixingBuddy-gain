@@ -1,0 +1,53 @@
+# @package training
+
+# Training arguments for stem classification and gain regression
+training_args:
+  output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
+  
+  num_train_epochs: 30
+  per_device_train_batch_size: 64  # Increased from 8 for V100 32GB
+  per_device_eval_batch_size: 64   # Increased from 8 for V100 32GB
+  gradient_accumulation_steps: 2   # Reduced from 4 (effective batch: 16*2=32, same as before)
+  
+  learning_rate: 7.5e-5  # Reduced from 1e-4 to reduce overfitting
+  weight_decay: 0.1  # Increased from 0.05 to reduce train/eval gap
+  lr_scheduler_type: "cosine"
+  warmup_steps: 500
+  max_grad_norm: 1.0
+  
+  logging_steps: 20
+  eval_steps: 100
+  save_steps: 500
+  save_total_limit: 3
+  
+  eval_strategy: "steps"
+  save_strategy: "steps"
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  
+  logging_first_step: true
+  logging_strategy: "steps"
+  report_to: "none"
+  disable_tqdm: true
+
+# Loss weights for multi-task learning
+classification_weight: 1.0
+regression_weight: 0.1  # Increased from 0.05 for better gain prediction balance
+
+# Evaluation settings
+evaluation:
+  # Optional cap on number of validation samples for faster eval
+  max_eval_samples: 10000
+
+# Early stopping
+early_stopping:
+  enabled: false
+  patience: 3
+
+# Resume settings
+resume:
+  enabled: false
+  weight_only: true  # Use weight-only since we changed regularization (dropout, weight_decay, lr)
+  checkpoint_path: null
+

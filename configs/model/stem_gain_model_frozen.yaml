@@ -1,0 +1,12 @@
+# @package model
+
+defaults:
+  - stem_gain_model
+  - _self_
+
+# Distinguish this configuration in run-name utilities
+config_name: "stem_gain_frozen"
+
+encoder:
+  freeze_layer_weights: true
+

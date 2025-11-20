@@ -300,6 +300,69 @@ def main():
             'direction_correct_percentage': round(stats['direction']/stats['total']*100, 2) if stats['total'] > 0 else 0.0
         }
     
+    # Calculate macro accuracies (average across all classes, giving equal weight to each class)
+    macro_accuracies = {}
+    
+    # Macro accuracy by error category
+    error_cat_accuracies_both = [results['by_error_category'][cat]['both_correct_percentage'] 
+                                 for cat in results['by_error_category'].keys()]
+    error_cat_accuracies_stem = [results['by_error_category'][cat]['stem_correct_percentage'] 
+                                 for cat in results['by_error_category'].keys()]
+    error_cat_accuracies_direction = [results['by_error_category'][cat]['direction_correct_percentage'] 
+                                      for cat in results['by_error_category'].keys()]
+    
+    macro_accuracies['by_error_category'] = {
+        'both_correct_macro': round(sum(error_cat_accuracies_both) / len(error_cat_accuracies_both), 2) if error_cat_accuracies_both else 0.0,
+        'stem_correct_macro': round(sum(error_cat_accuracies_stem) / len(error_cat_accuracies_stem), 2) if error_cat_accuracies_stem else 0.0,
+        'direction_correct_macro': round(sum(error_cat_accuracies_direction) / len(error_cat_accuracies_direction), 2) if error_cat_accuracies_direction else 0.0
+    }
+    
+    # Macro accuracy by target stem
+    stem_accuracies_both = [results['by_target_stem'][stem]['both_correct_percentage'] 
+                           for stem in results['by_target_stem'].keys()]
+    stem_accuracies_stem = [results['by_target_stem'][stem]['stem_correct_percentage'] 
+                           for stem in results['by_target_stem'].keys()]
+    stem_accuracies_direction = [results['by_target_stem'][stem]['direction_correct_percentage'] 
+                                for stem in results['by_target_stem'].keys()]
+    
+    macro_accuracies['by_target_stem'] = {
+        'both_correct_macro': round(sum(stem_accuracies_both) / len(stem_accuracies_both), 2) if stem_accuracies_both else 0.0,
+        'stem_correct_macro': round(sum(stem_accuracies_stem) / len(stem_accuracies_stem), 2) if stem_accuracies_stem else 0.0,
+        'direction_correct_macro': round(sum(stem_accuracies_direction) / len(stem_accuracies_direction), 2) if stem_accuracies_direction else 0.0
+    }
+    
+    # Macro accuracy by direction type
+    direction_accuracies_both = [results['by_direction_type'][dir_type]['both_correct_percentage'] 
+                                for dir_type in results['by_direction_type'].keys()]
+    direction_accuracies_stem = [results['by_direction_type'][dir_type]['stem_correct_percentage'] 
+                                for dir_type in results['by_direction_type'].keys()]
+    direction_accuracies_direction = [results['by_direction_type'][dir_type]['direction_correct_percentage'] 
+                                     for dir_type in results['by_direction_type'].keys()]
+    
+    macro_accuracies['by_direction_type'] = {
+        'both_correct_macro': round(sum(direction_accuracies_both) / len(direction_accuracies_both), 2) if direction_accuracies_both else 0.0,
+        'stem_correct_macro': round(sum(direction_accuracies_stem) / len(direction_accuracies_stem), 2) if direction_accuracies_stem else 0.0,
+        'direction_correct_macro': round(sum(direction_accuracies_direction) / len(direction_accuracies_direction), 2) if direction_accuracies_direction else 0.0
+    }
+    
+    # Add macro accuracies to results
+    results['macro_accuracies'] = macro_accuracies
+    
+    # Print macro accuracies
+    print(f"\nMACRO ACCURACIES (average across all classes):")
+    print(f"  By Error Category:")
+    print(f"    Both correct: {macro_accuracies['by_error_category']['both_correct_macro']:.2f}%")
+    print(f"    Stem correct: {macro_accuracies['by_error_category']['stem_correct_macro']:.2f}%")
+    print(f"    Direction correct: {macro_accuracies['by_error_category']['direction_correct_macro']:.2f}%")
+    print(f"  By Target Stem:")
+    print(f"    Both correct: {macro_accuracies['by_target_stem']['both_correct_macro']:.2f}%")
+    print(f"    Stem correct: {macro_accuracies['by_target_stem']['stem_correct_macro']:.2f}%")
+    print(f"    Direction correct: {macro_accuracies['by_target_stem']['direction_correct_macro']:.2f}%")
+    print(f"  By Direction Type:")
+    print(f"    Both correct: {macro_accuracies['by_direction_type']['both_correct_macro']:.2f}%")
+    print(f"    Stem correct: {macro_accuracies['by_direction_type']['stem_correct_macro']:.2f}%")
+    print(f"    Direction correct: {macro_accuracies['by_direction_type']['direction_correct_macro']:.2f}%")
+    
     # Save results to JSON file
     predictions_path = Path(filepath)
     output_dir = predictions_path.parent

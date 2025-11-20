@@ -26,7 +26,7 @@ env:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
-checkpoint_path: null  # Update this to your DPO checkpoint path after training
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-all-modules-dpo-r16a32-musdb/checkpoint-400"  # Update this to your DPO checkpoint path after training
 
 # IMPORTANT: The evaluation output directory will be automatically determined
 # from the checkpoint path. For example, if checkpoint is:

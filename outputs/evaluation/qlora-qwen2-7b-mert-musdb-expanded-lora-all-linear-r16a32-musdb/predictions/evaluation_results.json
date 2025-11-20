@@ -237,5 +237,22 @@
         "generated": "The drums is too loud and needs to be brought down. Reduce the drums by 6 to 12 dB to achieve proper"
       }
     ]
+  },
+  "macro_accuracies": {
+    "by_error_category": {
+      "both_correct_macro": 29.17,
+      "stem_correct_macro": 56.75,
+      "direction_correct_macro": 34.78
+    },
+    "by_target_stem": {
+      "both_correct_macro": 37.03,
+      "stem_correct_macro": 59.69,
+      "direction_correct_macro": 42.78
+    },
+    "by_direction_type": {
+      "both_correct_macro": 29.72,
+      "stem_correct_macro": 51.46,
+      "direction_correct_macro": 34.33
+    }
   }
 }

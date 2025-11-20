@@ -1,0 +1,38 @@
+# @package model
+
+# Model configuration for stem classification and gain regression with Wav2Vec2 encoder
+
+# Name used by run-name utilities / logging
+model_name: "stem_gain_wav2vec"
+
+# Number of classes:
+#   0: vocals
+#   1: drums
+#   2: bass
+#   3: no_error  (mix is balanced, no adjustment needed)
+num_classes: 4
+
+# Feature pooling method: "mean", "max", or "attention"
+pooling_method: "attention"
+
+# Audio encoder configuration - Wav2Vec2
+encoder:
+  model_name: "facebook/wav2vec2-base"
+  feature_type: "cnn"  # "cnn" or "transformer"
+  freeze: true
+  device: cuda
+  input_sample_rate: 24000  # Input data is 24kHz, encoder will resample to 16kHz
+
+# Optional projection layer
+# Set to null to skip projection (encoder -> heads directly)
+projection:
+  type: "linear"
+  output_dim: 256
+  dropout: 0.2
+
+# Task head configuration
+head:
+  hidden_dims: [128]
+  dropout: 0.3
+  activation: "relu"
+

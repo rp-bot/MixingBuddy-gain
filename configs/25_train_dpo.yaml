@@ -35,7 +35,7 @@ hydra:
 training:
   resume:
     enabled: true
-    weight_only: true  # Load weights but not optimizer state (required for DPO)
+    weight_only: false  # Load weights but not optimizer state (required for DPO)
     # Update this to point to your SFT checkpoint (experiment 22 or 23)
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-all-modules-r16a32-musdb"
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-all-modules-dpo-r16a32-musdb/checkpoint-400"
 
