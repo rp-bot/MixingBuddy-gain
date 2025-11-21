@@ -1,9 +1,10 @@
 """
-Stem detection and gain regression model.
+Multi-label stem classification model.
 
-This model performs two tasks:
-1. Classify which stem needs adjustment (vocals, drums, bass)
-2. Predict the required gain adjustment in dB (regression)
+This model performs multi-label classification:
+- 3 stems: vocals, drums, bass
+- 5 categories per stem: very_quiet, quiet, balanced, loud, very_loud
+- Total: 15 classes (3 × 5)
 """
 
 import logging
@@ -22,16 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 class StemGainModel(nn.Module):
-    """Model for stem classification and gain regression.
+    """Model for multi-label stem classification.
     
     Architecture:
-    - Audio Encoder (MERT/EnCodec) -> Optional Projection -> Task Heads
-    - Classification head: num_classes labels:
-        0: vocals
-        1: drums
-        2: bass
-        3: no_error (mix balanced, no adjustment)
-    - Regression head: gain in dB
+    - Audio Encoder (MERT/EnCodec) -> Optional Projection -> Classification Head
+    - Classification head: num_classes labels (default: 15 for 3 stems × 5 categories)
+        - 3 stems: vocals, drums, bass
+        - 5 categories: very_quiet, quiet, balanced, loud, very_loud
     """
     
     def __init__(
@@ -48,7 +46,7 @@ class StemGainModel(nn.Module):
             projection_config: Optional configuration for projection layer
                 - If None: no projection (encoder -> heads directly)
                 - If dict: create projection layer
-            num_classes: Number of stem classes (default: 4 for vocals, drums, bass, no_error)
+            num_classes: Number of classes (default: 15 for 3 stems × 5 categories)
             pooling_method: How to pool temporal features ("mean", "attention", or "max")
             head_config: Optional configuration for task heads
                 - If None: uses default 2-layer architecture (1024 -> 512 -> output)
@@ -157,25 +155,11 @@ class StemGainModel(nn.Module):
         cls_layers.append(nn.Linear(prev_dim, num_classes))
         self.classification_head = nn.Sequential(*cls_layers)
         
-        # Regression head: same architecture as classification
-        reg_layers = []
-        prev_dim = feature_dim
-        for hidden_dim in head_hidden_dims:
-            reg_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                activation_fn(),
-                nn.Dropout(head_dropout),
-            ])
-            prev_dim = hidden_dim
-        reg_layers.append(nn.Linear(prev_dim, 1))
-        self.regression_head = nn.Sequential(*reg_layers)
-        
         # Move components to same device as encoder
         encoder_device = self.audio_encoder.device
         if self.projection is not None:
             self.projection = self.projection.to(encoder_device)
         self.classification_head = self.classification_head.to(encoder_device)
-        self.regression_head = self.regression_head.to(encoder_device)
         if self.attention_pooling is not None:
             self.attention_pooling = self.attention_pooling.to(encoder_device)
         
@@ -185,21 +169,18 @@ class StemGainModel(nn.Module):
         self,
         audio: torch.Tensor,
         labels: Optional[torch.Tensor] = None,
-        gain_labels: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass.
         
         Args:
             audio: Audio tensor, shape [batch_size, num_samples] or [num_samples]
-            labels: Optional classification labels, shape [batch_size]
-            gain_labels: Optional regression labels, shape [batch_size]
+            labels: Optional multi-label classification labels, shape [batch_size, num_classes]
         
         Returns:
             Dictionary with:
                 - classification_logits: [batch_size, num_classes]
-                - gain_prediction: [batch_size, 1]
-                - loss: Combined loss (if labels provided)
+                - loss: Classification loss (if labels provided)
         """
         # Encode audio: [batch, time_steps, feature_dim]
         audio_features = self.audio_encoder.encode(audio)
@@ -225,29 +206,18 @@ class StemGainModel(nn.Module):
         # Classification head
         classification_logits = self.classification_head(pooled_features)
         
-        # Regression head
-        gain_prediction = self.regression_head(pooled_features)
-        
         output = {
             "classification_logits": classification_logits,
-            "gain_prediction": gain_prediction,
         }
         
         # Compute loss if labels provided
-        if labels is not None or gain_labels is not None:
-            loss = torch.tensor(0.0, device=audio_features.device, dtype=audio_features.dtype)
-            
-            if labels is not None:
-                cls_loss = nn.functional.cross_entropy(classification_logits, labels)
-                loss = loss + cls_loss
-                output["classification_loss"] = cls_loss
-            
-            if gain_labels is not None:
-                reg_loss = nn.functional.mse_loss(gain_prediction.squeeze(-1), gain_labels)
-                loss = loss + reg_loss
-                output["regression_loss"] = reg_loss
-            
-            output["loss"] = loss
+        if labels is not None:
+            # Multi-label binary cross-entropy loss
+            cls_loss = nn.functional.binary_cross_entropy_with_logits(
+                classification_logits, labels, reduction="mean"
+            )
+            output["classification_loss"] = cls_loss
+            output["loss"] = cls_loss
         
         return output
     

@@ -239,9 +239,14 @@ def main(cfg: DictConfig):
                     }
                     model.audio_projection.load_state_dict(filtered_state_dict, strict=False)
                 
-                # Load MERT encoder weights if they exist
+                # Try loading from audio_encoder.bin first (new standard), then mert_encoder.bin (backward compatibility)
+                audio_encoder_path = checkpoint_path / "audio_encoder.bin"
                 mert_path = checkpoint_path / "mert_encoder.bin"
-                if mert_path.exists():
+                if audio_encoder_path.exists():
+                    logger.info("Loading audio encoder weights from %s", audio_encoder_path)
+                    encoder_state_dict = torch.load(audio_encoder_path, map_location="cpu")
+                    model.audio_encoder.load_state_dict(encoder_state_dict)
+                elif mert_path.exists():
                     logger.info("Loading MERT encoder weights from %s", mert_path)
                     mert_state_dict = torch.load(mert_path, map_location="cpu")
                     model.audio_encoder.load_state_dict(mert_state_dict)
@@ -317,7 +322,14 @@ def main(cfg: DictConfig):
                 model.audio_projection.state_dict(),
                 f"{final_model_dir}/audio_projection.bin",
             )
-            if hasattr(model.audio_encoder, "layer_weights"):
+            # Save audio encoder weights if trainable
+            if hasattr(model.audio_encoder, "frozen") and not model.audio_encoder.frozen:
+                torch.save(
+                    model.audio_encoder.state_dict(),
+                    f"{final_model_dir}/audio_encoder.bin",
+                )
+            elif hasattr(model.audio_encoder, "layer_weights"):
+                # MERT with trainable layer weights (backward compatibility)
                 torch.save(
                     model.audio_encoder.state_dict(),
                     f"{final_model_dir}/mert_encoder.bin",
@@ -337,7 +349,15 @@ def main(cfg: DictConfig):
         f"{final_model_dir}/audio_projection.bin",
     )
 
-    if hasattr(model.audio_encoder, "layer_weights"):
+    # Save audio encoder weights if trainable
+    if hasattr(model.audio_encoder, "frozen") and not model.audio_encoder.frozen:
+        logger.info("Saving audio encoder weights (trainable encoder)...")
+        torch.save(
+            model.audio_encoder.state_dict(),
+            f"{final_model_dir}/audio_encoder.bin",
+        )
+    elif hasattr(model.audio_encoder, "layer_weights"):
+        # MERT with trainable layer weights (backward compatibility)
         logger.info("Saving MERT encoder weights...")
         torch.save(
             model.audio_encoder.state_dict(),

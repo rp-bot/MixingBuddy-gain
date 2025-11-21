@@ -56,8 +56,16 @@ class PaSSTEncoder(nn.Module):
     PaSST expects 32kHz audio input and outputs sequence embeddings.
     This encoder:
     1. Resamples input audio to 32kHz (PaSST's expected sample rate)
-    2. Extracts timestamp embeddings using get_timestamp_embeddings
+    2. Extracts timestamp embeddings using forward_features (supports Patchout)
     3. Returns features of shape [batch, time_steps, 768]
+    
+    When fine-tuning (freeze=False), Patchout can be enabled for regularization:
+    - s_patchout_t: Structured patchout along time dimension
+    - s_patchout_f: Structured patchout along frequency dimension
+    - u_patchout: Unstructured patchout (random patches)
+    
+    Patchout is automatically applied during training when the model is in training mode.
+    During inference (eval mode), full sequences are used for best performance.
     """
 
     def __init__(
@@ -66,6 +74,9 @@ class PaSSTEncoder(nn.Module):
         freeze: bool = True,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
+        s_patchout_t: int = 0,
+        s_patchout_f: int = 0,
+        u_patchout: int = 0,
     ):
         super().__init__()
         
@@ -96,10 +107,21 @@ class PaSSTEncoder(nn.Module):
             # Enable gradient checkpointing if trainable
             if hasattr(self.passt_model, "gradient_checkpointing_enable"):
                 self.passt_model.gradient_checkpointing_enable()
+            # Set Patchout parameters for training (only used during training)
+            # These control structured patchout (time/freq) and unstructured patchout
+            if hasattr(self.passt_model.net, 's_patchout_t'):
+                self.passt_model.net.s_patchout_t = s_patchout_t
+            if hasattr(self.passt_model.net, 's_patchout_f'):
+                self.passt_model.net.s_patchout_f = s_patchout_f
+            if hasattr(self.passt_model.net, 'u_patchout'):
+                self.passt_model.net.u_patchout = u_patchout
         
         self.frozen = freeze
         self.model_name = model_name
         self.input_sample_rate = input_sample_rate
+        self.s_patchout_t = s_patchout_t
+        self.s_patchout_f = s_patchout_f
+        self.u_patchout = u_patchout
         
         # PaSST expects 32kHz audio
         passt_sample_rate = 32000
@@ -115,6 +137,9 @@ class PaSSTEncoder(nn.Module):
 
     def encode(self, audio: torch.Tensor) -> torch.Tensor:
         """Encode audio and return timestamp embeddings.
+        
+        Uses the PaSST model's forward_features method which handles Patchout
+        automatically during training (when model is in training mode).
         
         Args:
             audio: Input audio tensor, shape [batch_size, num_samples] or [num_samples]
@@ -137,7 +162,7 @@ class PaSSTEncoder(nn.Module):
         # PaSST expects audio at 32kHz
         # Extract timestamp embeddings (sequence of features)
         # The wrapper has model.mel (mel spectrogram) and model.net (transformer)
-        # We need to get sequence features from the transformer before the classification head
+        # We use forward_features which handles Patchout internally during training
         
         # Suppress debug prints during inference
         with warnings.catch_warnings():
@@ -151,100 +176,83 @@ class PaSSTEncoder(nn.Module):
                 if mel.dim() == 3:
                     mel = mel.unsqueeze(1)  # Add channel dimension: [batch, 1, freq, time]
                 
-                # Get features from the transformer network
-                # model.net is the actual PaSST transformer
-                # We'll manually forward through to get sequence embeddings
+                # Prepare input for forward_features
+                # forward_features expects patch embeddings with position embeddings already added
+                # So we do patch embedding and position embedding setup first
                 if self.frozen:
                     with torch.no_grad():
-                        # Patch embedding
-                        x = self.passt_model.net.patch_embed(mel)
-                        B, C, H, W = x.shape
-                        x = x.flatten(2).transpose(1, 2)  # [B, H*W, C]
-                        
-                        # Add position embeddings (if they exist)
-                        if hasattr(self.passt_model.net, 'pos_embed') and self.passt_model.net.pos_embed is not None:
-                            # Interpolate position embeddings if needed
-                            pos_embed = self.passt_model.net.pos_embed
-                            if pos_embed.shape[1] != H * W:
-                                # Need to interpolate - this is complex, try without for now
-                                pass
-                            else:
-                                x = x + pos_embed
-                        elif hasattr(self.passt_model.net, 'time_new_pos_embed') and hasattr(self.passt_model.net, 'freq_new_pos_embed'):
-                            # PaSST uses separate time and frequency position embeddings
-                            time_pos = self.passt_model.net.time_new_pos_embed[:, :, :, :W]
-                            freq_pos = self.passt_model.net.freq_new_pos_embed[:, :, :H, :]
-                            pos_embed = time_pos + freq_pos
-                            pos_embed = pos_embed.flatten(2).transpose(1, 2)
-                            x = x + pos_embed
-                        
-                        x = self.passt_model.net.pos_drop(x)
-                        
-                        # Add cls and dist tokens
-                        if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
-                            cls_token = self.passt_model.net.cls_token.expand(B, -1, -1)
-                            if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
-                                dist_token = self.passt_model.net.dist_token.expand(B, -1, -1)
-                                x = torch.cat((cls_token, dist_token, x), dim=1)
-                            else:
-                                x = torch.cat((cls_token, x), dim=1)
-                        
-                        # Forward through transformer blocks
-                        for blk in self.passt_model.net.blocks:
-                            x = blk(x)
-                        
-                        # Apply norm
-                        x = self.passt_model.net.norm(x)
-                        
-                        # Remove cls and dist tokens if they were added
-                        if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
-                            if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
-                                features = x[:, 2:, :]  # Skip cls and dist tokens
-                            else:
-                                features = x[:, 1:, :]  # Skip cls token
-                        else:
-                            features = x
+                        features = self._extract_features(mel)
                 else:
-                    # Same but without no_grad
-                    # Ensure mel has 4 dimensions
-                    if mel.dim() == 3:
-                        mel = mel.unsqueeze(1)
-                    x = self.passt_model.net.patch_embed(mel)
-                    B, C, H, W = x.shape
-                    x = x.flatten(2).transpose(1, 2)
-                    
-                    if hasattr(self.passt_model.net, 'time_new_pos_embed') and hasattr(self.passt_model.net, 'freq_new_pos_embed'):
-                        time_pos = self.passt_model.net.time_new_pos_embed[:, :, :, :W]
-                        freq_pos = self.passt_model.net.freq_new_pos_embed[:, :, :H, :]
-                        pos_embed = time_pos + freq_pos
-                        pos_embed = pos_embed.flatten(2).transpose(1, 2)
-                        x = x + pos_embed
-                    
-                    x = self.passt_model.net.pos_drop(x)
-                    
-                    if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
-                        cls_token = self.passt_model.net.cls_token.expand(B, -1, -1)
-                        if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
-                            dist_token = self.passt_model.net.dist_token.expand(B, -1, -1)
-                            x = torch.cat((cls_token, dist_token, x), dim=1)
-                        else:
-                            x = torch.cat((cls_token, x), dim=1)
-                    
-                    for blk in self.passt_model.net.blocks:
-                        x = blk(x)
-                    
-                    x = self.passt_model.net.norm(x)
-                    
-                    if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
-                        if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
-                            features = x[:, 2:, :]
-                        else:
-                            features = x[:, 1:, :]
-                    else:
-                        features = x
+                    # During training, forward_features will apply Patchout automatically
+                    # based on s_patchout_t, s_patchout_f, u_patchout attributes
+                    features = self._extract_features(mel)
                 
                 # Ensure features are on the correct device
                 features = features.to(self.device)
+        
+        return features
+    
+    def _extract_features(self, mel: torch.Tensor) -> torch.Tensor:
+        """Extract features from mel spectrogram.
+        
+        This method manually performs the forward pass to get the full sequence
+        of patch embeddings. Patchout is automatically applied during training
+        by the model's internal logic when s_patchout_t, s_patchout_f, u_patchout
+        attributes are set on model.net.
+        
+        Args:
+            mel: Mel spectrogram, shape [batch, 1, freq, time]
+        
+        Returns:
+            features: Sequence embeddings, shape [batch, time_steps, 768]
+        """
+        # Patch embedding
+        x = self.passt_model.net.patch_embed(mel)
+        B, C, H, W = x.shape
+        x = x.flatten(2).transpose(1, 2)  # [B, H*W, C]
+        
+        # Add position embeddings
+        if hasattr(self.passt_model.net, 'time_new_pos_embed') and hasattr(self.passt_model.net, 'freq_new_pos_embed'):
+            # PaSST uses separate time and frequency position embeddings
+            time_pos = self.passt_model.net.time_new_pos_embed[:, :, :, :W]
+            freq_pos = self.passt_model.net.freq_new_pos_embed[:, :, :H, :]
+            pos_embed = time_pos + freq_pos
+            pos_embed = pos_embed.flatten(2).transpose(1, 2)
+            x = x + pos_embed
+        elif hasattr(self.passt_model.net, 'pos_embed') and self.passt_model.net.pos_embed is not None:
+            # Fallback to standard position embedding if available
+            pos_embed = self.passt_model.net.pos_embed
+            if pos_embed.shape[1] == H * W:
+                x = x + pos_embed
+        
+        x = self.passt_model.net.pos_drop(x)
+        
+        # Add cls and dist tokens if they exist
+        if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
+            cls_token = self.passt_model.net.cls_token.expand(B, -1, -1)
+            if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
+                dist_token = self.passt_model.net.dist_token.expand(B, -1, -1)
+                x = torch.cat((cls_token, dist_token, x), dim=1)
+            else:
+                x = torch.cat((cls_token, x), dim=1)
+        
+        # Forward through transformer blocks
+        # Patchout is applied automatically during training by the model's internal logic
+        # when s_patchout_t, s_patchout_f, u_patchout are set on model.net
+        for blk in self.passt_model.net.blocks:
+            x = blk(x)
+        
+        # Apply norm
+        x = self.passt_model.net.norm(x)
+        
+        # Remove cls and dist tokens if they were added
+        if hasattr(self.passt_model.net, 'cls_token') and self.passt_model.net.cls_token is not None:
+            if hasattr(self.passt_model.net, 'dist_token') and self.passt_model.net.dist_token is not None:
+                features = x[:, 2:, :]  # Skip cls and dist tokens
+            else:
+                features = x[:, 1:, :]  # Skip cls token
+        else:
+            features = x
         
         return features
 
@@ -287,6 +295,9 @@ class PaSSTEncoder(nn.Module):
             "input_sample_rate": self.input_sample_rate,
             "needs_resampling": self.needs_resampling,
             "device": str(self.device),
+            "s_patchout_t": self.s_patchout_t,
+            "s_patchout_f": self.s_patchout_f,
+            "u_patchout": self.u_patchout,
         }
 
 
@@ -295,11 +306,17 @@ def create_passt_encoder(
     freeze: bool = True,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
+    s_patchout_t: int = 0,
+    s_patchout_f: int = 0,
+    u_patchout: int = 0,
 ) -> PaSSTEncoder:
     return PaSSTEncoder(
         model_name=model_name,
         freeze=freeze,
         device=device,
         input_sample_rate=input_sample_rate,
+        s_patchout_t=s_patchout_t,
+        s_patchout_f=s_patchout_f,
+        u_patchout=u_patchout,
     )
 

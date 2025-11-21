@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 from tqdm import tqdm
 
@@ -17,6 +17,7 @@ def generate_and_compare(
     use_instruction: bool,
     system_message: str,
     output_dir: Path,
+    generation_kwargs: Optional[Dict[str, Any]] = None,
 ):
     """Generate responses for samples and save to JSONL for later analysis."""
     logger.info("Generating samples for qualitative evaluation")
@@ -33,6 +34,8 @@ def generate_and_compare(
         return None, None
 
     total_samples = num_samples if num_samples is not None else len(dataset)
+
+    gen_kwargs = generation_kwargs or {}
 
     for i in tqdm(range(total_samples), desc="Generating predictions"):
         sample = dataset[i]
@@ -52,11 +55,14 @@ def generate_and_compare(
 
         text_for_generation = instruction if use_instruction else ""
 
+        current_kwargs = dict(gen_kwargs)
+        current_kwargs.setdefault("max_new_tokens", max_new_tokens)
+
         generated_text = model.generate(
             text_input=text_for_generation,
             audio=audio,
-            max_new_tokens=max_new_tokens,
             system_message=system_message,
+            **current_kwargs,
         )
 
         prediction = {

@@ -282,11 +282,14 @@ def process_split(
 
                             # Instruction and response
                             instruction = create_instruction(
-                                config.instruction_templates,
-                                config.chunk.sec,
-                                list(chunk_stems.keys()),
-                                anchor_stem,
-                                rng,
+                                templates=config.instruction_templates,
+                                duration_sec=config.chunk.sec,
+                                stems_present=list(chunk_stems.keys()),
+                                anchor_stem=anchor_stem,
+                                target_stem=target_stem,
+                                error_category=error_category,
+                                error_ranges_db=config.error.ranges_db,
+                                rng=rng,
                             )
                             response = create_response(
                                 config.response_templates,
@@ -354,11 +357,14 @@ def process_split(
                 )
 
                 instruction = create_instruction(
-                    config.instruction_templates,
-                    config.chunk.sec,
-                    list(chunk_stems.keys()),
-                    anchor_stem,
-                    rng,
+                    templates=config.instruction_templates,
+                    duration_sec=config.chunk.sec,
+                    stems_present=list(chunk_stems.keys()),
+                    anchor_stem=anchor_stem,
+                    target_stem=target_stem,
+                    error_category=error_category,
+                    error_ranges_db=config.error.ranges_db,
+                    rng=rng,
                 )
                 response = create_response(
                     config.response_templates,

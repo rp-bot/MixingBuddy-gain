@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="26_train_mert_musdb_expanded_augmented_lora_attention",
+    config_name="26_train_linear_llm_passt",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -222,8 +222,14 @@ def main(cfg: DictConfig):
                             len(missing_after),
                         )
                     model.audio_projection.load_state_dict(filtered_state_dict, strict=False)
+                # Try loading from audio_encoder.bin first (new standard), then mert_encoder.bin (backward compatibility)
+                audio_encoder_path = checkpoint_path / "audio_encoder.bin"
                 mert_path = checkpoint_path / "mert_encoder.bin"
-                if mert_path.exists():
+                if audio_encoder_path.exists():
+                    logger.info("Loading audio encoder weights from %s", audio_encoder_path)
+                    encoder_state_dict = torch.load(audio_encoder_path, map_location="cpu")
+                    model.audio_encoder.load_state_dict(encoder_state_dict)
+                elif mert_path.exists():
                     logger.info("Loading MERT encoder weights from %s", mert_path)
                     mert_state_dict = torch.load(mert_path, map_location="cpu")
                     model.audio_encoder.load_state_dict(mert_state_dict)
@@ -281,15 +287,21 @@ def main(cfg: DictConfig):
     except Exception as e:
         logger.error(f"Training failed with error: {e}")
         logger.info("Attempting to save current state...")
-        # Try to save whatever we have
+            # Try to save whatever we have
         try:
             trainer.save_model(final_model_dir)
             torch.save(
                 model.audio_projection.state_dict(),
                 f"{final_model_dir}/audio_projection.bin",
             )
-            # Save MERT encoder weights if using MERT
-            if hasattr(model.audio_encoder, "layer_weights"):
+            # Save audio encoder weights if trainable
+            if hasattr(model.audio_encoder, "frozen") and not model.audio_encoder.frozen:
+                torch.save(
+                    model.audio_encoder.state_dict(),
+                    f"{final_model_dir}/audio_encoder.bin",
+                )
+            elif hasattr(model.audio_encoder, "layer_weights"):
+                # MERT with trainable layer weights (backward compatibility)
                 torch.save(
                     model.audio_encoder.state_dict(),
                     f"{final_model_dir}/mert_encoder.bin",
@@ -308,8 +320,15 @@ def main(cfg: DictConfig):
         f"{final_model_dir}/audio_projection.bin",
     )
 
-    # Save MERT encoder weights if using MERT (contains trainable layer_weights)
-    if hasattr(model.audio_encoder, "layer_weights"):
+    # Save audio encoder weights if trainable
+    if hasattr(model.audio_encoder, "frozen") and not model.audio_encoder.frozen:
+        logger.info("Saving audio encoder weights (trainable encoder)...")
+        torch.save(
+            model.audio_encoder.state_dict(),
+            f"{final_model_dir}/audio_encoder.bin",
+        )
+    elif hasattr(model.audio_encoder, "layer_weights"):
+        # MERT with trainable layer weights (backward compatibility)
         logger.info("Saving MERT encoder weights (trainable layer weights)...")
         torch.save(
             model.audio_encoder.state_dict(),

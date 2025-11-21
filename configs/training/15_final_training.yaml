@@ -1,0 +1,44 @@
+# Training arguments
+training_args:
+  output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
+  num_train_epochs: 10 # Final training run
+  per_device_train_batch_size: 16 # Increased for H100 memory (can go up to 32-48 if needed)
+  per_device_eval_batch_size: 16 # Increased for H100 memory
+  gradient_accumulation_steps: 4 # Reduced since batch size increased (effective batch size = 16*4 = 64)
+  lr_scheduler_type: "cosine" # Better for fine-tuning
+  learning_rate: 1e-5 # Reduced for more stable training
+  weight_decay: 0.1 # Increased to further reduce overfitting
+  warmup_ratio: 0 # 1% warmup = 2,310 steps instead of 23,100
+  max_grad_norm: 1 # Higher gradient clipping for more aggressive learning
+  logging_steps: 5 # More frequent logging
+  save_steps: 200 # Save every 200 steps
+  logging_first_step: true # Log the first step
+  logging_strategy: "steps" # Log at every logging_steps
+  save_total_limit: 2 # Keep more checkpoints
+  save_strategy: "steps"
+  eval_strategy: "steps" # Enable evaluation
+  eval_steps: 200 # Evaluate every 200 steps (same as save_steps)
+  load_best_model_at_end: false
+  report_to: "none" # Disable tracking
+  run_name: null # Will be set automatically if null
+  disable_tqdm: false # Enable progress bars
+
+# Mixed precision training
+mixed_precision:
+  enabled: true
+  dtype: "bf16" # or "fp16"
+
+# Early stopping
+early_stopping:
+  enabled: false # Can be enabled if needed
+  patience: 3
+
+# Evaluation configuration
+evaluation:
+  max_eval_samples: 1000 # Maximum number of samples to evaluate (null for all samples)
+
+# # Resume training configuration
+# resume:
+#   enabled: true
+#   weight_only: true  # Set to true for weight-only resume (loads weights but starts fresh training)
+#   checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb/checkpoint-1400" # Path to checkpoint

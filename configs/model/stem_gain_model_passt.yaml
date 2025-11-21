@@ -1,17 +1,17 @@
 # @package model
 
-# Model configuration for stem classification and gain regression with PaSST encoder
-# Architecture: Audio Encoder (PaSST) -> (Optional Projection) -> Classification Head + Regression Head
+# Model configuration for multi-label stem classification with PaSST encoder
+# Architecture: Audio Encoder (PaSST) -> (Optional Projection) -> Classification Head
+# Multi-label classification: 3 stems × 5 categories = 15 classes
 
 # Name used by run-name utilities / logging
 model_name: "stem_gain_passt"
 
 # Number of classes:
-#   0: vocals
-#   1: drums
-#   2: bass
-#   3: no_error  (mix is balanced, no adjustment needed)
-num_classes: 4
+#   3 stems: vocals, drums, bass
+#   5 categories per stem: very_quiet, quiet, balanced, loud, very_loud
+#   Total: 15 classes (vocals_very_quiet, vocals_quiet, ..., bass_very_loud)
+num_classes: 15
 
 # Feature pooling method: "mean", "max", or "attention"
 # PaSST outputs a sequence of embeddings, so we need to pool them
@@ -20,9 +20,15 @@ pooling_method: "attention"
 # Audio encoder configuration - PaSST
 encoder:
   model_name: "hear21passt"
-  freeze: true
+  freeze: false  # Enable fine-tuning of the entire transformer (recommended by PaSST paper)
   device: cuda
   input_sample_rate: 24000  # Input data is 24kHz, encoder will resample to 32kHz
+  # Patchout parameters for regularization during training
+  # These are only used when freeze=false and model is in training mode
+  # During inference (eval mode), full sequences are used
+  s_patchout_t: 10  # Structured patchout along time dimension (drop ~10 time patches)
+  s_patchout_f: 5   # Structured patchout along frequency dimension (drop ~5 freq patches)
+  u_patchout: 0     # Unstructured patchout (random patches, set to 0 to disable)
 
 # Optional projection layer
 # Set to null to skip projection (encoder -> heads directly)
@@ -32,7 +38,7 @@ projection:
   output_dim: 256  # Bottleneck: 768 -> 256 to strip song identity info
   dropout: 0.2     # Regularize the projection features
 
-# Task head configuration (classification and regression)
+# Task head configuration (multi-label classification)
 # Configurable depth and architecture
 head:
   hidden_dims: [128]  # Simple structure: 256 -> 128 -> output

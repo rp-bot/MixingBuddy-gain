@@ -1,0 +1,55 @@
+# @package _global_
+
+# Evaluation config for Experiment 26 (Linear projection + LoRA on attention)
+# Trained with config 26_train_linear_llm.yaml (MERT encoder + linear projection + LoRA attention modules)
+defaults:
+  - data: 08_musdb_expanded_augmented_variations
+  - model: qwen2_7b_passt_linear_proj_lora_attention
+  - evaluation: evaluation
+  - training: 15_final_training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - plotting: plotting
+  - _self_
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  # Output directory is inferred from the checkpoint run name
+
+# Model checkpoint settings
+# Options:
+# - null: Use base model (no trained weights)
+# - "latest": Automatically pick the latest checkpoint
+# - "path/to/checkpoint": Use a specific checkpoint
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-passt-linear-proj-lora-attention-r8a16-musdb/checkpoint-1400"
+
+
+# Plotting configuration (auto-populated at runtime)
+plotting:
+  metrics_file: null
+  output_dir: null
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+# Evaluation overrides for Experiment 26
+evaluation:
+  use_random_projection: false
+  num_generation_samples: 100
+
+  memory:
+    max_memory_usage_gb: 8.0
+
+  generation:
+    max_new_tokens: 1024
+    # min_new_tokens: 8
+    # do_sample: false        # Disable random sampling for consistency
+    # num_beams: 5            # Track the 5 best "paths" simultaneously
+    # early_stopping: true    # Stop when all beams hit the end token
+    # repetition_penalty: 1.2 # Slightly stronger penalty to prevent loops
+    # no_repeat_ngram_size: 3 # strictly prevent repeating 3-word phrases
+    # length_penalty: 1.0     # Neutral length preference

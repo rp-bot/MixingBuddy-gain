@@ -1,6 +1,6 @@
 # @package training
 
-# Training arguments for stem classification and gain regression
+# Training arguments for multi-label stem classification
 # Improved configuration for better capacity utilization
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0"
@@ -31,10 +31,6 @@ training_args:
   logging_strategy: "steps"
   report_to: "none"
   disable_tqdm: true
-
-# Loss weights for multi-task learning
-classification_weight: 1.0
-regression_weight: 0.15  # Increased from 0.1 to give regression task more weight
 
 # Evaluation settings
 evaluation:

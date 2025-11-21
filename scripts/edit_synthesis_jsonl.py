@@ -104,7 +104,14 @@ def edit_split_jsonl(split_name: str, config: DictConfig, rng: random.Random) ->
 
         # Regenerate instruction
         new_instruction = create_instruction(
-            config.instruction_templates, duration_sec, stems_present, anchor_stem, rng
+            templates=config.instruction_templates,
+            duration_sec=duration_sec,
+            stems_present=stems_present,
+            anchor_stem=anchor_stem,
+            target_stem=target_stem,
+            error_category=error_category,
+            error_ranges_db=config.error.ranges_db,
+            rng=rng,
         )
 
         # Regenerate response

@@ -1,17 +1,17 @@
 # @package model
 
-# Model configuration for stem classification and gain regression
-# Architecture: Audio Encoder -> (Optional Projection) -> Classification Head + Regression Head
+# Model configuration for multi-label stem classification
+# Architecture: Audio Encoder -> (Optional Projection) -> Classification Head
+# Multi-label classification: 3 stems × 5 categories = 15 classes
 
 # Name used by run-name utilities / logging
 model_name: "stem_gain"
 
 # Number of classes:
-#   0: vocals
-#   1: drums
-#   2: bass
-#   3: no_error  (mix is balanced, no adjustment needed)
-num_classes: 4
+#   3 stems: vocals, drums, bass
+#   5 categories per stem: very_quiet, quiet, balanced, loud, very_loud
+#   Total: 15 classes (vocals_very_quiet, vocals_quiet, ..., bass_very_loud)
+num_classes: 15
 
 # Feature pooling method: "mean", "max", or "attention"
 pooling_method: "mean"
@@ -32,10 +32,10 @@ projection:
   output_dim: 256  # Bottleneck: 1024 -> 256 to strip song identity info
   dropout: 0.2     # Regularize the projection features
 
-# Task head configuration (classification and regression)
+# Task head configuration (multi-label classification)
 # Configurable depth and architecture
 head:
-  hidden_dims: [128]  # Simple structure: 256 -> 128 -> output
-  dropout: 0.3        # High dropout to force generalization
-  activation: "relu"  # Options: "relu", "gelu", "tanh"
+  hidden_dims: [256, 128]  # Increased from [128]: 256 -> 256 -> 128 -> output (2 hidden layers for better capacity)
+  dropout: 0.3             # High dropout to force generalization
+  activation: "relu"        # Options: "relu", "gelu", "tanh"
 # Default (if head is null): [512] (2-layer: 1024 -> 512 -> output)

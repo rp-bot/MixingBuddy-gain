@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="25_eval_dpo",
+    config_name="26_eval_linear_llm",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -37,7 +37,11 @@ def main(cfg: DictConfig):
     test_dataset = load_dataset(cfg, "test", limit=limit, random_seed=cfg.env.seed)
 
     # Get generation parameters from config
-    max_new_tokens = cfg.evaluation.max_new_tokens
+    generation_cfg = cfg.evaluation.get("generation", {})
+    generation_kwargs = dict(generation_cfg)
+    max_new_tokens = generation_kwargs.pop(
+        "max_new_tokens", cfg.evaluation.max_new_tokens
+    )
     use_instruction = cfg.data.use_instructions
     system_message = cfg.data.system_message
 
@@ -70,6 +74,7 @@ def main(cfg: DictConfig):
         use_instruction=use_instruction,
         system_message=system_message,
         output_dir=output_dir,
+        generation_kwargs=generation_kwargs,
     )
 
     logger.info("Generation complete. Predictions saved to: %s", predictions_file)

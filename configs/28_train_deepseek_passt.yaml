@@ -1,0 +1,35 @@
+# @package _global_
+
+# Training config with DeepSeek LLM, PaSST encoder, augmented multi-anchor data, and LoRA on attention layers
+# Experiment 28: DeepSeek-7B + PaSST + multi-anchor MUSDB data (augmented no-error class) + LoRA attention layers
+
+defaults:
+  - data: 08_musdb_expanded_augmented_variations
+  - model: deepseek_7b_passt_linear_proj_lora_attention
+  - training: 15_final_training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}
+
+training:
+  resume:
+    enabled: false
+    weight_only: false
+    checkpoint_path: null
+

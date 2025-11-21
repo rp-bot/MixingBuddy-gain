@@ -14,8 +14,10 @@ class MERTEncoder(nn.Module):
 
     MERT-v1-330M outputs 25 layers of representations. This encoder:
     1. Resamples input audio from 32kHz to 24kHz (MERT's expected sample rate)
-    2. Extracts all 25 hidden states
-    3. Concatenates them along the feature dimension: [batch, time_steps, 25*1024]
+    2. Extracts all 25 hidden states and computes a learnable weighted average
+    3. For audio longer than window_size_seconds (default 5s), uses a sliding window
+       approach with overlap, then averages the embeddings from all windows to produce
+       a single fixed-size representation (following MERT paper for global tasks)
     """
 
     def __init__(
@@ -27,6 +29,8 @@ class MERTEncoder(nn.Module):
         unfreeze_bottom_n_layers: int = 0,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
+        window_size_seconds: float = 5.0,
+        stride_seconds: Optional[float] = None,
     ):
         super().__init__()
         # Load MERT model and processor
@@ -95,6 +99,9 @@ class MERTEncoder(nn.Module):
         self.unfreeze_bottom_n_layers = unfreeze_bottom_n_layers
         self.model_name = model_name
         self.input_sample_rate = input_sample_rate
+        self.window_size_seconds = window_size_seconds
+        # Default stride is half the window size for 50% overlap (as in MERT paper)
+        self.stride_seconds = stride_seconds if stride_seconds is not None else window_size_seconds / 2.0
 
         # Create resampler if needed
         mert_sample_rate = self.processor.sampling_rate
@@ -120,12 +127,19 @@ class MERTEncoder(nn.Module):
     def encode(self, audio: torch.Tensor) -> torch.Tensor:
         """Encode audio and return weighted average of all layer features.
 
+        For audio longer than window_size_seconds (default 5s), the audio is processed using
+        a sliding window approach with overlap. The embeddings from all windows are averaged
+        to produce a single fixed-size representation, following the MERT paper's approach
+        for global tasks.
+
         Args:
             audio: Input audio tensor, shape [batch_size, num_samples] or [num_samples]
                    Expected to be at self.input_sample_rate
 
         Returns:
             features: Weighted average of layer features, shape [batch, time_steps, 1024]
+                     For audio longer than window_size_seconds, this is the averaged embedding
+                     across all sliding windows, maintaining the same time_steps dimension.
         """
         # Handle single sample case
         if audio.dim() == 1:
@@ -135,6 +149,103 @@ class MERTEncoder(nn.Module):
         if self.needs_resampling:
             # Resample on the same device as input audio
             audio = self.resampler(audio)
+
+        # After resampling, audio is at MERT's native sample rate (24kHz)
+        mert_sample_rate = self.processor.sampling_rate
+        window_samples = int(self.window_size_seconds * mert_sample_rate)
+        stride_samples = int(self.stride_seconds * mert_sample_rate)
+
+        # Process each sample in the batch separately to handle variable lengths
+        batch_size = audio.shape[0]
+        all_features = []
+
+        for i in range(batch_size):
+            sample_audio = audio[i]  # [num_samples]
+            num_samples = sample_audio.shape[0]
+
+            # Check if we need to use sliding window
+            if num_samples > window_samples:
+                # Use sliding window approach with overlap
+                chunk_embeddings = []
+                start_idx = 0
+
+                while start_idx < num_samples:
+                    end_idx = min(start_idx + window_samples, num_samples)
+                    chunk = sample_audio[start_idx:end_idx]
+
+                    # If the last chunk is shorter than window_samples, pad it
+                    if chunk.shape[0] < window_samples:
+                        padding = torch.zeros(
+                            window_samples - chunk.shape[0],
+                            device=chunk.device,
+                            dtype=chunk.dtype
+                        )
+                        chunk = torch.cat([chunk, padding], dim=0)
+
+                    # Process this chunk and get the mean-pooled embedding
+                    chunk_feat = self._encode_single_chunk(chunk.unsqueeze(0))  # [batch=1, time_steps, 1024]
+                    # Mean pool over time dimension to get a single embedding vector
+                    chunk_embedding = chunk_feat.mean(dim=1)  # [batch=1, 1024]
+                    chunk_embeddings.append(chunk_embedding)
+
+                    # Move to next window position
+                    start_idx += stride_samples
+                    
+                    # If we've processed the last possible window, break
+                    if end_idx >= num_samples:
+                        break
+
+                # Average all chunk embeddings to get a single fixed-size representation
+                # Stack: [num_chunks, batch=1, 1024] -> [num_chunks, 1024]
+                chunk_embeddings = torch.stack([ce.squeeze(0) for ce in chunk_embeddings], dim=0)  # [num_chunks, 1024]
+                # Average across chunks: [1024]
+                averaged_embedding = chunk_embeddings.mean(dim=0)  # [1024]
+                
+                # Expand to match expected output shape [time_steps=1, 1024]
+                # This maintains compatibility with downstream models expecting [batch, time_steps, 1024]
+                features = averaged_embedding.unsqueeze(0)  # [1, 1024]
+            else:
+                # Process normally (single chunk)
+                features = self._encode_single_chunk(sample_audio.unsqueeze(0))  # [batch=1, time_steps, 1024]
+                features = features.squeeze(0)  # [time_steps, 1024]
+
+            all_features.append(features)
+
+        # Stack all batch samples
+        # For averaged embeddings (long audio), features is [1, 1024]
+        # For normal processing (short audio), features is [time_steps, 1024]
+        # We need to handle both cases
+        max_time_steps = max(feat.shape[0] for feat in all_features)
+        feature_dim = all_features[0].shape[1]
+        
+        # Pad and stack
+        padded_features = []
+        for feat in all_features:
+            if feat.shape[0] < max_time_steps:
+                padding = torch.zeros(
+                    max_time_steps - feat.shape[0],
+                    feature_dim,
+                    device=feat.device,
+                    dtype=feat.dtype
+                )
+                feat = torch.cat([feat, padding], dim=0)
+            padded_features.append(feat)
+        
+        return torch.stack(padded_features, dim=0)  # [batch, max_time_steps, 1024]
+
+    def _encode_single_chunk(self, audio: torch.Tensor) -> torch.Tensor:
+        """Encode a single audio chunk (assumed to be <= window_size_seconds).
+
+        Args:
+            audio: Input audio tensor, shape [batch_size, num_samples] or [num_samples]
+                   Expected to be at MERT's native sample rate (24kHz)
+
+        Returns:
+            features: Weighted average of layer features, shape [batch, time_steps, 1024]
+        """
+        # Handle single sample case
+        if audio.dim() == 1:
+            audio = audio.unsqueeze(0)
 
         # Prepare inputs using processor
         # Processor expects audio on CPU as numpy array or list
@@ -201,6 +312,12 @@ class MERTEncoder(nn.Module):
         all_layer_hidden_states = torch.stack(outputs.hidden_states)
         # Shape: [25, batch, time_steps, 1024]
 
+        # If layer weights are frozen, use the last layer directly (similar to stem_gain_model)
+        if self.freeze_layer_weights:
+            # Use the last layer: [batch, time_steps, 1024]
+            features = all_layer_hidden_states[-1]
+            return features
+
         # Normalize layer weights using softmax to ensure they sum to 1
         normalized_weights = torch.softmax(self.layer_weights, dim=0)
 
@@ -261,6 +378,8 @@ class MERTEncoder(nn.Module):
             "device": str(self.device),
             "layer_aggregation": "learnable_weighted_average",
             "num_layer_weights": len(self.layer_weights),
+            "window_size_seconds": self.window_size_seconds,
+            "stride_seconds": self.stride_seconds,
         }
 
 
@@ -272,6 +391,8 @@ def create_mert_encoder(
     unfreeze_bottom_n_layers: int = 0,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
+    window_size_seconds: float = 5.0,
+    stride_seconds: Optional[float] = None,
 ) -> MERTEncoder:
     return MERTEncoder(
         model_name=model_name,
@@ -281,4 +402,6 @@ def create_mert_encoder(
         unfreeze_bottom_n_layers=unfreeze_bottom_n_layers,
         device=device,
         input_sample_rate=input_sample_rate,
+        window_size_seconds=window_size_seconds,
+        stride_seconds=stride_seconds,
     )

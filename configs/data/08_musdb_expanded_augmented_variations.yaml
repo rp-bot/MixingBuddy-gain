@@ -4,8 +4,8 @@ paths:
   musdb_root: data/musdb18hq
 
 # Dataset paths
-# Using the full augmented dataset with 10 template variations
-train_jsonl_path: data/musdb18hq_processed/train/training_samples_augmented_variations.jsonl
+# Using the filtered augmented dataset (augmented no_error samples removed) with 10 template variations
+train_jsonl_path: data/musdb18hq_processed/train/training_samples_augmented_variations_filtered.jsonl
 train_audio_root: data/musdb18hq_processed/train/flawed_mixes
 test_jsonl_path: data/musdb18hq_processed/test/test_samples_variations.jsonl
 test_audio_root: data/musdb18hq_processed/test/flawed_mixes

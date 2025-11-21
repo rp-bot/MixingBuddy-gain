@@ -119,14 +119,23 @@ def create_variations_for_split(split_name: str, config: DictConfig, rng: random
         varied_sample = sample.copy()
 
         # Select instruction template using round-robin from shuffled list
-        instruction_idx = instruction_indices[instruction_counter % len(instruction_indices)]
+        instruction_idx = instruction_indices[
+            instruction_counter % len(instruction_indices)
+        ]
         instruction_template = config.instruction_templates[instruction_idx]
         instruction_counter += 1
-        
-        # Format instruction
-        stems_str = ", ".join(stems_present)
-        new_instruction = instruction_template.format(
-            duration_sec=duration_sec, stems_present=stems_str, anchor_stem=anchor_stem
+
+        # Format instruction with target-specific requirement
+        new_instruction = create_instruction(
+            templates=config.instruction_templates,
+            duration_sec=duration_sec,
+            stems_present=stems_present,
+            anchor_stem=anchor_stem,
+            target_stem=target_stem,
+            error_category=error_category,
+            error_ranges_db=config.error.ranges_db,
+            rng=rng,
+            template_override=instruction_template,
         )
 
         # Select response template using round-robin from shuffled list for this category

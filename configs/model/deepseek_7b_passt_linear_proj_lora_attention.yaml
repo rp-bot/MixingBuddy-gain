@@ -1,0 +1,51 @@
+# @package model
+
+# Model configuration - WITH LoRA adapters on all linear layers, train audio projection + LoRA
+# PaSST provides 768 dimensional output features
+model_name: "deepseek-ai/deepseek-llm-7b-chat"
+config_name: "deepseek_7b_passt_linear_proj_lora_attention"
+use_qlora: true
+
+# LoRA configuration with all linear layer target modules
+# Enables LoRA adapters on all attention and MLP linear layers
+# DeepSeek uses Llama-based architecture with standard attention modules
+lora:
+  r: 8
+  lora_alpha: 16
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+  lora_dropout: 0.3
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+# QLoRA quantization configuration
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+
+# Audio encoder configuration - PaSST
+encoder:
+  model_name: "hear21passt"
+  freeze: false  # Enable fine-tuning of the entire transformer (recommended by PaSST paper)
+  device: cuda # Will be set automatically based on LLM device
+  input_sample_rate: 24000 # Our data is at 24kHz, PaSST will resample internally to 32kHz
+  # Patchout parameters for regularization during training
+  # These are only used when freeze=false and model is in training mode
+  # During inference (eval mode), full sequences are used
+  s_patchout_t: 10  # Structured patchout along time dimension (drop ~10 time patches)
+  s_patchout_f: 5   # Structured patchout along frequency dimension (drop ~5 freq patches)
+  u_patchout: 0     # Unstructured patchout (random patches, set to 0 to disable)
+
+# Audio projection configuration
+# PaSST outputs 768 dimensional features
+# Need to project to LLM hidden size (typically 4096 for DeepSeek-7B)
+# With smaller input (768), we can use a deeper, more expressive projection
+projection:
+  type: "linear"
+  # Simple linear projection: 768 -> llm_hidden_size
+  # Auxiliary loss is CRITICAL here since projection is the only trainable component
+  freeze_projection: false
+  use_auxiliary_loss: true
+  auxiliary_loss_weight: 0.05
+

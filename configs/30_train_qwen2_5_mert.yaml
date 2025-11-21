@@ -1,0 +1,36 @@
+# @package _global_
+
+# Training config with Qwen2.5-14B-Instruct LLM, MERT encoder, augmented multi-anchor data
+# Experiment 30: Qwen2.5-14B-Instruct + MERT + multi-anchor MUSDB data (augmented no-error class)
+
+defaults:
+  - data: 08_musdb_expanded_augmented_variations
+  - model: qwen2_5_14b_mert_musdb_lora_attention
+  - training: 15_final_training
+  - experiment_tracking: wandb
+  - experiment_naming: experiment_naming
+  - _self_
+
+
+# Environment settings
+env:
+  seed: 42
+  project_name: "automatic-mixing-milestone-0"
+  output_dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+
+# Experiment tracking settings
+experiment_tracking:
+  use_wandb: false
+  use_mlflow: false
+
+hydra:
+  run:
+    dir: ${env.output_dir}
+
+training:
+  resume:
+    enabled: false
+    weight_only: false
+    checkpoint_path: null
+
+# 

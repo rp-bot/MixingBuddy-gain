@@ -17,6 +17,15 @@ save_predictions: true
 num_generation_samples: 100 # Set to null to generate for all samples
 max_new_tokens: 1024
 
+generation:
+  max_new_tokens: ${evaluation.max_new_tokens}
+  do_sample: true
+  temperature: 0.7
+  top_p: 0.9
+  repetition_penalty: 1.1
+  # Allow deterministic decoding when desired
+  # Example override: evaluation.generation.do_sample=false
+
 # Evaluation metrics to compute
 metrics:
   - "loss"

@@ -1,11 +1,13 @@
 import logging
-from typing import Any, Dict, Optional
+import math
+from typing import Any, Dict, List, Optional
 
 import torch
 import torch.nn as nn
 
 from src.models.encoders.encodec import EncodecEncoder
 from src.models.encoders.mert import MERTEncoder
+from src.models.encoders.passt import PaSSTEncoder
 from src.models.projections import MLPProjection
 from src.models.projections.cross_attention import CrossAttentionProjection
 
@@ -54,6 +56,11 @@ class ModularMultimodalModel(nn.Module):
             if "input_sample_rate" not in encoder_config:
                 encoder_config["input_sample_rate"] = 32000
             self.audio_encoder = MERTEncoder(**encoder_config)
+        elif "passt" in encoder_model_name.lower():
+            logger.info(f"Using PaSST encoder: {encoder_model_name}")
+            if "input_sample_rate" not in encoder_config:
+                encoder_config["input_sample_rate"] = 24000
+            self.audio_encoder = PaSSTEncoder(**encoder_config)
         else:
             logger.info(f"Using EnCodec encoder: {encoder_model_name}")
             self.audio_encoder = EncodecEncoder(**encoder_config)
@@ -177,11 +184,21 @@ class ModularMultimodalModel(nn.Module):
         logger.info("=" * 60)
 
     def encode_audio(self, audio: torch.Tensor) -> torch.Tensor:
-        """Encode audio with EnCodec; supports batched and unbatched input."""
+        """Encode audio with encoder; supports batched and unbatched input."""
         if audio.dim() == 1:
             audio = audio.unsqueeze(0)
 
         batch_size = audio.shape[0]
+
+        # Apply random gain augmentation in +/-3 dB range before encoding
+        gains_db = torch.empty(batch_size, device=audio.device, dtype=audio.dtype).uniform_(
+            -3.0, 3.0
+        )
+        gains_linear = torch.pow(
+            torch.tensor(10.0, device=audio.device, dtype=audio.dtype), gains_db / 20.0
+        )
+        audio = audio * gains_linear.view(batch_size, 1)
+
         encoded_list = []
         for i in range(batch_size):
             single_audio = audio[i]
@@ -189,7 +206,31 @@ class ModularMultimodalModel(nn.Module):
             if encoded.dim() == 3:
                 encoded = encoded.squeeze(0)
             encoded_list.append(encoded)
-        return torch.stack(encoded_list, dim=0)
+        
+        # Handle variable-length sequences (e.g., from PaSST)
+        # Pad all sequences to the same length before stacking
+        if encoded_list:
+            # Find the maximum sequence length
+            max_seq_len = max(enc.shape[0] for enc in encoded_list)
+            feature_dim = encoded_list[0].shape[-1]
+            
+            # Pad all sequences to max_seq_len
+            padded_encoded_list = []
+            for enc in encoded_list:
+                if enc.shape[0] < max_seq_len:
+                    # Pad sequence dimension (time_steps)
+                    padding_size = max_seq_len - enc.shape[0]
+                    # Pad at the end: (0, 0) for feature_dim, (0, padding_size) for seq_len
+                    padded = torch.nn.functional.pad(
+                        enc, (0, 0, 0, padding_size), mode="constant", value=0.0
+                    )
+                    padded_encoded_list.append(padded)
+                else:
+                    padded_encoded_list.append(enc)
+            
+            return torch.stack(padded_encoded_list, dim=0)
+        else:
+            return torch.stack(encoded_list, dim=0)
 
     def forward(self, **kwargs):
         input_ids = kwargs.get("input_ids")
@@ -234,6 +275,30 @@ class ModularMultimodalModel(nn.Module):
 
         text_embeds = self.llm.get_input_embeddings()(input_ids)
 
+        # Calculate expected number of audio tokens from audio length and encoder stride
+        # This must match what the collator calculated: ceil(audio_length / hop_length)
+        if hasattr(self.audio_encoder, 'hop_length'):
+            audio_length = audio.shape[-1]  # Last dimension is the sequence length
+            hop_length = self.audio_encoder.hop_length
+            expected_num_audio_tokens = math.ceil(audio_length / hop_length)
+        else:
+            # Fallback: use actual number of tokens from projection
+            expected_num_audio_tokens = projected_audio_embeds.shape[1]
+        
+        # Truncate or pad projected_audio_embeds to match expected_num_audio_tokens
+        actual_num_tokens = projected_audio_embeds.shape[1]
+        if actual_num_tokens > expected_num_audio_tokens:
+            # Truncate to expected length
+            projected_audio_embeds = projected_audio_embeds[:, :expected_num_audio_tokens, :]
+        elif actual_num_tokens < expected_num_audio_tokens:
+            # Pad to expected length
+            padding_size = expected_num_audio_tokens - actual_num_tokens
+            projected_audio_embeds = torch.nn.functional.pad(
+                projected_audio_embeds, (0, 0, 0, padding_size), mode="constant", value=0.0
+            )
+        
+        num_audio_tokens = expected_num_audio_tokens
+
         auxiliary_loss = torch.tensor(0.0, device=projected_audio_embeds.device)
         if self.use_auxiliary_loss and self.training:
             audio_norm_per_dim = (
@@ -247,7 +312,6 @@ class ModularMultimodalModel(nn.Module):
                 audio_norm_per_dim.mean(), text_norm_per_dim.mean().detach()
             )
 
-        num_audio_tokens = projected_audio_embeds.shape[1]
         projected_audio_embeds = projected_audio_embeds.to(text_embeds.dtype)
         text_only_embeds = text_embeds[:, num_audio_tokens:]
         inputs_embeds = torch.cat([projected_audio_embeds, text_only_embeds], dim=1)
@@ -271,17 +335,26 @@ class ModularMultimodalModel(nn.Module):
     @torch.no_grad()
     def generate(
         self,
-        text_input: str,
-        audio: torch.Tensor,
-        max_new_tokens: int,
-        system_message: str,
+        text_input: Optional[str] = None,
+        audio: torch.Tensor = None,
+        max_new_tokens: int = 256,
+        system_message: str = "",
+        messages: Optional[List[Dict[str, str]]] = None,
+        **generate_kwargs: Any,
     ) -> str:
         device = self.llm.device
 
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": text_input},
-        ]
+        if audio is None:
+            raise ValueError("audio tensor must be provided for generation")
+
+        if messages is None:
+            if text_input is None:
+                raise ValueError("Either messages or text_input must be provided.")
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": text_input},
+            ]
+
         prompt = self.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -319,10 +392,13 @@ class ModularMultimodalModel(nn.Module):
             (audio_attention_mask, model_inputs.attention_mask), dim=1
         )
 
+        if "max_new_tokens" not in generate_kwargs:
+            generate_kwargs["max_new_tokens"] = max_new_tokens
+
         generated_ids = self.llm.generate(
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
-            max_new_tokens=max_new_tokens,
+            **generate_kwargs,
         )
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
             0

@@ -85,11 +85,12 @@ class StemGainCheckpointCallback(TrainerCallback):
             f"{checkpoint_dir}/classification_head.bin",
         )
         
-        # Save regression head
-        torch.save(
-            self.model.regression_head.state_dict(),
-            f"{checkpoint_dir}/regression_head.bin",
-        )
+        # Save regression head if present (legacy models only)
+        if hasattr(self.model, "regression_head") and self.model.regression_head is not None:
+            torch.save(
+                self.model.regression_head.state_dict(),
+                f"{checkpoint_dir}/regression_head.bin",
+            )
         
         # Save projection if used
         if self.model.use_projection and self.model.projection is not None:
@@ -116,44 +117,61 @@ class StemGainCheckpointCallback(TrainerCallback):
 
 def compute_metrics(eval_pred: EvalPrediction) -> dict:
     """
-    Compute evaluation metrics for stem classification and gain regression.
+    Compute evaluation metrics for multi-label stem classification.
     
     Args:
         eval_pred: EvalPrediction with:
-            - predictions: tuple(classification_logits, gain_predictions)
-            - label_ids: tuple(stem_labels, gain_labels)
+            - predictions: classification_logits [batch_size, 15]
+            - label_ids: multi_labels [batch_size, 15]
     """
+    from src.data.stem_gain_dataset import StemGainDataset
+    from sklearn.metrics import hamming_loss, f1_score, accuracy_score
+    
     predictions, labels = eval_pred.predictions, eval_pred.label_ids
     
-    # Unpack predictions and labels
-    classification_logits, gain_predictions = predictions
-    stem_labels, gain_labels = labels
-    
     # Ensure numpy arrays
-    classification_logits = np.asarray(classification_logits)
-    gain_predictions = np.asarray(gain_predictions)
-    stem_labels = np.asarray(stem_labels)
-    gain_labels = np.asarray(gain_labels)
+    classification_logits = np.asarray(predictions)  # [batch_size, 15]
+    multi_labels = np.asarray(labels)  # [batch_size, 15]
     
-    # Stem classification accuracy
-    stem_preds = classification_logits.argmax(axis=-1)
-    stem_accuracy = (stem_preds == stem_labels).mean().item()
+    # Convert logits to binary predictions (sigmoid + threshold)
+    pred_probs = 1 / (1 + np.exp(-classification_logits))  # sigmoid
+    pred_binary = (pred_probs > 0.5).astype(float)
     
-    # Gain regression metrics (in dB)
-    gain_errors = gain_predictions - gain_labels
-    mae = np.mean(np.abs(gain_errors)).item()
-    rmse = np.sqrt(np.mean(gain_errors ** 2)).item()
+    # Exact match accuracy (all labels must be correct)
+    exact_match = np.all(pred_binary == multi_labels, axis=1).mean()
+    
+    # Hamming loss (average per-label error rate)
+    hamming = hamming_loss(multi_labels, pred_binary)
+    
+    # Per-label F1 score (micro-averaged)
+    f1_micro = f1_score(multi_labels, pred_binary, average='micro', zero_division=0)
+    f1_macro = f1_score(multi_labels, pred_binary, average='macro', zero_division=0)
+    
+    # Per-stem accuracy (for each stem, check if the correct category is predicted)
+    stem_accuracies = {}
+    for stem_idx, stem_name in enumerate(StemGainDataset.STEMS):
+        stem_start = stem_idx * len(StemGainDataset.CATEGORIES)
+        stem_end = stem_start + len(StemGainDataset.CATEGORIES)
+        
+        # Get true and predicted categories for this stem
+        true_categories = multi_labels[:, stem_start:stem_end].argmax(axis=1)
+        pred_categories = pred_binary[:, stem_start:stem_end].argmax(axis=1)
+        
+        stem_acc = (true_categories == pred_categories).mean()
+        stem_accuracies[f"{stem_name}_accuracy"] = float(stem_acc)
     
     return {
-        "stem_accuracy": stem_accuracy,
-        "gain_mae_db": mae,
-        "gain_rmse_db": rmse,
+        "exact_match_accuracy": float(exact_match),
+        "hamming_loss": float(hamming),
+        "f1_micro": float(f1_micro),
+        "f1_macro": float(f1_macro),
+        **stem_accuracies,
     }
 
 
 @hydra.main(
     config_path="../configs",
-    config_name="train_stem_gain_wav2vec",
+    config_name="train_stem_gain_frozen",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -255,8 +273,6 @@ def main(cfg: DictConfig):
         eval_dataset=val_dataset,
         data_collator=data_collator,
         callbacks=callbacks,
-        classification_weight=cfg.training.get("classification_weight", 1.0),
-        regression_weight=cfg.training.get("regression_weight", 0.1),
         compute_metrics=compute_metrics,
     )
     

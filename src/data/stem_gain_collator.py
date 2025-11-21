@@ -29,8 +29,7 @@ class StemGainDataCollator:
         Returns:
             Batched dictionary with:
                 - audio: [batch_size, max_length] padded audio
-                - stem_label: [batch_size] classification labels
-                - gain_label: [batch_size] regression labels
+                - multi_label: [batch_size, 15] multi-label classification labels
                 - attention_mask: [batch_size, max_length] mask for padding
         """
         # Extract audio sequences
@@ -75,20 +74,20 @@ class StemGainDataCollator:
         padded_audio = torch.stack(padded_audio_list, dim=0)
         attention_mask = torch.stack(attention_mask_list, dim=0)
         
-        # Extract labels
-        stem_labels = torch.tensor([f["stem_label"] for f in features], dtype=torch.long)
-        gain_labels = torch.tensor([f["gain_label"] for f in features], dtype=torch.float32)
+        # Extract multi-label labels: [batch_size, 15]
+        multi_labels = torch.stack([f["multi_label"] for f in features], dim=0)
         
         # Extract metadata (optional, for logging/debugging)
         global_uids = [f["global_uid"] for f in features]
-        target_stems = [f["target_stem"] for f in features]
+        target_stems = [f.get("target_stem", "unknown") for f in features]
+        error_categories = [f.get("error_category", "unknown") for f in features]
         
         return {
             "audio": padded_audio,
-            "stem_label": stem_labels,
-            "gain_label": gain_labels,
+            "multi_label": multi_labels,
             "attention_mask": attention_mask,
             "global_uid": global_uids,
             "target_stem": target_stems,
+            "error_category": error_categories,
         }
 

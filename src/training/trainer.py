@@ -75,8 +75,15 @@ class ExperimentTrackingCallback(TrainerCallback):
             f"{checkpoint_dir}/audio_projection.bin",
         )
 
-        # Save MERT encoder weights (including the 25 trainable layer weights)
-        if hasattr(self.model.audio_encoder, "layer_weights"):
+        # Save audio encoder weights if trainable (e.g., PaSST with freeze=False, MERT with layer_weights)
+        if hasattr(self.model.audio_encoder, "frozen") and not self.model.audio_encoder.frozen:
+            # Encoder is trainable (e.g., PaSST fine-tuning)
+            torch.save(
+                self.model.audio_encoder.state_dict(),
+                f"{checkpoint_dir}/audio_encoder.bin",
+            )
+        elif hasattr(self.model.audio_encoder, "layer_weights"):
+            # MERT with trainable layer weights (backward compatibility)
             torch.save(
                 self.model.audio_encoder.state_dict(),
                 f"{checkpoint_dir}/mert_encoder.bin",

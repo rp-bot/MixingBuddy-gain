@@ -61,3 +61,10 @@ evaluation:
   memory:
     max_memory_usage_gb: 8.0  # QLoRA keeps memory usage reasonable
 
+  generation:
+    max_new_tokens: 1024
+    do_sample: false
+    temperature: 0.3
+    top_p: 0.9
+    repetition_penalty: 1.1
+
