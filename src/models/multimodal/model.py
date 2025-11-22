@@ -291,6 +291,214 @@ class ModularMultimodalModel(nn.Module):
         
         return encoded
 
+    def _autoregressive_forward(
+        self,
+        inputs_embeds: torch.Tensor,
+        attention_mask: Optional[torch.Tensor],
+        input_ids: torch.Tensor,
+        labels: torch.Tensor,
+    ):
+        """
+        Perform true autoregressive forward pass using model's own predictions.
+        
+        This method implements non-teacher forcing by:
+        1. Prefilling the prompt portion
+        2. Generating response tokens one-by-one using greedy predictions
+        3. Computing loss on each generated token
+        4. Accumulating and averaging the loss
+        
+        Args:
+            inputs_embeds: Combined audio and text embeddings [batch, seq_len, hidden_size]
+            attention_mask: Attention mask for inputs [batch, seq_len]
+            input_ids: Token IDs for the full sequence [batch, seq_len]
+            labels: Target labels with -100 for ignored positions [batch, seq_len]
+            
+        Returns:
+            CausalLMOutputWithPast containing loss, logits, and other outputs
+        """
+        from transformers.modeling_outputs import CausalLMOutputWithPast
+        
+        batch_size = inputs_embeds.shape[0]
+        device = inputs_embeds.device
+        seq_len = inputs_embeds.shape[1]
+        
+        # Find where the response starts for each sample (where labels switch from -100 to valid tokens)
+        response_start_positions = []
+        for i in range(batch_size):
+            label_seq = labels[i]
+            response_start = None
+            for j in range(len(label_seq)):
+                if label_seq[j] != -100:
+                    response_start = j
+                    break
+            response_start_positions.append(response_start if response_start is not None else seq_len)
+        
+        # Find maximum response start to ensure we prefill all prompts fully
+        # This handles cases where samples have different prompt lengths
+        max_response_start = max(response_start_positions) if response_start_positions else seq_len
+        min_response_start = min(response_start_positions) if response_start_positions else seq_len
+        
+        if min_response_start >= seq_len:
+            # No response tokens, fall back to standard training
+            logger.warning("No response tokens found, falling back to standard training")
+            output = self.llm(
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                labels=labels,
+                return_dict=True,
+                use_cache=False,
+            )
+            return output
+        
+        # Prefill: process prompt portion up to max_response_start to ensure all prompts are fully processed
+        # This handles variable-length prompts correctly
+        prompt_embeds = inputs_embeds[:, :max_response_start]
+        prompt_attention = attention_mask[:, :max_response_start] if attention_mask is not None else None
+        
+        prefill_output = self.llm(
+            inputs_embeds=prompt_embeds,
+            attention_mask=prompt_attention,
+            return_dict=True,
+            use_cache=True,
+        )
+        
+        past_key_values = prefill_output.past_key_values
+        accumulated_loss = torch.tensor(0.0, device=device, requires_grad=True)
+        loss_fct = nn.CrossEntropyLoss(ignore_index=-100, reduction='mean')
+        total_steps = 0
+        
+        # Get the starting token for each sample individually (last token before response starts)
+        # This correctly handles variable-length prompts
+        starting_token_ids = []
+        for i in range(batch_size):
+            response_start = response_start_positions[i]
+            if response_start > 0:
+                # Use the last token of the prompt (one before response starts)
+                starting_token_ids.append(input_ids[i, response_start - 1].item())
+            else:
+                # Edge case: response starts immediately, use BOS token
+                bos_token_id = self.tokenizer.bos_token_id if self.tokenizer.bos_token_id is not None else 0
+                starting_token_ids.append(bos_token_id)
+        
+        # Convert to tensor for batch processing
+        current_token_ids = torch.tensor(starting_token_ids, device=device, dtype=torch.long).unsqueeze(1)  # [batch, 1]
+        
+        # Collect logits from each autoregressive step for constructing full-sequence logits
+        # This allows SFTTrainer to compute token accuracy correctly
+        collected_logits = []
+        
+        # Autoregressive loop: generate tokens one by one using greedy predictions
+        for step in range(self.max_autoregressive_steps):
+            # Check if we have valid targets for this step
+            # A sample is valid if it has a non-(-100) target token at the current position
+            valid_samples = []
+            targets_list = []
+            
+            for i in range(batch_size):
+                response_start = response_start_positions[i]
+                target_pos = response_start + step
+                
+                if target_pos < labels.shape[1]:
+                    target_token = labels[i, target_pos].item()
+                    if target_token != -100:
+                        valid_samples.append(i)
+                        targets_list.append(target_token)
+            
+            if not valid_samples:
+                # All samples are done (no more valid targets)
+                break
+            
+            # Forward pass with current token for all samples
+            # Note: Even if some samples are finished, we still process them in the batch
+            # for efficiency, but we only compute loss for valid samples
+            current_embeds = self.llm.get_input_embeddings()(current_token_ids)
+            current_attention = torch.ones_like(current_token_ids, device=device, dtype=torch.long)
+            
+            step_output = self.llm(
+                inputs_embeds=current_embeds,
+                attention_mask=current_attention,
+                past_key_values=past_key_values,
+                return_dict=True,
+                use_cache=True,
+            )
+            
+            # Update past_key_values for next iteration
+            past_key_values = step_output.past_key_values
+            
+            # Get logits for the last position (current token prediction)
+            logits = step_output.logits[:, -1, :]  # [batch, vocab_size]
+            
+            # Collect logits for constructing full-sequence logits (for token accuracy computation)
+            # Use clone().detach() to avoid gradient issues and memory problems
+            collected_logits.append(logits.clone().detach())
+            
+            # Compute loss only for valid samples (those with ground truth targets)
+            # This handles variable-length responses correctly
+            if len(valid_samples) == batch_size:
+                # All samples are valid - compute loss for all
+                targets_tensor = torch.tensor(targets_list, device=device, dtype=torch.long)
+                step_loss = loss_fct(logits, targets_tensor)
+            else:
+                # Only some samples are valid - compute loss only for those
+                # This happens when some samples have finished generating
+                valid_logits = logits[valid_samples]
+                targets_tensor = torch.tensor(targets_list, device=device, dtype=torch.long)
+                step_loss = loss_fct(valid_logits, targets_tensor)
+            
+            # Accumulate loss (will be averaged later)
+            accumulated_loss = accumulated_loss + step_loss
+            total_steps += 1
+            
+            # Get greedy predictions for next step (argmax over vocabulary)
+            # Note: For finished samples, we still generate predictions but won't use them for loss
+            predicted_tokens = logits.argmax(dim=-1)  # [batch]
+            current_token_ids = predicted_tokens.unsqueeze(1)  # [batch, 1]
+        
+        # Average the loss across all steps
+        # Since step_loss uses reduction='mean', each step_loss is already averaged over valid samples
+        # Averaging across steps gives us the average loss per token across all generated tokens
+        if total_steps > 0:
+            final_loss = accumulated_loss / total_steps
+        else:
+            final_loss = torch.tensor(0.0, device=device, requires_grad=True)
+        
+        # Create output object
+        # Construct full-sequence logits from collected autoregressive logits
+        # This allows SFTTrainer to compute token accuracy correctly
+        vocab_size = self.llm.config.vocab_size
+        # Initialize full logits with zeros
+        full_logits = torch.zeros(
+            (batch_size, seq_len, vocab_size),
+            device=device,
+            dtype=torch.float32
+        )
+        
+        # Fill response positions with logits from autoregressive steps
+        for step_idx, step_logits in enumerate(collected_logits):
+            for i in range(batch_size):
+                response_start = response_start_positions[i]
+                target_pos = response_start + step_idx
+                # Only fill if this position has a valid target (not -100)
+                if target_pos < seq_len and target_pos < labels.shape[1] and labels[i, target_pos] != -100:
+                    full_logits[i, target_pos] = step_logits[i]
+        
+        # Detach to ensure logits don't affect the computation graph
+        # (loss is already computed and gradients flow through final_loss)
+        full_logits = full_logits.detach()
+        
+        output = CausalLMOutputWithPast(
+            loss=final_loss,
+            logits=full_logits,
+            past_key_values=None,
+            hidden_states=None,
+            attentions=None,
+        )
+        
+        if self._forward_call_count <= 10:
+            logger.info(f"Autoregressive loss computed: {final_loss.item():.4f} over {total_steps} steps (requires_grad={final_loss.requires_grad})")
+        
+        return output
+
     def forward(self, **kwargs):
         input_ids = kwargs.get("input_ids")
         attention_mask = kwargs.get("attention_mask")
@@ -367,6 +575,10 @@ class ModularMultimodalModel(nn.Module):
         
         num_audio_tokens = expected_num_audio_tokens
 
+        # Auxiliary loss: Critical for autoregressive training
+        # In autoregressive mode, the projection layer only gets gradients from the prefill step
+        # (not from the generation steps). The auxiliary loss provides direct gradient signal
+        # to the projection layer by matching audio/text embedding norms.
         auxiliary_loss = torch.tensor(0.0, device=projected_audio_embeds.device)
         if self.use_auxiliary_loss and self.training:
             audio_norm_per_dim = (
@@ -385,231 +597,24 @@ class ModularMultimodalModel(nn.Module):
         inputs_embeds = torch.cat([projected_audio_embeds, text_only_embeds], dim=1)
 
         # True autoregressive training: use model's own predictions as input
-        # Also applies during evaluation to match training behavior
-        if self.autoregressive_training and labels is not None:
-            if self._forward_call_count <= 10:
-                logger.info(f"Using autoregressive training: max_steps={self.max_autoregressive_steps}")
-            
-            batch_size = inputs_embeds.shape[0]
-            device = inputs_embeds.device
-            seq_len = inputs_embeds.shape[1]
-            
-            # Find where the response starts for each sample (where labels switch from -100 to valid tokens)
-            response_start_positions = []
-            for i in range(batch_size):
-                label_seq = labels[i]
-                response_start = None
-                for j in range(len(label_seq)):
-                    if label_seq[j] != -100:
-                        response_start = j
-                        break
-                response_start_positions.append(response_start if response_start is not None else seq_len)
-            
-            # Find maximum response start to ensure we prefill all prompts fully
-            # This handles cases where samples have different prompt lengths
-            max_response_start = max(response_start_positions) if response_start_positions else seq_len
-            min_response_start = min(response_start_positions) if response_start_positions else seq_len
-            
-            if min_response_start >= seq_len:
-                # No response tokens, fall back to standard training
-                logger.warning("No response tokens found, falling back to standard training")
-                output = self.llm(
-                    inputs_embeds=inputs_embeds,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                    return_dict=True,
-                    use_cache=False,
-                )
-            else:
-                # Prefill: process prompt portion up to max_response_start to ensure all prompts are fully processed
-                # This handles variable-length prompts correctly
-                prompt_embeds = inputs_embeds[:, :max_response_start]
-                prompt_attention = attention_mask[:, :max_response_start] if attention_mask is not None else None
-                
-                prefill_output = self.llm(
-                    inputs_embeds=prompt_embeds,
-                    attention_mask=prompt_attention,
-                    return_dict=True,
-                    use_cache=True,
-                )
-                
-                past_key_values = prefill_output.past_key_values
-                accumulated_loss = torch.tensor(0.0, device=device, requires_grad=True)
-                loss_fct = nn.CrossEntropyLoss(ignore_index=-100, reduction='mean')
-                total_steps = 0
-                
-                # Get the starting token for each sample individually (last token before response starts)
-                # This correctly handles variable-length prompts
-                starting_token_ids = []
-                for i in range(batch_size):
-                    response_start = response_start_positions[i]
-                    if response_start > 0:
-                        # Use the last token of the prompt (one before response starts)
-                        starting_token_ids.append(input_ids[i, response_start - 1].item())
-                    else:
-                        # Edge case: response starts immediately, use BOS token
-                        bos_token_id = self.tokenizer.bos_token_id if self.tokenizer.bos_token_id is not None else 0
-                        starting_token_ids.append(bos_token_id)
-                
-                # Convert to tensor for batch processing
-                current_token_ids = torch.tensor(starting_token_ids, device=device, dtype=torch.long).unsqueeze(1)  # [batch, 1]
-                
-                # Collect logits from each autoregressive step for constructing full-sequence logits
-                # This allows SFTTrainer to compute token accuracy correctly
-                collected_logits = []
-                
-                # Autoregressive loop: generate tokens one by one using greedy predictions
-                
-                for step in range(self.max_autoregressive_steps):
-                    # Check if we have valid targets for this step
-                    # A sample is valid if it has a non-(-100) target token at the current position
-                    valid_samples = []
-                    targets_list = []
-                    
-                    for i in range(batch_size):
-                        response_start = response_start_positions[i]
-                        target_pos = response_start + step
-                        
-                        if target_pos < labels.shape[1]:
-                            target_token = labels[i, target_pos].item()
-                            if target_token != -100:
-                                valid_samples.append(i)
-                                targets_list.append(target_token)
-                    
-                    if not valid_samples:
-                        # All samples are done (no more valid targets)
-                        break
-                    
-                    # Forward pass with current token for all samples
-                    # Note: Even if some samples are finished, we still process them in the batch
-                    # for efficiency, but we only compute loss for valid samples
-                    current_embeds = self.llm.get_input_embeddings()(current_token_ids)
-                    current_attention = torch.ones_like(current_token_ids, device=device, dtype=torch.long)
-                    
-                    step_output = self.llm(
-                        inputs_embeds=current_embeds,
-                        attention_mask=current_attention,
-                        past_key_values=past_key_values,
-                        return_dict=True,
-                        use_cache=True,
-                    )
-                    
-                    # Update past_key_values for next iteration
-                    past_key_values = step_output.past_key_values
-                    
-                    # Get logits for the last position (current token prediction)
-                    logits = step_output.logits[:, -1, :]  # [batch, vocab_size]
-                    
-                    # Collect logits for constructing full-sequence logits (for token accuracy computation)
-                    # Use clone().detach() to avoid gradient issues and memory problems
-                    collected_logits.append(logits.clone().detach())
-                    
-                    # Compute loss only for valid samples (those with ground truth targets)
-                    # This handles variable-length responses correctly
-                    if len(valid_samples) == batch_size:
-                        # All samples are valid - compute loss for all
-                        targets_tensor = torch.tensor(targets_list, device=device, dtype=torch.long)
-                        step_loss = loss_fct(logits, targets_tensor)
-                    else:
-                        # Only some samples are valid - compute loss only for those
-                        # This happens when some samples have finished generating
-                        valid_logits = logits[valid_samples]
-                        targets_tensor = torch.tensor(targets_list, device=device, dtype=torch.long)
-                        step_loss = loss_fct(valid_logits, targets_tensor)
-                    
-                    # Accumulate loss (will be averaged later)
-                    accumulated_loss = accumulated_loss + step_loss
-                    total_steps += 1
-                    
-                    # Get greedy predictions for next step (argmax over vocabulary)
-                    # Note: For finished samples, we still generate predictions but won't use them for loss
-                    predicted_tokens = logits.argmax(dim=-1)  # [batch]
-                    current_token_ids = predicted_tokens.unsqueeze(1)  # [batch, 1]
-                
-                # Average the loss across all steps
-                # Since step_loss uses reduction='mean', each step_loss is already averaged over valid samples
-                # Averaging across steps gives us the average loss per token across all generated tokens
-                if total_steps > 0:
-                    final_loss = accumulated_loss / total_steps
-                else:
-                    final_loss = torch.tensor(0.0, device=device, requires_grad=True)
-                
-                # Create output object
-                # Construct full-sequence logits from collected autoregressive logits
-                # This allows SFTTrainer to compute token accuracy correctly
-                from transformers.modeling_outputs import CausalLMOutputWithPast
-                
-                vocab_size = self.llm.config.vocab_size
-                # Initialize full logits with zeros
-                full_logits = torch.zeros(
-                    (batch_size, seq_len, vocab_size),
-                    device=device,
-                    dtype=torch.float32
-                )
-                
-                # Fill response positions with logits from autoregressive steps
-                for step_idx, step_logits in enumerate(collected_logits):
-                    for i in range(batch_size):
-                        response_start = response_start_positions[i]
-                        target_pos = response_start + step_idx
-                        # Only fill if this position has a valid target (not -100)
-                        if target_pos < seq_len and target_pos < labels.shape[1] and labels[i, target_pos] != -100:
-                            full_logits[i, target_pos] = step_logits[i]
-                
-                # Detach to ensure logits don't affect the computation graph
-                # (loss is already computed and gradients flow through final_loss)
-                full_logits = full_logits.detach()
-                
-                output = CausalLMOutputWithPast(
-                    loss=final_loss,
-                    logits=full_logits,
-                    past_key_values=None,
-                    hidden_states=None,
-                    attentions=None,
-                )
-                
-                if self._forward_call_count <= 10:
-                    logger.info(f"Autoregressive loss computed: {final_loss.item():.4f} over {total_steps} steps (requires_grad={final_loss.requires_grad})")
+        # This applies when either autoregressive_training=True OR use_teacher_forcing=False
+        # Both cases require true non-teacher forcing (generating tokens one-by-one)
+        use_autoregressive = (
+            (self.autoregressive_training and labels is not None) or
+            (not use_teacher_forcing and labels is not None and self.training)
+        )
         
-        # If teacher forcing is disabled, don't pass labels to LLM and compute loss manually
-        elif not use_teacher_forcing and labels is not None and self.training:
-            # Log only first 10 calls to avoid log spam
+        if use_autoregressive:
             if self._forward_call_count <= 10:
-                logger.info(f"Computing loss manually (no teacher forcing): use_teacher_forcing={use_teacher_forcing}, training={self.training}")
+                mode_str = "autoregressive_training" if self.autoregressive_training else "use_teacher_forcing=False"
+                logger.info(f"Using true non-teacher forcing ({mode_str}): max_steps={self.max_autoregressive_steps}")
             
-            # Forward pass without labels (no teacher forcing)
-            output = self.llm(
+            output = self._autoregressive_forward(
                 inputs_embeds=inputs_embeds,
                 attention_mask=attention_mask,
-                return_dict=True,
-                use_cache=False,
+                input_ids=input_ids,
+                labels=labels,
             )
-            
-            # Manually compute cross-entropy loss
-            logits = output.logits
-            # Shift logits and labels for next-token prediction
-            shift_logits = logits[..., :-1, :].contiguous()
-            shift_labels = labels[..., 1:].contiguous()
-            
-            # Flatten for loss computation
-            loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-            flat_logits = shift_logits.view(-1, shift_logits.size(-1))
-            flat_labels = shift_labels.view(-1)
-            loss = loss_fct(flat_logits, flat_labels)
-            
-            # Set loss on output object - create new output dict with loss
-            from transformers.modeling_outputs import CausalLMOutputWithPast
-            output = CausalLMOutputWithPast(
-                loss=loss,
-                logits=output.logits,
-                past_key_values=output.past_key_values,
-                hidden_states=output.hidden_states,
-                attentions=output.attentions,
-            )
-            
-            # Log only first 10 calls
-            if self._forward_call_count <= 10:
-                logger.info(f"Manual loss computed: {loss.item():.4f}")
         else:
             # Log only first 10 calls
             if self._forward_call_count <= 10:
@@ -626,6 +631,9 @@ class ModularMultimodalModel(nn.Module):
             )
 
         # Add auxiliary loss if enabled and we have a loss
+        # Note: This is especially important in autoregressive training where projection
+        # layer gradients are small. Gradient scaling (via callback) can further amplify
+        # these gradients if needed.
         if self.use_auxiliary_loss and self.training and hasattr(output, 'loss') and output.loss is not None:
             weighted_aux_loss = self.auxiliary_loss_weight * auxiliary_loss
             output.loss = output.loss + weighted_aux_loss

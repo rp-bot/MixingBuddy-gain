@@ -33,4 +33,4 @@ training:
   resume:
     enabled: true
     weight_only: false  # Use weight-only resume since we're changing training dynamics (no teacher forcing)
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-passt-linear-proj-lora-attention-auto-reg-r8a16-musdb/checkpoint-400"
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-passt-linear-proj-lora-attention-auto-reg-r8a16-musdb/checkpoint-800"

@@ -11,13 +11,13 @@ training_args:
   warmup_ratio: 0 # 1% warmup = 2,310 steps instead of 23,100
   max_grad_norm: 1 # Higher gradient clipping for more aggressive learning
   logging_steps: 5 # More frequent logging
-  save_steps: 200 # Save every 200 steps
+  save_steps: 100 # Save every 100 steps
   logging_first_step: true # Log the first step
   logging_strategy: "steps" # Log at every logging_steps
   save_total_limit: 3 # Keep more checkpoints
   save_strategy: "steps"
   eval_strategy: "steps" # Enable evaluation
-  eval_steps: 200 # Evaluate every 200 steps (same as save_steps)
+  eval_steps: 100 # Evaluate every 100 steps (same as save_steps)
   load_best_model_at_end: false
   metric_for_best_model: "eval_loss"  # Required when early stopping is enabled
   greater_is_better: false  # Lower loss is better
@@ -38,7 +38,7 @@ early_stopping:
 # Gradient scaling for projection layer (helps with very small gradients in autoregressive training)
 gradient_scaling:
   enabled: true  # Enable gradient scaling to boost projection layer gradients
-  scale_factor: 100.0  # Multiply projection gradients by this factor (10x = 1000x improvement from 1e-9 to 1e-6)
+  scale_factor: 500.0  # Multiply projection gradients by this factor (10x = 1000x improvement from 1e-9 to 1e-6)
 
 # Evaluation configuration
 evaluation:

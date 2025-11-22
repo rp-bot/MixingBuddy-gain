@@ -90,14 +90,14 @@ def initialize_model_and_tokenizer(
     # Get use_teacher_forcing from config (defaults to True for backward compatibility)
     use_teacher_forcing = cfg.model.get("use_teacher_forcing", True)
     if not use_teacher_forcing:
-        logger.info("Teacher forcing disabled - model will compute loss manually without using labels in forward pass")
+        logger.info("Teacher forcing disabled - model will use true autoregressive training (generating tokens one-by-one)")
     
     # Get autoregressive training parameters
     autoregressive_training = cfg.model.get("autoregressive_training", False)
     max_autoregressive_steps = cfg.model.get("max_autoregressive_steps", 40)
     
     if autoregressive_training:
-        logger.info(f"Autoregressive training enabled with max_steps={max_autoregressive_steps}")
+        logger.info(f"Autoregressive training explicitly enabled with max_steps={max_autoregressive_steps}")
         # Autoregressive training implies no teacher forcing
         use_teacher_forcing = False
     

@@ -5,8 +5,8 @@
 model_name: "Qwen/Qwen2-7B-Instruct"
 config_name: "qwen2_7b_passt_linear_proj_lora_attention_auto_reg"
 use_qlora: true
-use_teacher_forcing: false  # Disable teacher forcing - model will compute loss manually
-autoregressive_training: true  # Enable true autoregressive training (uses model's own predictions)
+use_teacher_forcing: false  # True non-teacher forcing: generates tokens one-by-one using model's own predictions
+autoregressive_training: true  # Explicitly enable autoregressive training (redundant when use_teacher_forcing=false, kept for clarity)
 max_autoregressive_steps: 40  # Maximum number of autoregressive steps during training
 
 # LoRA configuration with all linear layer target modules
@@ -15,7 +15,7 @@ lora:
   r: 8
   lora_alpha: 16
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
-  lora_dropout: 0.4
+  lora_dropout: 0.3
   bias: "none"
   task_type: "CAUSAL_LM"
 
@@ -49,5 +49,5 @@ projection:
   # Auxiliary loss is CRITICAL here since projection is the only trainable component
   freeze_projection: false
   use_auxiliary_loss: true
-  auxiliary_loss_weight: 1.0
+  auxiliary_loss_weight: 0.05
 

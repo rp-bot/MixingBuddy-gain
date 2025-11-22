@@ -5,8 +5,8 @@
 model_name: "Qwen/Qwen2-7B-Instruct"
 config_name: "qwen2_7b_mert_linear_proj_lora_attention"
 use_qlora: true
-use_teacher_forcing: false  # Disable teacher forcing - model will compute loss manually
-autoregressive_training: true  # Enable true autoregressive training (uses model's own predictions)
+use_teacher_forcing: false  # True non-teacher forcing: generates tokens one-by-one using model's own predictions
+autoregressive_training: true  # Explicitly enable autoregressive training (redundant when use_teacher_forcing=false, kept for clarity)
 max_autoregressive_steps: 40  # Maximum number of autoregressive steps during training
 
 # LoRA configuration with all linear layer target modules
