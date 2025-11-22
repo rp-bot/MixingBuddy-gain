@@ -150,16 +150,42 @@ def load_trained_model(cfg: DictConfig) -> ModularMultimodalModel:
     # Load audio encoder weights if available (try audio_encoder.bin first, then mert_encoder.bin for backward compatibility)
     audio_encoder_path = f"{checkpoint_path}/audio_encoder.bin"
     mert_path = f"{checkpoint_path}/mert_encoder.bin"
+    encoder_config = cfg.model.get("encoder", {})
+    freeze_layer_weights = encoder_config.get("freeze_layer_weights", False)
+    
     if os.path.exists(audio_encoder_path):
         logger.info("Loading audio encoder weights from %s", audio_encoder_path)
         encoder_state_dict = torch.load(audio_encoder_path, map_location=map_location)
         model.audio_encoder.load_state_dict(encoder_state_dict)
     elif os.path.exists(mert_path):
-        logger.info("Loading MERT encoder weights from %s (backward compatibility)", mert_path)
-        mert_state_dict = torch.load(mert_path, map_location=map_location)
-        model.audio_encoder.load_state_dict(mert_state_dict)
+        # Check if we should load MERT encoder weights
+        # Only load if layer_weights are trainable OR if they exist (for backward compatibility with old checkpoints)
+        if hasattr(model.audio_encoder, "layer_weights"):
+            if freeze_layer_weights:
+                logger.warning(
+                    "Found mert_encoder.bin but freeze_layer_weights=True. "
+                    "Loading weights but they will remain frozen (may be from old checkpoint with unused weights)."
+                )
+            else:
+                logger.info("Loading MERT encoder weights from %s (trainable layer weights)", mert_path)
+            mert_state_dict = torch.load(mert_path, map_location=map_location)
+            model.audio_encoder.load_state_dict(mert_state_dict)
+            # Ensure layer_weights are frozen if config says so
+            if freeze_layer_weights and hasattr(model.audio_encoder, "layer_weights"):
+                model.audio_encoder.layer_weights.requires_grad = False
+        else:
+            logger.warning(
+                "Found mert_encoder.bin but model is not MERT encoder. Skipping load."
+            )
     else:
-        logger.info("No audio encoder weights found, using default initialization")
+        # No checkpoint file found
+        if hasattr(model.audio_encoder, "layer_weights") and not freeze_layer_weights:
+            logger.warning(
+                "No mert_encoder.bin found but freeze_layer_weights=False. "
+                "Using default initialization for layer weights (they will be trainable)."
+            )
+        else:
+            logger.info("No audio encoder weights found, using default initialization")
 
     model.eval()
     for param in model.parameters():

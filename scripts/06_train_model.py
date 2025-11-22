@@ -43,7 +43,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.data.collator import MultimodalDataCollator  # noqa: E402
 from src.training.trainer import ExperimentTrackingCallback  # noqa: E402
 from src.utils.model_utils import initialize_experiment_tracker  # noqa: E402
-from src.training.callbacks import ProjectionDiagnosticCallback  # noqa: E402
+from src.training.callbacks import (
+    ProjectionDiagnosticCallback,
+    ProjectionGradientScalingCallback,
+)  # noqa: E402
 from src.models.initialization import initialize_model_and_tokenizer  # noqa: E402
 from src.data.loading import load_datasets  # noqa: E402
 
@@ -53,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="26_train_linear_llm_passt",
+    config_name="27_train_passt_auto_reg",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -87,6 +90,13 @@ def main(cfg: DictConfig):
 
     callbacks.append(ExperimentTrackingCallback(tracker, model))
     callbacks.append(ProjectionDiagnosticCallback(model))
+    
+    # Add gradient scaling callback if enabled (helps with very small projection gradients)
+    if cfg.training.get("gradient_scaling", {}).get("enabled", False):
+        scale_factor = cfg.training.gradient_scaling.get("scale_factor", 10.0)
+        callbacks.append(ProjectionGradientScalingCallback(model, scale_factor=scale_factor))
+        logger.info(f"Gradient scaling enabled for projection layer (scale_factor={scale_factor})")
+    
     if cfg.training.early_stopping.enabled:
         callbacks.append(
             EarlyStoppingCallback(
@@ -120,7 +130,7 @@ def main(cfg: DictConfig):
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset,
+        eval_dataset=test_dataset,  # Use test dataset for evaluation during training
         processing_class=tokenizer,
         data_collator=data_collator,
         callbacks=callbacks,
@@ -233,6 +243,67 @@ def main(cfg: DictConfig):
                     logger.info("Loading MERT encoder weights from %s", mert_path)
                     mert_state_dict = torch.load(mert_path, map_location="cpu")
                     model.audio_encoder.load_state_dict(mert_state_dict)
+                
+                # Load LoRA adapter weights if they exist
+                adapter_config_path = checkpoint_path / "adapter_config.json"
+                adapter_model_path = checkpoint_path / "adapter_model.bin"
+                adapter_model_safe_path = checkpoint_path / "adapter_model.safetensors"
+                
+                if adapter_config_path.exists() and (adapter_model_path.exists() or adapter_model_safe_path.exists()):
+                    logger.info("Loading LoRA adapter weights from %s", checkpoint_path)
+                    try:
+                        from peft import PeftModel
+                        
+                        # Check if model already has LoRA adapters
+                        if isinstance(model.llm, PeftModel):
+                            # Load adapter state dict directly to avoid creating duplicate adapters
+                            if adapter_model_safe_path.exists():
+                                try:
+                                    from safetensors.torch import load_file as safe_load_file
+                                    adapter_state_dict = safe_load_file(str(adapter_model_safe_path))
+                                except Exception:
+                                    logger.warning("Failed to load adapter_model.safetensors, trying .bin")
+                                    adapter_state_dict = torch.load(adapter_model_path, map_location="cpu")
+                            else:
+                                adapter_state_dict = torch.load(adapter_model_path, map_location="cpu")
+                            
+                            # Get current model state dict to match keys
+                            model_state = model.llm.state_dict()
+                            filtered_state = {}
+                            
+                            # Try different key transformations to match model structure
+                            for key, value in adapter_state_dict.items():
+                                candidate_keys = [
+                                    key,  # Try original key first
+                                    key.replace("base_model.model.", ""),  # Remove one level of nesting
+                                    # Add .default adapter name if missing (PEFT saves without it, but loads with it)
+                                    key.replace(".lora_A.weight", ".lora_A.default.weight").replace(".lora_B.weight", ".lora_B.default.weight"),
+                                    # Try both transformations combined
+                                    key.replace("base_model.model.", "").replace(".lora_A.weight", ".lora_A.default.weight").replace(".lora_B.weight", ".lora_B.default.weight"),
+                                ]
+                                
+                                for candidate_key in candidate_keys:
+                                    if candidate_key in model_state and model_state[candidate_key].shape == value.shape:
+                                        filtered_state[candidate_key] = value
+                                        break
+                            
+                            if filtered_state:
+                                missing, unexpected = model.llm.load_state_dict(filtered_state, strict=False)
+                                logger.info(f"Loaded {len(filtered_state)} LoRA adapter parameters")
+                                if missing:
+                                    logger.info(f"Missing {len(missing)} parameters (expected for some architectures)")
+                                if unexpected:
+                                    logger.info(f"Unexpected {len(unexpected)} parameters")
+                            else:
+                                logger.warning("No matching LoRA adapter parameters found - keys may not match")
+                        else:
+                            # Model doesn't have LoRA yet, load using PeftModel.from_pretrained
+                            model.llm = PeftModel.from_pretrained(model.llm, str(checkpoint_path))
+                            logger.info("LoRA adapter weights loaded successfully")
+                    except Exception as lora_err:
+                        logger.warning("Failed to load LoRA adapters: %s. Continuing without LoRA weights.", lora_err)
+                else:
+                    logger.info("No LoRA adapter files found in checkpoint (adapter_config.json or adapter_model.bin)")
         else:
             logger.warning(
                 "Resume enabled but checkpoint not found at: %s; starting from scratch",
@@ -300,8 +371,9 @@ def main(cfg: DictConfig):
                     model.audio_encoder.state_dict(),
                     f"{final_model_dir}/audio_encoder.bin",
                 )
-            elif hasattr(model.audio_encoder, "layer_weights"):
+            elif hasattr(model.audio_encoder, "layer_weights") and hasattr(model.audio_encoder, "freeze_layer_weights") and not model.audio_encoder.freeze_layer_weights:
                 # MERT with trainable layer weights (backward compatibility)
+                # Only save if layer_weights are actually trainable (not frozen)
                 torch.save(
                     model.audio_encoder.state_dict(),
                     f"{final_model_dir}/mert_encoder.bin",
@@ -327,8 +399,9 @@ def main(cfg: DictConfig):
             model.audio_encoder.state_dict(),
             f"{final_model_dir}/audio_encoder.bin",
         )
-    elif hasattr(model.audio_encoder, "layer_weights"):
+    elif hasattr(model.audio_encoder, "layer_weights") and hasattr(model.audio_encoder, "freeze_layer_weights") and not model.audio_encoder.freeze_layer_weights:
         # MERT with trainable layer weights (backward compatibility)
+        # Only save if layer_weights are actually trainable (not frozen)
         logger.info("Saving MERT encoder weights (trainable layer weights)...")
         torch.save(
             model.audio_encoder.state_dict(),

@@ -20,9 +20,36 @@ from src.evaluation.generation import generate_and_compare  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
+def _extract_checkpoint_identifier(path: Path) -> str:
+    """
+    Determine the checkpoint identifier (e.g., '4000' in 'checkpoint-4000').
+    Returns 'final' if no checkpoint-specific suffix is found.
+    """
+    for part in reversed(path.parts):
+        if part.startswith("checkpoint-"):
+            suffix = part.split("checkpoint-")[-1]
+            return suffix or part
+    return "final"
+
+
+def _next_available_filename(predictions_dir: Path, checkpoint_id: str) -> str:
+    """
+    Construct a predictions filename that includes the checkpoint id and avoids overwriting.
+    Examples: predictions-4000.jsonl, predictions-4000-1.jsonl, etc.
+    """
+    base_name = f"predictions-{checkpoint_id}.jsonl"
+    candidate = predictions_dir / base_name
+    attempt = 1
+    while candidate.exists():
+        base_name = f"predictions-{checkpoint_id}-{attempt}.jsonl"
+        candidate = predictions_dir / base_name
+        attempt += 1
+    return base_name
+
+
 @hydra.main(
     config_path="../configs",
-    config_name="26_eval_linear_llm",
+    config_name="26_eval_linear_llm_passt",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -65,6 +92,12 @@ def main(cfg: DictConfig):
     # Create evaluation directory structure
     output_dir = Path("outputs/evaluation") / run_name
 
+    # Build unique predictions filename that captures the checkpoint identifier.
+    checkpoint_id = _extract_checkpoint_identifier(checkpoint_path)
+    predictions_dir = output_dir / "predictions"
+    predictions_dir.mkdir(parents=True, exist_ok=True)
+    predictions_filename = _next_available_filename(predictions_dir, checkpoint_id)
+
     # Generate and compare (limit can be None to generate for all samples)
     predictions_file = generate_and_compare(
         model,
@@ -75,6 +108,7 @@ def main(cfg: DictConfig):
         system_message=system_message,
         output_dir=output_dir,
         generation_kwargs=generation_kwargs,
+        predictions_filename=predictions_filename,
     )
 
     logger.info("Generation complete. Predictions saved to: %s", predictions_file)

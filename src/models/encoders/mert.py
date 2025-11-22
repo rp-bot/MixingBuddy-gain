@@ -109,6 +109,7 @@ class MERTEncoder(nn.Module):
             self.resampler = T.Resample(
                 orig_freq=input_sample_rate, new_freq=mert_sample_rate
             )
+            self.resampler = self.resampler.to(self.device)
             self.needs_resampling = True
         else:
             self.resampler = None
@@ -145,9 +146,11 @@ class MERTEncoder(nn.Module):
         if audio.dim() == 1:
             audio = audio.unsqueeze(0)
 
+        # Ensure audio is on the correct device
+        audio = audio.to(self.device)
+
         # Resample if needed
         if self.needs_resampling:
-            # Resample on the same device as input audio
             audio = self.resampler(audio)
 
         # After resampling, audio is at MERT's native sample rate (24kHz)
@@ -155,8 +158,25 @@ class MERTEncoder(nn.Module):
         window_samples = int(self.window_size_seconds * mert_sample_rate)
         stride_samples = int(self.stride_seconds * mert_sample_rate)
 
-        # Process each sample in the batch separately to handle variable lengths
         batch_size = audio.shape[0]
+        
+        # Optimize: Check if all samples are short enough to batch process
+        # Get the maximum length across all samples in the batch
+        if audio.dim() == 2:
+            max_samples = audio.shape[1]
+        else:
+            # Shouldn't happen after unsqueeze, but handle it
+            max_samples = max(audio[i].shape[0] for i in range(batch_size)) if batch_size > 0 else 0
+        
+        if max_samples <= window_samples:
+            # All samples fit in one window - batch process them all at once
+            # Audio is already 2D [batch, samples] after resampling
+            # Process entire batch at once
+            features = self._encode_single_chunk(audio)  # [batch, time_steps, 1024]
+            return features
+        
+        # Some samples are too long - need sliding window or variable length handling
+        # Process each sample separately (unavoidable due to variable lengths and sliding windows)
         all_features = []
 
         for i in range(batch_size):
@@ -166,7 +186,9 @@ class MERTEncoder(nn.Module):
             # Check if we need to use sliding window
             if num_samples > window_samples:
                 # Use sliding window approach with overlap
+                # Optimize: Batch all chunks together when possible
                 chunk_embeddings = []
+                chunks = []
                 start_idx = 0
 
                 while start_idx < num_samples:
@@ -181,23 +203,28 @@ class MERTEncoder(nn.Module):
                             dtype=chunk.dtype
                         )
                         chunk = torch.cat([chunk, padding], dim=0)
-
-                    # Process this chunk and get the mean-pooled embedding
-                    chunk_feat = self._encode_single_chunk(chunk.unsqueeze(0))  # [batch=1, time_steps, 1024]
-                    # Mean pool over time dimension to get a single embedding vector
-                    chunk_embedding = chunk_feat.mean(dim=1)  # [batch=1, 1024]
-                    chunk_embeddings.append(chunk_embedding)
-
-                    # Move to next window position
+                    
+                    chunks.append(chunk)
                     start_idx += stride_samples
                     
                     # If we've processed the last possible window, break
                     if end_idx >= num_samples:
                         break
 
+                # Batch process all chunks at once for better GPU utilization
+                if len(chunks) > 1:
+                    chunks_batched = torch.stack(chunks, dim=0)  # [num_chunks, window_samples]
+                    chunk_feats = self._encode_single_chunk(chunks_batched)  # [num_chunks, time_steps, 1024]
+                    # Mean pool over time dimension for each chunk
+                    chunk_embeddings = chunk_feats.mean(dim=1)  # [num_chunks, 1024]
+                else:
+                    # Single chunk
+                    chunk_feat = self._encode_single_chunk(chunks[0].unsqueeze(0))  # [1, time_steps, 1024]
+                    chunk_embeddings = [chunk_feat.mean(dim=1).squeeze(0)]  # [1024]
+
                 # Average all chunk embeddings to get a single fixed-size representation
-                # Stack: [num_chunks, batch=1, 1024] -> [num_chunks, 1024]
-                chunk_embeddings = torch.stack([ce.squeeze(0) for ce in chunk_embeddings], dim=0)  # [num_chunks, 1024]
+                if isinstance(chunk_embeddings, list):
+                    chunk_embeddings = torch.stack(chunk_embeddings, dim=0)  # [num_chunks, 1024]
                 # Average across chunks: [1024]
                 averaged_embedding = chunk_embeddings.mean(dim=0)  # [1024]
                 
@@ -218,7 +245,7 @@ class MERTEncoder(nn.Module):
         max_time_steps = max(feat.shape[0] for feat in all_features)
         feature_dim = all_features[0].shape[1]
         
-        # Pad and stack
+        # Pad and stack efficiently
         padded_features = []
         for feat in all_features:
             if feat.shape[0] < max_time_steps:
@@ -247,16 +274,21 @@ class MERTEncoder(nn.Module):
         if audio.dim() == 1:
             audio = audio.unsqueeze(0)
 
-        # Prepare inputs using processor
-        # Processor expects audio on CPU as numpy array or list
-        # Convert to numpy if needed
+        # Optimize: Keep audio on GPU and convert to numpy only when necessary
+        # The processor needs numpy, but we can minimize transfers
         if isinstance(audio, torch.Tensor):
-            audio_cpu = audio.cpu()
+            # Convert to numpy efficiently - only move to CPU if not already there
+            if audio.device.type == "cpu":
+                audio_cpu = audio
+            else:
+                audio_cpu = audio.cpu()
+            
             # Convert to numpy - handle both 1D and 2D
             if audio_cpu.dim() == 1:
                 audio_np = audio_cpu.numpy()
             else:
                 # For batched input, convert to list of numpy arrays
+                # This is necessary for the processor, but we batch process later
                 audio_np = [audio_cpu[i].numpy() for i in range(audio_cpu.shape[0])]
         else:
             audio_np = audio
@@ -306,30 +338,30 @@ class MERTEncoder(nn.Module):
                 output_hidden_states=True,
             )
 
-        # outputs.hidden_states is a tuple of (num_layers) tensors
-        # Each tensor has shape [batch, time_steps, 1024]
-        # Stack all layers: [num_layers, batch, time_steps, 1024]
-        all_layer_hidden_states = torch.stack(outputs.hidden_states)
-        # Shape: [25, batch, time_steps, 1024]
-
-        # If layer weights are frozen, use the last layer directly (similar to stem_gain_model)
+        # Optimize: Avoid stacking all layers if we only need the last one
         if self.freeze_layer_weights:
-            # Use the last layer: [batch, time_steps, 1024]
-            features = all_layer_hidden_states[-1]
+            # Use the last layer directly: [batch, time_steps, 1024]
+            features = outputs.hidden_states[-1]
             return features
 
+        # For weighted average, compute incrementally to avoid stacking all layers
+        # This saves memory and can be faster than stacking then summing
+        # outputs.hidden_states is a tuple of (num_layers) tensors
+        # Each tensor has shape [batch, time_steps, 1024]
+        
         # Normalize layer weights using softmax to ensure they sum to 1
         normalized_weights = torch.softmax(self.layer_weights, dim=0)
-
-        # Apply weighted average across layers
-        # Reshape weights for broadcasting: [25, 1, 1, 1]
-        weights_expanded = normalized_weights.view(-1, 1, 1, 1)
-
-        # Weighted sum: [25, batch, time_steps, 1024] * [25, 1, 1, 1] -> [25, batch, time_steps, 1024]
-        weighted_layers = all_layer_hidden_states * weights_expanded
-
-        # Sum across layer dimension: [batch, time_steps, 1024]
-        features = weighted_layers.sum(dim=0)
+        
+        # Compute weighted sum incrementally instead of stacking all layers
+        # This avoids creating a large [25, batch, time_steps, 1024] tensor
+        features = None
+        for i, hidden_state in enumerate(outputs.hidden_states):
+            weight = normalized_weights[i]
+            weighted_state = hidden_state * weight
+            if features is None:
+                features = weighted_state
+            else:
+                features = features + weighted_state
 
         return features
 

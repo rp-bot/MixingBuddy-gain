@@ -1,12 +1,12 @@
 # @package _global_
 
 # Training config with MERT encoder, augmented multi-anchor data, and LoRA on all linear layers
-# Experiment 23: MERT + multi-anchor MUSDB data (augmented no-error class) + LoRA all linear layers
+# Experiment 27: PASST + multi-anchor MUSDB data (augmented no-error class) + LoRA all linear layers
 
 defaults:
   - data: 08_musdb_expanded_augmented_variations
-  - model: qwen2_7b_mert_linear_proj_lora_attention
-  - training: 15_final_training
+  - model: qwen2_7b_passt_linear_proj_lora_attention_auto_reg
+  - training: 16_final_auto_regressive_training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - _self_
@@ -31,6 +31,6 @@ hydra:
 
 training:
   resume:
-    enabled: false
-    weight_only: true  # Use weight-only resume since we're changing training dynamics (no teacher forcing)
-    checkpoint_path: null
+    enabled: true
+    weight_only: false  # Use weight-only resume since we're changing training dynamics (no teacher forcing)
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-passt-linear-proj-lora-attention-auto-reg-r8a16-musdb/checkpoint-400"

@@ -245,10 +245,12 @@ def main():
                 model.audio_projection.state_dict(),
                 f"{final_model_dir}/audio_projection.bin",
             )
-            torch.save(
-                model.audio_encoder.state_dict(),
-                f"{final_model_dir}/mert_encoder.bin",
-            )
+            # Only save MERT encoder if layer weights are trainable
+            if hasattr(model.audio_encoder, "layer_weights") and hasattr(model.audio_encoder, "freeze_layer_weights") and not model.audio_encoder.freeze_layer_weights:
+                torch.save(
+                    model.audio_encoder.state_dict(),
+                    f"{final_model_dir}/mert_encoder.bin",
+                )
             logger.info("Partial model saved despite training failure.")
         except Exception as save_error:
             logger.error(f"Failed to save model: {save_error}")
@@ -265,11 +267,13 @@ def main():
     )
 
     # Save MERT encoder weights (including the 25 trainable layer weights)
-    logger.info("Saving MERT encoder weights...")
-    torch.save(
-        model.audio_encoder.state_dict(),
-        f"{final_model_dir}/mert_encoder.bin",
-    )
+    # Only save if layer weights are actually trainable (not frozen)
+    if hasattr(model.audio_encoder, "layer_weights") and hasattr(model.audio_encoder, "freeze_layer_weights") and not model.audio_encoder.freeze_layer_weights:
+        logger.info("Saving MERT encoder weights (trainable layer weights)...")
+        torch.save(
+            model.audio_encoder.state_dict(),
+            f"{final_model_dir}/mert_encoder.bin",
+        )
 
     logger.info(f"Model saved to {final_model_dir}")
 

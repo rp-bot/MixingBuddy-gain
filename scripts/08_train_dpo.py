@@ -328,8 +328,9 @@ def main(cfg: DictConfig):
                     model.audio_encoder.state_dict(),
                     f"{final_model_dir}/audio_encoder.bin",
                 )
-            elif hasattr(model.audio_encoder, "layer_weights"):
+            elif hasattr(model.audio_encoder, "layer_weights") and hasattr(model.audio_encoder, "freeze_layer_weights") and not model.audio_encoder.freeze_layer_weights:
                 # MERT with trainable layer weights (backward compatibility)
+                # Only save if layer_weights are actually trainable (not frozen)
                 torch.save(
                     model.audio_encoder.state_dict(),
                     f"{final_model_dir}/mert_encoder.bin",
@@ -356,8 +357,9 @@ def main(cfg: DictConfig):
             model.audio_encoder.state_dict(),
             f"{final_model_dir}/audio_encoder.bin",
         )
-    elif hasattr(model.audio_encoder, "layer_weights"):
+    elif hasattr(model.audio_encoder, "layer_weights") and hasattr(model.audio_encoder, "freeze_layer_weights") and not model.audio_encoder.freeze_layer_weights:
         # MERT with trainable layer weights (backward compatibility)
+        # Only save if layer_weights are actually trainable (not frozen)
         logger.info("Saving MERT encoder weights...")
         torch.save(
             model.audio_encoder.state_dict(),

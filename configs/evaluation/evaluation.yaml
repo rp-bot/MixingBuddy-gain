@@ -17,12 +17,10 @@ save_predictions: true
 num_generation_samples: 100 # Set to null to generate for all samples
 max_new_tokens: 1024
 
-generation:
-  max_new_tokens: ${evaluation.max_new_tokens}
-  do_sample: true
-  temperature: 0.7
-  top_p: 0.9
-  repetition_penalty: 1.1
+# generation:
+#   max_new_tokens: ${evaluation.max_new_tokens}
+#   do_sample: false        # Disable sampling
+#   num_beams: 1           # Use greedy decoding
   # Allow deterministic decoding when desired
   # Example override: evaluation.generation.do_sample=false
 
@@ -49,7 +47,7 @@ model_loading:
 
 # Ablation study: Use random projection weights instead of trained ones
 # This tests whether the trained audio projection actually helps
-use_random_projection: true
+use_random_projection: false
 
 # Custom metrics configuration (for 09_compute_metrics.py)
 custom_metrics:

@@ -2,8 +2,8 @@
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
   num_train_epochs: 10 # Final training run
-  per_device_train_batch_size: 16 # Reduced for autoregressive training (slower but matches inference)
-  per_device_eval_batch_size: 16 # Reduced for autoregressive training
+  per_device_train_batch_size: 4 # Reduced for autoregressive training (slower but matches inference)
+  per_device_eval_batch_size: 4 # Reduced for autoregressive training
   gradient_accumulation_steps: 4 # Reduced since batch size increased (effective batch size = 16*4 = 64)
   lr_scheduler_type: "cosine" # Better for fine-tuning
   learning_rate: 1e-5 # Reduced for more stable training
@@ -34,6 +34,11 @@ mixed_precision:
 early_stopping:
   enabled: true # Can be enabled if needed
   patience: 3
+
+# Gradient scaling for projection layer (helps with very small gradients in autoregressive training)
+gradient_scaling:
+  enabled: true  # Enable gradient scaling to boost projection layer gradients
+  scale_factor: 100.0  # Multiply projection gradients by this factor (10x = 1000x improvement from 1e-9 to 1e-6)
 
 # Evaluation configuration
 evaluation:

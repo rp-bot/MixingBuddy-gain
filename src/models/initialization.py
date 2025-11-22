@@ -87,12 +87,29 @@ def initialize_model_and_tokenizer(
         else:
             llm = initialize_lora_model(cfg, lora_config, tokenizer)
 
+    # Get use_teacher_forcing from config (defaults to True for backward compatibility)
+    use_teacher_forcing = cfg.model.get("use_teacher_forcing", True)
+    if not use_teacher_forcing:
+        logger.info("Teacher forcing disabled - model will compute loss manually without using labels in forward pass")
+    
+    # Get autoregressive training parameters
+    autoregressive_training = cfg.model.get("autoregressive_training", False)
+    max_autoregressive_steps = cfg.model.get("max_autoregressive_steps", 40)
+    
+    if autoregressive_training:
+        logger.info(f"Autoregressive training enabled with max_steps={max_autoregressive_steps}")
+        # Autoregressive training implies no teacher forcing
+        use_teacher_forcing = False
+    
     model = ModularMultimodalModel(
         model_name=cfg.model.model_name,
         llm=llm,
         tokenizer=tokenizer,
         encoder_config=cfg.model.get("encoder"),
         projection_config=cfg.model.get("projection"),
+        use_teacher_forcing=use_teacher_forcing,
+        autoregressive_training=autoregressive_training,
+        max_autoregressive_steps=max_autoregressive_steps,
     )
     
     # Handle frozen projection and encoder weights loading

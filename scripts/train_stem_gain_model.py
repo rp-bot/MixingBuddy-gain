@@ -100,7 +100,8 @@ class StemGainCheckpointCallback(TrainerCallback):
             )
         
         # Save encoder weights if trainable (MERT layer_weights)
-        if hasattr(self.model.audio_encoder, "layer_weights"):
+        if hasattr(self.model.audio_encoder, "layer_weights") and hasattr(self.model.audio_encoder, "freeze_layer_weights") and not self.model.audio_encoder.freeze_layer_weights:
+            # MERT with trainable layer weights - only save if actually trainable
             torch.save(
                 self.model.audio_encoder.state_dict(),
                 f"{checkpoint_dir}/mert_encoder.bin",

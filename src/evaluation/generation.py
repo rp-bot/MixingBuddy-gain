@@ -18,6 +18,7 @@ def generate_and_compare(
     system_message: str,
     output_dir: Path,
     generation_kwargs: Optional[Dict[str, Any]] = None,
+    predictions_filename: Optional[str] = None,
 ):
     """Generate responses for samples and save to JSONL for later analysis."""
     logger.info("Generating samples for qualitative evaluation")
@@ -92,7 +93,8 @@ def generate_and_compare(
 
     predictions_dir = output_dir / "predictions"
     predictions_dir.mkdir(parents=True, exist_ok=True)
-    predictions_file = predictions_dir / "predictions.jsonl"
+    target_filename = predictions_filename or "predictions.jsonl"
+    predictions_file = predictions_dir / target_filename
 
     logger.info("Saving predictions to %s", predictions_file)
     with open(predictions_file, "w") as f:
