@@ -30,6 +30,11 @@ class ModularMultimodalModel(nn.Module):
         use_teacher_forcing: bool = True,
         autoregressive_training: bool = False,
         max_autoregressive_steps: int = 40,
+        scheduled_sampling_strategy: str = "linear",
+        teacher_forcing_start_ratio: float = 1.0,
+        teacher_forcing_end_ratio: float = 0.0,
+        scheduled_sampling_warmup_steps: int = 0,
+        total_training_steps: int = 1000,
     ):
         super().__init__()
         self.model_name = model_name
@@ -41,20 +46,26 @@ class ModularMultimodalModel(nn.Module):
         # Add attributes needed for HuggingFace Trainer compatibility
         self._keys_to_ignore_on_save = []
         
-        # Teacher forcing control: if False, model won't use labels for next-token prediction
-        # Note: This still uses input_ids which may contain ground truth tokens.
-        # For true autoregressive training without teacher forcing, you'd need to generate
-        # tokens one-by-one during training (much slower).
+        # Teacher forcing control
         self.use_teacher_forcing = use_teacher_forcing
         
-        # Autoregressive training: if True, model uses its own predictions (greedy) as input
-        # for the next step during training, matching inference behavior exactly
+        # Autoregressive training
         self.autoregressive_training = autoregressive_training
         self.max_autoregressive_steps = max_autoregressive_steps
+        
+        # Scheduled sampling parameters
+        self.scheduled_sampling_strategy = scheduled_sampling_strategy
+        self.teacher_forcing_start_ratio = teacher_forcing_start_ratio
+        self.teacher_forcing_end_ratio = teacher_forcing_end_ratio
+        self.scheduled_sampling_warmup_steps = scheduled_sampling_warmup_steps
+        self.total_training_steps = total_training_steps
         
         if autoregressive_training:
             logger.info(f"Model initialized with autoregressive_training=True, max_steps={max_autoregressive_steps}")
             logger.info("Note: Autoregressive training is slower but matches inference behavior")
+        elif scheduled_sampling_strategy != "none":
+            logger.info(f"Model initialized with scheduled sampling: {scheduled_sampling_strategy}")
+            logger.info(f"Ratio decay: {teacher_forcing_start_ratio} -> {teacher_forcing_end_ratio} over {total_training_steps} steps")
         else:
             logger.info(f"Model initialized with use_teacher_forcing={use_teacher_forcing}")
 
@@ -139,6 +150,10 @@ class ModularMultimodalModel(nn.Module):
             logger.info(
                 "Auxiliary loss enabled with weight %.4f", self.auxiliary_loss_weight
             )
+        
+        # Register forward call count as a buffer so it persists across checkpoints
+        # This is critical for scheduled sampling to maintain correct TF ratio after resume
+        self.register_buffer('_forward_call_count', torch.tensor(0, dtype=torch.long))
 
     def print_trainable_parameters(self) -> None:
         """Log parameter breakdown by component."""
@@ -494,10 +509,44 @@ class ModularMultimodalModel(nn.Module):
             attentions=None,
         )
         
-        if self._forward_call_count <= 10:
+        if self._forward_call_count.item() <= 10:
             logger.info(f"Autoregressive loss computed: {final_loss.item():.4f} over {total_steps} steps (requires_grad={final_loss.requires_grad})")
         
         return output
+
+    def get_teacher_forcing_ratio(self, current_step: int) -> float:
+        """
+        Calculate teacher forcing ratio based on current step and schedule strategy.
+        """
+        if self.scheduled_sampling_strategy == "fixed":
+            # Always use start ratio (e.g. 0.5 for constant mixing)
+            return self.teacher_forcing_start_ratio
+            
+        if self.scheduled_sampling_strategy == "none":
+            # No scheduling, stick to configured static boolean
+            return 1.0 if self.use_teacher_forcing else 0.0
+            
+        if current_step < self.scheduled_sampling_warmup_steps:
+            return self.teacher_forcing_start_ratio
+            
+        # Calculate progress (0.0 to 1.0)
+        # Avoid division by zero
+        total_decay_steps = max(1, self.total_training_steps - self.scheduled_sampling_warmup_steps)
+        progress = min(1.0, max(0.0, (current_step - self.scheduled_sampling_warmup_steps) / total_decay_steps))
+        
+        if self.scheduled_sampling_strategy == "linear":
+            # Linear decay: start -> end
+            ratio = self.teacher_forcing_start_ratio - progress * (self.teacher_forcing_start_ratio - self.teacher_forcing_end_ratio)
+        elif self.scheduled_sampling_strategy == "cosine":
+            # Cosine decay
+            import math
+            cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
+            ratio = self.teacher_forcing_end_ratio + (self.teacher_forcing_start_ratio - self.teacher_forcing_end_ratio) * cosine_decay
+        else:
+            # Default to linear
+            ratio = self.teacher_forcing_start_ratio - progress * (self.teacher_forcing_start_ratio - self.teacher_forcing_end_ratio)
+            
+        return max(0.0, min(1.0, ratio))
 
     def forward(self, **kwargs):
         input_ids = kwargs.get("input_ids")
@@ -509,11 +558,9 @@ class ModularMultimodalModel(nn.Module):
         # Allow override via kwargs, otherwise use instance attribute
         use_teacher_forcing = kwargs.get("use_teacher_forcing", self.use_teacher_forcing)
         
-        # Debug logging for first call to understand what's happening
-        if not hasattr(self, '_forward_call_count'):
-            self._forward_call_count = 0
+        # Increment forward call count (registered as buffer to persist across checkpoints)
         self._forward_call_count += 1
-        if self._forward_call_count == 1:
+        if self._forward_call_count.item() == 1:
             logger.info(f"First forward call - use_teacher_forcing: {use_teacher_forcing}, training: {self.training}, labels: {labels is not None}")
 
         # Handle cross-attention projection which needs anchor and mix separately
@@ -596,17 +643,40 @@ class ModularMultimodalModel(nn.Module):
         text_only_embeds = text_embeds[:, num_audio_tokens:]
         inputs_embeds = torch.cat([projected_audio_embeds, text_only_embeds], dim=1)
 
-        # True autoregressive training: use model's own predictions as input
-        # This applies when either autoregressive_training=True OR use_teacher_forcing=False
-        # Both cases require true non-teacher forcing (generating tokens one-by-one)
-        use_autoregressive = (
-            (self.autoregressive_training and labels is not None) or
-            (not use_teacher_forcing and labels is not None and self.training)
-        )
+        # Determine mode (Teacher Forcing vs Autoregressive)
+        use_autoregressive = False
         
-        if use_autoregressive:
-            if self._forward_call_count <= 10:
-                mode_str = "autoregressive_training" if self.autoregressive_training else "use_teacher_forcing=False"
+        if self.training:
+            if self.scheduled_sampling_strategy != "none":
+                # Scheduled Sampling: Probabilistic switching
+                # We use _forward_call_count as a proxy for "step" since we don't easily have global_step here
+                # Note: This counts forward passes, which equals (steps * gradient_accumulation_steps)
+                current_step = self._forward_call_count.item()
+                tf_ratio = self.get_teacher_forcing_ratio(current_step)
+                
+                # Random choice
+                use_tf = torch.rand(1).item() < tf_ratio
+                use_autoregressive = not use_tf
+                
+                # Log occasionally
+                if self._forward_call_count.item() % 100 == 0:
+                    logger.info(f"Scheduled Sampling (Step {current_step}): TF Ratio={tf_ratio:.2f}, Using={'Teacher Forcing' if use_tf else 'Autoregressive'}")
+            
+            elif self.autoregressive_training:
+                # Strict Autoregressive
+                use_autoregressive = True
+                
+            elif not use_teacher_forcing:
+                # Legacy/Manual disable
+                use_autoregressive = True
+        
+        # Evaluation mode: use standard teacher forcing for faster, more stable loss computation
+        # (Autoregressive generation is still used in model.generate() for actual inference)
+        
+        # Execute chosen path
+        if use_autoregressive and labels is not None:
+            if self._forward_call_count.item() <= 10:
+                mode_str = "autoregressive_training" if self.autoregressive_training else "scheduled/manual"
                 logger.info(f"Using true non-teacher forcing ({mode_str}): max_steps={self.max_autoregressive_steps}")
             
             output = self._autoregressive_forward(
@@ -616,12 +686,11 @@ class ModularMultimodalModel(nn.Module):
                 labels=labels,
             )
         else:
-            # Log only first 10 calls
-            if self._forward_call_count <= 10:
-                logger.info(f"Using standard forward with teacher forcing: use_teacher_forcing={use_teacher_forcing}, training={self.training}")
-            
             # Standard forward pass with teacher forcing (default behavior)
-            # This is also used during evaluation
+            # This is also used during evaluation or when coin flip selects TF
+            if self._forward_call_count.item() <= 10:
+                logger.info(f"Using standard forward (Teacher Forcing): training={self.training}")
+            
             output = self.llm(
                 inputs_embeds=inputs_embeds,
                 attention_mask=attention_mask,

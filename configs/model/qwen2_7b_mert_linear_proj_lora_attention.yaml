@@ -5,9 +5,16 @@
 model_name: "Qwen/Qwen2-7B-Instruct"
 config_name: "qwen2_7b_mert_linear_proj_lora_attention"
 use_qlora: true
-use_teacher_forcing: false  # True non-teacher forcing: generates tokens one-by-one using model's own predictions
-autoregressive_training: true  # Explicitly enable autoregressive training (redundant when use_teacher_forcing=false, kept for clarity)
+use_teacher_forcing: false  # Ignored when scheduled_sampling_strategy is set
+autoregressive_training: true  # Ignored when scheduled_sampling_strategy is set
 max_autoregressive_steps: 40  # Maximum number of autoregressive steps during training
+
+# Scheduled Sampling Configuration
+scheduled_sampling_strategy: "linear"  # "linear", "cosine", "fixed", or "none"
+teacher_forcing_start_ratio: 1.0       # Start with 100% teacher forcing (fast, stable)
+teacher_forcing_end_ratio: 0.0         # End with 0% teacher forcing (fully autoregressive)
+scheduled_sampling_warmup_steps: 100   # Steps to stay at start_ratio before decaying
+total_training_steps: 23000            # Total steps for decay calculation
 
 # LoRA configuration with all linear layer target modules
 # Enables LoRA adapters on all attention and MLP linear layers
@@ -39,8 +46,14 @@ encoder:
 # Need to project to LLM hidden size (typically 3584 for Qwen2-7B)
 # With smaller input (1024), we can use a deeper, more expressive projection
 projection:
-  type: "linear"
-  # Simple linear projection: 1024 -> llm_hidden_size
+  type: "mlp"
+  # Deep projection: 1024 -> 2048 -> 4096 -> 2048 -> llm_hidden_size
+  # More capacity since we saved memory with weighted averaging
+  hidden_dims: [2048, 4096, 4096, 2048]
+  activation: "relu"
+  dropout: 0.1
+  use_layer_norm: true
+  use_residual: false
   # Auxiliary loss is CRITICAL here since projection is the only trainable component
   freeze_projection: false
   use_auxiliary_loss: true

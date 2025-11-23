@@ -6,7 +6,7 @@ defaults:
   - data: 08_musdb_expanded_augmented_variations
   - model: qwen2_7b_mert_linear_proj_lora_attention
   - evaluation: evaluation
-  - training: 15_final_training
+  - training: 16_final_auto_regressive_training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - plotting: plotting
@@ -23,7 +23,7 @@ env:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically pick the latest checkpoint
 # - "path/to/checkpoint": Use a specific checkpoint
-checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-linear-proj-lora-attention-r8a16-musdb/checkpoint-1600"
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-linear-proj-lora-attention-r8a16-musdb"
 
 
 # Plotting configuration (auto-populated at runtime)

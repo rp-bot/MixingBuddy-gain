@@ -96,6 +96,18 @@ def initialize_model_and_tokenizer(
     autoregressive_training = cfg.model.get("autoregressive_training", False)
     max_autoregressive_steps = cfg.model.get("max_autoregressive_steps", 40)
     
+    # Get scheduled sampling parameters
+    scheduled_sampling_strategy = cfg.model.get("scheduled_sampling_strategy", "none")
+    teacher_forcing_start_ratio = cfg.model.get("teacher_forcing_start_ratio", 1.0)
+    teacher_forcing_end_ratio = cfg.model.get("teacher_forcing_end_ratio", 0.0)
+    scheduled_sampling_warmup_steps = cfg.model.get("scheduled_sampling_warmup_steps", 0)
+    
+    # Determine total training steps for scheduling
+    # Try to calculate from training args if possible, otherwise fallback to config
+    # Approximate steps per epoch: num_samples / (batch_size * grad_accum)
+    # But simplified: just use the value from config if provided
+    total_training_steps = cfg.model.get("total_training_steps", 1000)
+    
     if autoregressive_training:
         logger.info(f"Autoregressive training explicitly enabled with max_steps={max_autoregressive_steps}")
         # Autoregressive training implies no teacher forcing
@@ -110,6 +122,11 @@ def initialize_model_and_tokenizer(
         use_teacher_forcing=use_teacher_forcing,
         autoregressive_training=autoregressive_training,
         max_autoregressive_steps=max_autoregressive_steps,
+        scheduled_sampling_strategy=scheduled_sampling_strategy,
+        teacher_forcing_start_ratio=teacher_forcing_start_ratio,
+        teacher_forcing_end_ratio=teacher_forcing_end_ratio,
+        scheduled_sampling_warmup_steps=scheduled_sampling_warmup_steps,
+        total_training_steps=total_training_steps,
     )
     
     # Handle frozen projection and encoder weights loading

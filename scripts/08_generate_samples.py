@@ -49,7 +49,7 @@ def _next_available_filename(predictions_dir: Path, checkpoint_id: str) -> str:
 
 @hydra.main(
     config_path="../configs",
-    config_name="26_eval_linear_llm_passt",
+    config_name="26_eval_linear_llm_mert",
     version_base=None,
 )
 def main(cfg: DictConfig):

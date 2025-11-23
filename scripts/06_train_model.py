@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="27_train_passt_auto_reg",
+    config_name="26_train_linear_llm_mert",
     version_base=None,
 )
 def main(cfg: DictConfig):
