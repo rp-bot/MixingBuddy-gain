@@ -1,0 +1,90 @@
+\section{Results}
+\label{sec:results}
+
+We present the experimental results for the model configurations described in Section~\ref{sec:training-strategy}.
+The evaluation methodology is detailed in Section~\ref{sec:evaluation-methodology}.
+
+\subsection{Projection + Linear Layers Configuration}
+\label{sec:results-projection-linear}
+
+We first evaluate the configuration employing a trainable projection layer with full fine-tuning of the language model's linear layers.
+This configuration represents a more expressive adaptation strategy compared to the projection-only baseline, allowing the model to adjust its internal representations to better process audio-conditioned inputs.
+
+\subsubsection{Overall Performance}
+
+On a test set of 100 samples, the projection + linear layers configuration achieves 55.00\% accuracy for the joint task of correctly identifying both the target stem and adjustment direction.
+The model demonstrates 63.00\% accuracy for stem identification and 61.00\% accuracy for direction prediction.
+These results indicate that while the model can identify problematic stems with reasonable accuracy, the joint task of correctly identifying both components remains challenging.
+
+\subsubsection{Performance by Error Category}
+
+Table~\ref{tab:results-error-category} presents the performance breakdown across the five error categories.
+The model shows strong performance on the \textit{very loud} category, achieving 90.0\% accuracy for both stem and direction identification, suggesting that extreme loudness issues are more readily detectable.
+Performance on the \textit{quiet} category is moderate (56.2\% both correct), while the \textit{very quiet} category achieves 50.0\% accuracy.
+The model struggles most with the \textit{loud} category (25.0\% both correct) and the \textit{no error} category (30.0\% both correct), indicating challenges in distinguishing moderate imbalances and correctly identifying well-balanced mixes.
+
+\begin{table}[!t]
+\centering
+\caption{Performance breakdown by error category for the projection + linear layers configuration.}
+\label{tab:results-error-category}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Category} & \textbf{N} & \textbf{Both} & \textbf{Stem} & \textbf{Dir.} \\
+\hline
+very loud & 30 & 90.0\% & 90.0\% & 90.0\% \\
+quiet & 16 & 56.2\% & 75.0\% & 62.5\% \\
+very quiet & 18 & 50.0\% & 50.0\% & 77.8\% \\
+no error & 20 & 30.0\% & 30.0\% & 30.0\% \\
+loud & 16 & 25.0\% & 56.2\% & 25.0\% \\
+\hline
+\textbf{Macro Avg.} & -- & \textbf{50.25\%} & \textbf{60.25\%} & \textbf{57.06\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Performance by Target Stem}
+
+Table~\ref{tab:results-target-stem} shows the performance breakdown across the three target stems.
+The model demonstrates relatively balanced performance across stems, with bass and drums achieving similar accuracies (62.5\% and 65.2\% both correct, respectively).
+Vocals show lower performance (40.5\% both correct), suggesting that vocal stem identification may be more challenging, potentially due to the more complex spectral characteristics or contextual dependencies of vocal tracks.
+
+\begin{table}[!t]
+\centering
+\caption{Performance breakdown by target stem for the projection + linear layers configuration.}
+\label{tab:results-target-stem}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Stem} & \textbf{N} & \textbf{Both} & \textbf{Stem} & \textbf{Dir.} \\
+\hline
+drums & 23 & 65.2\% & 73.9\% & 65.2\% \\
+bass & 40 & 62.5\% & 70.0\% & 62.5\% \\
+vocals & 37 & 40.5\% & 48.6\% & 56.8\% \\
+\hline
+\textbf{Macro Avg.} & -- & \textbf{56.09\%} & \textbf{64.19\%} & \textbf{61.49\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Performance by Direction Type}
+
+Table~\ref{tab:results-direction} presents the performance breakdown by adjustment direction.
+The model shows stronger performance for \textit{decrease} predictions (67.4\% both correct) compared to \textit{increase} predictions (52.9\% both correct), suggesting that identifying when stems are too loud may be easier than identifying when they are too quiet.
+The \textit{no error} category remains challenging (30.0\% both correct), consistent with the error category analysis.
+
+\begin{table}[!t]
+\centering
+\caption{Performance breakdown by direction type for the projection + linear layers configuration.}
+\label{tab:results-direction}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Direction} & \textbf{N} & \textbf{Both} & \textbf{Stem} & \textbf{Dir.} \\
+\hline
+decrease & 46 & 67.4\% & 78.3\% & 67.4\% \\
+increase & 34 & 52.9\% & 61.8\% & 70.6\% \\
+no error & 20 & 30.0\% & 30.0\% & 30.0\% \\
+\hline
+\textbf{Macro Avg.} & -- & \textbf{50.11\%} & \textbf{56.67\%} & \textbf{55.99\%} \\
+\hline
+\end{tabular}
+\end{table}
+

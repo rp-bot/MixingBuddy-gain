@@ -1,0 +1,62 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+We evaluate the two model configurations described in Section~\ref{sec:training-strategy} to assess their performance on the mixing advice task.
+The evaluation methodology focuses on extracting structured information from the model's free-form text responses and comparing it against ground truth annotations.
+
+\subsection{Evaluation Methodology}
+\label{sec:evaluation-methodology}
+
+We employ a pattern-matching based evaluation approach to assess the accuracy of generated mixing advice.
+This methodology extracts structured information from the model's free-form text responses and compares it against ground truth annotations.
+
+\subsubsection{Pattern Matching for Response Analysis}
+
+The evaluation process analyzes each generated response to identify two key components: (1) the target stem that requires adjustment, and (2) the direction of the required adjustment (increase, decrease, or no adjustment needed).
+To extract this information, we employ keyword-based pattern matching that searches for semantic indicators within the generated text.
+
+The pattern matching system uses three sets of keywords derived from the response template variations used during training:
+\begin{itemize}
+    \item \textbf{Increase keywords}: Indicators for stems that are too quiet and need to be boosted (e.g., ``increase'', ``boost'', ``raise'', ``too quiet'', ``needs more volume'').
+    \item \textbf{Decrease keywords}: Indicators for stems that are too loud and need to be reduced (e.g., ``reduce'', ``decrease'', ``lower'', ``too loud'', ``overpowering'').
+    \item \textbf{No error keywords}: Indicators that the mix is well-balanced and requires no adjustments (e.g., ``well-balanced'', ``no adjustments needed'', ``properly balanced'').
+\end{itemize}
+
+The evaluation algorithm processes each generated response by:
+\begin{enumerate}
+    \item Splitting the text into sentences for localized analysis.
+    \item Identifying sentences that contain both a stem name (vocals, drums, bass, or other) and a directional keyword.
+    \item Extracting the identified stem and direction from the matched sentence.
+    \item For cases where no problem stem is identified, checking for ``no error'' keywords to determine if the model correctly identified a balanced mix.
+    \item Detecting contradictions where the same stem is associated with both increase and decrease keywords, which results in an incorrect classification.
+\end{enumerate}
+
+\subsubsection{Accuracy Metrics}
+
+We evaluate model performance using three complementary accuracy metrics:
+\begin{itemize}
+    \item \textbf{Stem accuracy}: The percentage of predictions where the identified target stem matches the ground truth stem that received the gain adjustment.
+    \item \textbf{Direction accuracy}: The percentage of predictions where the identified adjustment direction (increase, decrease, or none) matches the expected direction based on the error category.
+    \item \textbf{Both correct}: The percentage of predictions where both the stem and direction are correctly identified, representing the strictest accuracy measure.
+\end{itemize}
+
+For the ``no error'' category, where no stem adjustment is needed, stem accuracy is defined to match direction accuracy, as correctly identifying that no adjustment is needed satisfies both criteria.
+
+\subsubsection{Performance Breakdowns}
+
+To gain deeper insights into model behavior, we analyze performance across multiple dimensions:
+\begin{itemize}
+    \item \textbf{By error category}: Performance breakdown across the five error categories (no error, quiet, very quiet, loud, very loud) to identify which types of mixing issues are most challenging.
+    \item \textbf{By target stem}: Performance breakdown across the three target stems (vocals, drums, bass) to assess whether the model has biases toward certain instruments.
+    \item \textbf{By direction type}: Performance breakdown by the required adjustment direction (increase, decrease, no error) to evaluate directional prediction capabilities.
+\end{itemize}
+
+For each breakdown dimension, we compute both micro-averaged accuracies (overall performance) and macro-averaged accuracies (average across all classes, giving equal weight to each class regardless of sample distribution).
+
+\subsubsection{Statistical Significance Analysis}
+
+To determine whether performance differences between model configurations are statistically significant, we employ appropriate statistical tests.
+For binary classification metrics (correct vs. incorrect), we use McNemar's test~\cite{mcnemar1947note} to compare paired predictions between configurations.
+For continuous accuracy metrics, we perform paired t-tests or Wilcoxon signed-rank tests depending on the distribution of the data.
+Statistical significance is assessed at the $p < 0.05$ level, with Bonferroni correction applied when conducting multiple comparisons to control for family-wise error rate.
+
