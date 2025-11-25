@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 @hydra.main(
     config_path="../configs",
-    config_name="26_train_mert_musdb_expanded_augmented_lora_attention",
+    config_name="23_train_mert_musdb_lora_all_linear_gelu_cropped_audio",
     version_base=None,
 )
 def main(cfg: DictConfig):
@@ -195,6 +195,31 @@ def main(cfg: DictConfig):
                         checkpoint_path,
                     )
                 # Weight-only warm start
+                # Load LoRA/PEFT adapter weights if they exist
+                adapter_config_path = checkpoint_path / "adapter_config.json"
+                if adapter_config_path.exists():
+                    logger.info("Loading LoRA/PEFT adapter weights from %s", checkpoint_path)
+                    from peft import PeftModel
+                    # Check if model.llm is already a PeftModel
+                    if isinstance(model.llm, PeftModel):
+                        # If already a PeftModel, load adapter weights into it
+                        # This will replace the current adapter weights with the checkpoint weights
+                        model.llm.load_adapter(str(checkpoint_path), adapter_name="default")
+                        logger.info("LoRA adapter weights loaded into existing PeftModel")
+                    else:
+                        # Load LoRA adapters onto the base model
+                        model.llm = PeftModel.from_pretrained(model.llm, str(checkpoint_path))
+                        logger.info("LoRA adapter weights loaded onto base model")
+                else:
+                    target_modules = cfg.model.lora.get("target_modules", [])
+                    if len(target_modules) > 0:
+                        logger.warning(
+                            "LoRA target_modules configured but no adapter found at %s. "
+                            "Starting with fresh LoRA weights.",
+                            checkpoint_path
+                        )
+                
+                # Load audio projection weights
                 projection_path = checkpoint_path / "audio_projection.bin"
                 if projection_path.exists():
                     logger.info("Loading projection weights from %s", projection_path)
@@ -222,6 +247,8 @@ def main(cfg: DictConfig):
                             len(missing_after),
                         )
                     model.audio_projection.load_state_dict(filtered_state_dict, strict=False)
+                
+                # Load MERT encoder weights
                 mert_path = checkpoint_path / "mert_encoder.bin"
                 if mert_path.exists():
                     logger.info("Loading MERT encoder weights from %s", mert_path)

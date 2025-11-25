@@ -21,7 +21,8 @@ def analyze_prediction(item):
         'a little too quiet', 'should be slightly louder', 'somewhat too quiet', 
         'too quiet to hear clearly', 'nearly inaudible', 'too low in the mix', 
         'difficult to hear', 'almost inaudible', 'barely present in the mix', 
-        'needs significant boosting', 'too quiet to be heard properly'
+        'needs significant boosting', 'too quiet to be heard properly', 'add gain',
+        'bring up', 'up by'
     ]
     
     # Decrease keywords (for loud/very_loud) - extracted from all 10 template variations
@@ -32,7 +33,8 @@ def analyze_prediction(item):
         'a little high', 'should be slightly quieter', 'somewhat too loud', 
         'too loud and dominating', 'overpowering the mix', 'too high in the mix', 
         'excessively loud', 'dominating the mix', 'overpowering', 'needs significant reduction', 
-        'too loud and needs to be brought down'
+        'too loud and needs to be brought down', 'higher than it should be', 'should be lower',
+        'adjust down', 'bring down', 'down by', 'brought down'
     ]
     
     # No error keywords - extracted from all 10 template variations

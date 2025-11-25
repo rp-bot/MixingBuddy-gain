@@ -1,16 +1,27 @@
 # @package _global_
 
-# Evaluation config for MERT + multi-anchor training with augmented data (experiment 22)
-# This evaluates the model trained with MERT encoder and multi-anchor MUSDB data (augmented no-error class)
+# Evaluation config for MERT + multi-anchor training with augmented data and LoRA on all linear layers (experiment 23)
+# This evaluates the model trained with MERT encoder, multi-anchor MUSDB data (augmented no-error class), and LoRA on all linear layers
 defaults:
   - data: 08_musdb_expanded_augmented_variations
-  - model: qwen2_7b_mert_musdb_expanded
+  - model: qwen2_7b_mert_musdb_expanded_lora_all_linear
   - evaluation: evaluation
   - training: training # Include training config for trainer compatibility
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - plotting: plotting
   - _self_
+
+model:
+  config_name: "qwen2_7b_mert_musdb_expanded_lora_all_linear_gelu"
+  projection:
+    activation: "gelu"
+    dropout: 0.1
+
+  lora:
+    lora_dropout: 0.3
+    r: 32
+    lora_alpha: 64
 
 # Environment settings
 env:
@@ -24,17 +35,17 @@ env:
 # - null: Use base model (no trained weights)
 # - "latest": Automatically use the latest checkpoint
 # - "path/to/checkpoint": Use specific checkpoint
-checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/best_models/qlora-qwen2-7b-mert-musdb-expanded-r16a32-musdb=checkpoint-3000" # Update this to the trained MERT + multi-anchor augmented checkpoint path
+checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-lora-all-linear-gelu-r32a64-musdb/checkpoint-1600" # Update this to the trained MERT + multi-anchor augmented LoRA all linear checkpoint path
 
 # IMPORTANT: The evaluation output directory will be automatically determined
 # from the checkpoint path. For example, if checkpoint is:
-# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-augmented-XXXX-XXXX/checkpoint-XXX"
+# "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-augmented-lora-all-linear-XXXX-XXXX/checkpoint-XXX"
 # Then evaluation will be saved to:
-# "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-augmented-XXXX-XXXX/predictions/"
+# "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-augmented-lora-all-linear-XXXX-XXXX/predictions/"
 
 # Predictions file path for metrics computation
 # If not specified, the script will use the new evaluation structure
-# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-augmented-XXXX-XXXX/predictions/predictions.jsonl"
+# predictions_path: "outputs/evaluation/qlora-qwen2-7b-mert-musdb-expanded-augmented-lora-all-linear-XXXX-XXXX/predictions/predictions.jsonl"
 
 # Plotting configuration
 plotting:
@@ -55,7 +66,7 @@ evaluation:
   # Generation samples for evaluation
   num_generation_samples: 100 # Multiple samples for better statistical significance
 
-    # Partial ground truth settings
+  # Partial ground truth settings
   use_partial_ground_truth: false
   num_prefix_tokens: 3
 
@@ -66,10 +77,8 @@ evaluation:
   memory:
     max_memory_usage_gb: 8.0 # MERT is efficient but still needs some headroom
 
-  # Qualitative debugging: decode audio embeddings into nearest tokens
   decode_audio_embeddings:
-    enabled: true
+    enabled: false
     top_k: 3
     max_samples: 5
     max_audio_tokens: null
-

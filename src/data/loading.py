@@ -27,7 +27,7 @@ def load_datasets(cfg: DictConfig, tokenizer) -> Tuple[object, object, object]:
         use_instructions=cfg.data.use_instructions,
         system_message=cfg.data.system_message,
     )
-    full_train_dataset = IterableDatasetWrapper(full_train_pytorch_dataset)
+    train_dataset = IterableDatasetWrapper(full_train_pytorch_dataset)
 
     test_pytorch_dataset = MixingDataset(
         jsonl_path=cfg.data.test_jsonl_path,
@@ -39,11 +39,8 @@ def load_datasets(cfg: DictConfig, tokenizer) -> Tuple[object, object, object]:
     )
     test_dataset = IterableDatasetWrapper(test_pytorch_dataset)
 
-    train_val_split = full_train_dataset.train_test_split(
-        test_size=0.2, seed=cfg.env.seed
-    )
-    train_dataset = train_val_split["train"]
-    val_dataset = train_val_split["test"]
+    # Use test dataset for evaluation during training instead of validation split
+    val_dataset = test_dataset
 
     # Optionally limit validation set size for faster evaluation
     max_eval_samples = cfg.training.get("evaluation", {}).get("max_eval_samples", None)
@@ -53,11 +50,11 @@ def load_datasets(cfg: DictConfig, tokenizer) -> Tuple[object, object, object]:
             len(val_dataset),
             max_eval_samples,
         )
-        # Select first max_eval_samples (dataset is already shuffled by train_test_split)
+        # Select first max_eval_samples
         val_dataset = val_dataset.select(range(max_eval_samples))
 
     logger.info(
-        "Dataset sizes: Train=%d, Val=%d, Test=%d",
+        "Dataset sizes: Train=%d, Val (using test set)=%d, Test=%d",
         len(train_dataset),
         len(val_dataset),
         len(test_dataset),

@@ -27,6 +27,7 @@ class MERTEncoder(nn.Module):
         unfreeze_bottom_n_layers: int = 0,
         device: Optional[Union[str, torch.device]] = None,
         input_sample_rate: int = 32000,
+        crop_audio: bool = False,
     ):
         super().__init__()
         # Load MERT model and processor
@@ -95,6 +96,8 @@ class MERTEncoder(nn.Module):
         self.unfreeze_bottom_n_layers = unfreeze_bottom_n_layers
         self.model_name = model_name
         self.input_sample_rate = input_sample_rate
+        self.crop_audio = crop_audio
+        self.max_audio_duration_seconds = 5.0
 
         # Create resampler if needed
         mert_sample_rate = self.processor.sampling_rate
@@ -136,19 +139,56 @@ class MERTEncoder(nn.Module):
             # Resample on the same device as input audio
             audio = self.resampler(audio)
 
-        # Prepare inputs using processor
-        # Processor expects audio on CPU as numpy array or list
-        # Convert to numpy if needed
-        if isinstance(audio, torch.Tensor):
-            audio_cpu = audio.cpu()
-            # Convert to numpy - handle both 1D and 2D
-            if audio_cpu.dim() == 1:
-                audio_np = audio_cpu.numpy()
-            else:
-                # For batched input, convert to list of numpy arrays
-                audio_np = [audio_cpu[i].numpy() for i in range(audio_cpu.shape[0])]
+        # Crop audio if enabled and audio is longer than max duration
+        if self.crop_audio:
+            # Get the sample rate after resampling (MERT's expected rate, which is 24kHz)
+            # After resampling (if needed), audio is at MERT's sample rate
+            current_sample_rate = self.processor.sampling_rate
+            max_samples = int(self.max_audio_duration_seconds * current_sample_rate)
+            
+            # Process each sample in the batch
+            batch_size = audio.shape[0]
+            cropped_audio_list = []
+            
+            for i in range(batch_size):
+                sample_audio = audio[i]
+                num_samples = sample_audio.shape[-1]
+                
+                if num_samples > max_samples:
+                    # Calculate how many samples to remove from each end
+                    samples_to_remove = num_samples - max_samples
+                    samples_from_start = samples_to_remove // 2
+                    samples_from_end = samples_to_remove - samples_from_start
+                    
+                    # Crop: remove from start and end
+                    if len(sample_audio.shape) == 1:
+                        cropped = sample_audio[samples_from_start:num_samples - samples_from_end]
+                    else:
+                        # Handle multi-dimensional case
+                        cropped = sample_audio[..., samples_from_start:num_samples - samples_from_end]
+                    
+                    cropped_audio_list.append(cropped)
+                else:
+                    # No cropping needed
+                    cropped_audio_list.append(sample_audio)
+            
+            # Convert cropped audio to list of numpy arrays for processor
+            # (processor can handle variable-length inputs)
+            audio_np = [sample.cpu().numpy() for sample in cropped_audio_list]
         else:
-            audio_np = audio
+            # Prepare inputs using processor
+            # Processor expects audio on CPU as numpy array or list
+            # Convert to numpy if needed
+            if isinstance(audio, torch.Tensor):
+                audio_cpu = audio.cpu()
+                # Convert to numpy - handle both 1D and 2D
+                if audio_cpu.dim() == 1:
+                    audio_np = audio_cpu.numpy()
+                else:
+                    # For batched input, convert to list of numpy arrays
+                    audio_np = [audio_cpu[i].numpy() for i in range(audio_cpu.shape[0])]
+            else:
+                audio_np = audio
         
         inputs = self.processor(
             raw_speech=audio_np,
@@ -272,6 +312,7 @@ def create_mert_encoder(
     unfreeze_bottom_n_layers: int = 0,
     device: Optional[Union[str, torch.device]] = None,
     input_sample_rate: int = 32000,
+    crop_audio: bool = False,
 ) -> MERTEncoder:
     return MERTEncoder(
         model_name=model_name,
@@ -281,4 +322,5 @@ def create_mert_encoder(
         unfreeze_bottom_n_layers=unfreeze_bottom_n_layers,
         device=device,
         input_sample_rate=input_sample_rate,
+        crop_audio=crop_audio,
     )

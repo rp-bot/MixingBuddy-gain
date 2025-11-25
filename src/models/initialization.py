@@ -92,6 +92,7 @@ def initialize_model_and_tokenizer(
         tokenizer=tokenizer,
         encoder_config=cfg.model.get("encoder"),
         projection_config=cfg.model.get("projection"),
+        audio_augmentation_config=cfg.training.get("audio_augmentation"),
     )
     
     # Handle frozen projection and encoder weights loading

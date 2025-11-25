@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -25,6 +25,7 @@ class ModularMultimodalModel(nn.Module):
         tokenizer: Any = None,
         encoder_config: Optional[Dict[str, Any]] = None,
         projection_config: Optional[Dict[str, Any]] = None,
+        audio_augmentation_config: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
         self.model_name = model_name
@@ -113,6 +114,23 @@ class ModularMultimodalModel(nn.Module):
                 "Auxiliary loss enabled with weight %.4f", self.auxiliary_loss_weight
             )
 
+        # Audio augmentation configuration
+        self.audio_augmentation_config = audio_augmentation_config
+        if audio_augmentation_config and audio_augmentation_config.get("enabled", False):
+            gain_range_db = audio_augmentation_config.get("gain_range_db", 3.0)
+            noise_snr_db_range = audio_augmentation_config.get("noise_snr_db_range", None)
+            dc_offset_range = audio_augmentation_config.get("dc_offset_range", None)
+            
+            aug_info = [f"gain: ±{gain_range_db:.1f} dB"]
+            if noise_snr_db_range:
+                aug_info.append(f"noise: {noise_snr_db_range[0]:.1f}-{noise_snr_db_range[1]:.1f} dB SNR")
+            if dc_offset_range:
+                aug_info.append(f"DC offset: ±{dc_offset_range:.4f}")
+            
+            logger.info(
+                "Audio augmentation enabled: %s", ", ".join(aug_info)
+            )
+
     def print_trainable_parameters(self) -> None:
         """Log parameter breakdown by component."""
         trainable_params = 0
@@ -181,6 +199,67 @@ class ModularMultimodalModel(nn.Module):
         if audio.dim() == 1:
             audio = audio.unsqueeze(0)
 
+        # Apply audio augmentations during training
+        if (
+            self.training
+            and self.audio_augmentation_config
+            and self.audio_augmentation_config.get("enabled", False)
+        ):
+            batch_size = audio.shape[0]
+            device = audio.device
+            
+            # 1. Random gain augmentation
+            gain_range_db = self.audio_augmentation_config.get("gain_range_db", 3.0)
+            if gain_range_db > 0:
+                # Sample random gain for each sample in the batch
+                random_gains_db = torch.empty(
+                    batch_size, device=device
+                ).uniform_(-gain_range_db, gain_range_db)
+                # Convert dB to linear: gain_linear = 10^(gain_db / 20)
+                random_gains_linear = torch.pow(10.0, random_gains_db / 20.0)
+                # Apply gain: expand dimensions to match audio shape [batch, samples]
+                if audio.dim() == 2:
+                    random_gains_linear = random_gains_linear.unsqueeze(1)
+                audio = audio * random_gains_linear
+            
+            # 2. Noise injection
+            noise_snr_db_range = self.audio_augmentation_config.get("noise_snr_db_range", None)
+            if noise_snr_db_range is not None:
+                # Sample random SNR for each sample in the batch
+                snr_db = torch.empty(
+                    batch_size, device=device
+                ).uniform_(noise_snr_db_range[0], noise_snr_db_range[1])
+                
+                # Calculate signal RMS for each sample (audio is guaranteed to be at least 2D here)
+                # Shape: [batch_size, num_samples] -> [batch_size, 1]
+                signal_rms = torch.sqrt(torch.mean(audio ** 2, dim=-1, keepdim=True))
+                
+                # Calculate noise level based on SNR: noise_rms = signal_rms / 10^(SNR/20)
+                noise_rms = signal_rms / torch.pow(10.0, snr_db.unsqueeze(-1) / 20.0)
+                
+                # Generate white noise
+                noise = torch.randn_like(audio)
+                # Normalize noise to have RMS = 1, then scale to desired level
+                noise_rms_actual = torch.sqrt(torch.mean(noise ** 2, dim=-1, keepdim=True))
+                noise = noise / (noise_rms_actual + 1e-8) * noise_rms
+                
+                # Add noise to audio
+                audio = audio + noise
+            
+            # 3. DC offset
+            dc_offset_range = self.audio_augmentation_config.get("dc_offset_range", None)
+            if dc_offset_range is not None and dc_offset_range > 0:
+                # Sample random DC offset for each sample in the batch
+                dc_offset = torch.empty(
+                    batch_size, device=device
+                ).uniform_(-dc_offset_range, dc_offset_range)
+                # Expand dimensions to match audio shape [batch_size, num_samples]
+                dc_offset = dc_offset.unsqueeze(-1)
+                audio = audio + dc_offset
+                
+                # Clip to prevent overflow (audio should be in [-1, 1] range)
+                audio = torch.clamp(audio, -1.0, 1.0)
+
         batch_size = audio.shape[0]
         encoded_list = []
         for i in range(batch_size):
@@ -190,6 +269,77 @@ class ModularMultimodalModel(nn.Module):
                 encoded = encoded.squeeze(0)
             encoded_list.append(encoded)
         return torch.stack(encoded_list, dim=0)
+
+    @torch.no_grad()
+    def decode_audio_embeddings_to_tokens(
+        self,
+        audio_embeddings: torch.Tensor,
+        top_k: int = 1,
+    ) -> Dict[str, Any]:
+        """
+        Decode projected audio embeddings to the nearest tokenizer vocabulary tokens.
+
+        Args:
+            audio_embeddings: Tensor shaped [batch, time, hidden_size] in LLM space.
+            top_k: Number of nearest tokens to return per audio embedding.
+
+        Returns:
+            Dictionary with token ids, cosine similarities, and decoded token strings.
+        """
+        if audio_embeddings.dim() != 3:
+            raise ValueError(
+                f"audio_embeddings must be 3D [batch, time, hidden], got {audio_embeddings.shape}"
+            )
+
+        embedding_layer = self.llm.get_input_embeddings()
+        vocab_embeddings = embedding_layer.weight  # [vocab, hidden]
+        vocab_size, hidden_size = vocab_embeddings.shape
+        batch_size, time_steps, embed_dim = audio_embeddings.shape
+
+        if embed_dim != hidden_size:
+            raise ValueError(
+                f"audio_embeddings hidden dim ({embed_dim}) must match LLM hidden size ({hidden_size})"
+            )
+
+        top_k = max(1, min(top_k, vocab_size))
+
+        # Align dtype/device for similarity computation
+        audio_embeddings = audio_embeddings.to(
+            device=vocab_embeddings.device, dtype=vocab_embeddings.dtype
+        )
+
+        audio_flat = audio_embeddings.reshape(-1, hidden_size)
+
+        audio_norm = torch.nn.functional.normalize(audio_flat, p=2, dim=-1)
+        vocab_norm = torch.nn.functional.normalize(vocab_embeddings, p=2, dim=-1)
+
+        similarities = torch.matmul(audio_norm, vocab_norm.transpose(0, 1))
+        top_similarities, top_indices = torch.topk(
+            similarities, k=top_k, dim=-1, largest=True, sorted=True
+        )
+
+        top_similarities = top_similarities.view(batch_size, time_steps, top_k)
+        top_indices = top_indices.view(batch_size, time_steps, top_k)
+
+        decoded_tokens: List[List[List[str]]] = []
+        for batch_idx in range(batch_size):
+            batch_tokens: List[List[str]] = []
+            for time_idx in range(time_steps):
+                token_candidates = []
+                for rank in range(top_k):
+                    token_id = top_indices[batch_idx, time_idx, rank].item()
+                    decoded = self.tokenizer.decode(
+                        [token_id], skip_special_tokens=False
+                    )
+                    token_candidates.append(decoded)
+                batch_tokens.append(token_candidates)
+            decoded_tokens.append(batch_tokens)
+
+        return {
+            "token_ids": top_indices,
+            "similarities": top_similarities,
+            "decoded_tokens": decoded_tokens,
+        }
 
     def forward(self, **kwargs):
         input_ids = kwargs.get("input_ids")
@@ -275,6 +425,7 @@ class ModularMultimodalModel(nn.Module):
         audio: torch.Tensor,
         max_new_tokens: int,
         system_message: str,
+        prefix_tokens: Optional[torch.Tensor] = None,
     ) -> str:
         device = self.llm.device
 
@@ -318,6 +469,17 @@ class ModularMultimodalModel(nn.Module):
         attention_mask = torch.cat(
             (audio_attention_mask, model_inputs.attention_mask), dim=1
         )
+
+        # If prefix tokens are provided, add them to the input
+        if prefix_tokens is not None:
+            prefix_tokens = prefix_tokens.to(device)
+            prefix_embeds = self.llm.get_input_embeddings()(prefix_tokens)
+            prefix_embeds = prefix_embeds.to(inputs_embeds.dtype)
+            inputs_embeds = torch.cat((inputs_embeds, prefix_embeds), dim=1)
+            prefix_attention_mask = torch.ones(
+                prefix_tokens.shape[:2], dtype=torch.long, device=device
+            )
+            attention_mask = torch.cat((attention_mask, prefix_attention_mask), dim=1)
 
         generated_ids = self.llm.generate(
             inputs_embeds=inputs_embeds,

@@ -1,7 +1,7 @@
 # Training arguments
 training_args:
   output_dir: "./outputs/checkpoints/mixing_buddy_milestone_0" # Change checkpoint output directory
-  num_train_epochs: 3 # Longer training run
+  num_train_epochs: 10 # Longer training run
   per_device_train_batch_size: 16 # Increased for H100 memory (can go up to 32-48 if needed)
   per_device_eval_batch_size: 16 # Increased for H100 memory
   gradient_accumulation_steps: 4 # Reduced since batch size increased (effective batch size = 16*4 = 64)
@@ -34,8 +34,20 @@ early_stopping:
   patience: 3
 
 # Evaluation configuration
+# Note: eval_strategy and eval_steps are in training_args above (lines 19-20)
+# eval_strategy: "steps" - enables periodic evaluation during training
+# eval_steps: 200 - evaluates every 200 training steps
 evaluation:
-  max_eval_samples: 100 # Maximum number of samples to evaluate (null for all samples)
+  max_eval_samples: 1000 # Maximum number of samples to evaluate during training-time evaluation (null for all samples)
+
+# Audio augmentation configuration
+# NOTE: Augmentations are automatically disabled during evaluation (self.training = False)
+# For evaluation, you can also explicitly set enabled: false here
+audio_augmentation:
+  enabled: true # Enable audio augmentations before encoding (only applied during training)
+  gain_range_db: 3.0 # Random gain range in dB (±3.0 dB means -3 to +3 dB)
+  noise_snr_db_range: [40.0, 60.0] # Noise injection: SNR range in dB (higher = less noise). Set to null to disable.
+  dc_offset_range: 0.005 # DC offset range (±0.005). Set to null or 0 to disable.
 
 # Resume training configuration
 resume:

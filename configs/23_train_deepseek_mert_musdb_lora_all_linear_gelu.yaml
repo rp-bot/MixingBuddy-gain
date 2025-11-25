@@ -5,11 +5,12 @@
 
 defaults:
   - data: 08_musdb_expanded_augmented_variations
-  - model: qwen2_7b_mert_musdb_expanded_lora_all_linear
+  - model: deepseek_llm_7b_mert_musdb_expanded_lora_all_linear_gelu
   - training: 11_training
   - experiment_tracking: wandb
   - experiment_naming: experiment_naming
   - _self_
+
 
 # Environment settings
 env:
@@ -31,5 +32,5 @@ training:
     enabled: true
     weight_only: false  # Set to true for weight-only resume (loads weights but starts fresh training)
     # checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-lora-all-linear-r16a32-musdb/checkpoint-1600"
-    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-lora-all-linear-r16a32-musdb/checkpoint-1600"
+    checkpoint_path: "outputs/checkpoints/mixing_buddy_milestone_0/qlora-qwen2-7b-mert-musdb-expanded-lora-all-linear-gelu-r16a32-musdb/checkpoint-3000"
 

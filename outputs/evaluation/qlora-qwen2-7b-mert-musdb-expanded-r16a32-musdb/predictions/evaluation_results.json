@@ -1,258 +1,258 @@
 {
   "overall_performance": {
     "total_predictions": 100,
-    "both_correct": 17,
-    "both_correct_percentage": 17.0,
-    "stem_correct": 61,
-    "stem_correct_percentage": 61.0,
-    "direction_correct": 25,
-    "direction_correct_percentage": 25.0
+    "both_correct": 12,
+    "both_correct_percentage": 12.0,
+    "stem_correct": 37,
+    "stem_correct_percentage": 37.0,
+    "direction_correct": 28,
+    "direction_correct_percentage": 28.0
   },
   "by_error_category": {
     "loud": {
       "total": 16,
-      "both_correct": 0,
-      "both_correct_percentage": 0.0,
-      "stem_correct": 11,
-      "stem_correct_percentage": 68.75,
-      "direction_correct": 1,
-      "direction_correct_percentage": 6.25
+      "both_correct": 2,
+      "both_correct_percentage": 12.5,
+      "stem_correct": 4,
+      "stem_correct_percentage": 25.0,
+      "direction_correct": 5,
+      "direction_correct_percentage": 31.25
     },
     "no_error": {
       "total": 20,
-      "both_correct": 12,
-      "both_correct_percentage": 60.0,
-      "stem_correct": 12,
-      "stem_correct_percentage": 60.0,
-      "direction_correct": 12,
-      "direction_correct_percentage": 60.0
+      "both_correct": 3,
+      "both_correct_percentage": 15.0,
+      "stem_correct": 3,
+      "stem_correct_percentage": 15.0,
+      "direction_correct": 3,
+      "direction_correct_percentage": 15.0
     },
     "quiet": {
       "total": 16,
-      "both_correct": 0,
-      "both_correct_percentage": 0.0,
-      "stem_correct": 9,
-      "stem_correct_percentage": 56.25,
-      "direction_correct": 0,
-      "direction_correct_percentage": 0.0
+      "both_correct": 2,
+      "both_correct_percentage": 12.5,
+      "stem_correct": 8,
+      "stem_correct_percentage": 50.0,
+      "direction_correct": 4,
+      "direction_correct_percentage": 25.0
     },
     "very_loud": {
       "total": 30,
-      "both_correct": 3,
-      "both_correct_percentage": 10.0,
-      "stem_correct": 18,
-      "stem_correct_percentage": 60.0,
-      "direction_correct": 9,
-      "direction_correct_percentage": 30.0
+      "both_correct": 5,
+      "both_correct_percentage": 16.67,
+      "stem_correct": 11,
+      "stem_correct_percentage": 36.67,
+      "direction_correct": 16,
+      "direction_correct_percentage": 53.33
     },
     "very_quiet": {
       "total": 18,
-      "both_correct": 2,
-      "both_correct_percentage": 11.11,
+      "both_correct": 0,
+      "both_correct_percentage": 0.0,
       "stem_correct": 11,
       "stem_correct_percentage": 61.11,
-      "direction_correct": 3,
-      "direction_correct_percentage": 16.67
+      "direction_correct": 0,
+      "direction_correct_percentage": 0.0
     }
   },
   "by_target_stem": {
     "bass": {
       "total": 40,
-      "both_correct": 4,
-      "both_correct_percentage": 10.0,
-      "stem_correct": 25,
-      "stem_correct_percentage": 62.5,
-      "direction_correct": 10,
-      "direction_correct_percentage": 25.0
+      "both_correct": 2,
+      "both_correct_percentage": 5.0,
+      "stem_correct": 7,
+      "stem_correct_percentage": 17.5,
+      "direction_correct": 11,
+      "direction_correct_percentage": 27.5
     },
     "drums": {
       "total": 23,
       "both_correct": 6,
       "both_correct_percentage": 26.09,
-      "stem_correct": 15,
-      "stem_correct_percentage": 65.22,
-      "direction_correct": 7,
-      "direction_correct_percentage": 30.43
+      "stem_correct": 12,
+      "stem_correct_percentage": 52.17,
+      "direction_correct": 10,
+      "direction_correct_percentage": 43.48
     },
     "vocals": {
       "total": 37,
-      "both_correct": 7,
-      "both_correct_percentage": 18.92,
-      "stem_correct": 21,
-      "stem_correct_percentage": 56.76,
-      "direction_correct": 8,
-      "direction_correct_percentage": 21.62
+      "both_correct": 4,
+      "both_correct_percentage": 10.81,
+      "stem_correct": 18,
+      "stem_correct_percentage": 48.65,
+      "direction_correct": 7,
+      "direction_correct_percentage": 18.92
     }
   },
   "by_direction_type": {
     "decrease": {
       "total": 46,
-      "both_correct": 3,
-      "both_correct_percentage": 6.52,
-      "stem_correct": 29,
-      "stem_correct_percentage": 63.04,
-      "direction_correct": 10,
-      "direction_correct_percentage": 21.74
+      "both_correct": 7,
+      "both_correct_percentage": 15.22,
+      "stem_correct": 15,
+      "stem_correct_percentage": 32.61,
+      "direction_correct": 21,
+      "direction_correct_percentage": 45.65
     },
     "increase": {
       "total": 34,
       "both_correct": 2,
       "both_correct_percentage": 5.88,
-      "stem_correct": 20,
-      "stem_correct_percentage": 58.82,
-      "direction_correct": 3,
-      "direction_correct_percentage": 8.82
+      "stem_correct": 19,
+      "stem_correct_percentage": 55.88,
+      "direction_correct": 4,
+      "direction_correct_percentage": 11.76
     },
     "no_error": {
       "total": 20,
-      "both_correct": 12,
-      "both_correct_percentage": 60.0,
-      "stem_correct": 12,
-      "stem_correct_percentage": 60.0,
-      "direction_correct": 12,
-      "direction_correct_percentage": 60.0
+      "both_correct": 3,
+      "both_correct_percentage": 15.0,
+      "stem_correct": 3,
+      "stem_correct_percentage": 15.0,
+      "direction_correct": 3,
+      "direction_correct_percentage": 15.0
     }
   },
   "error_analysis": {
-    "total_errors": 83,
+    "total_errors": 88,
     "error_examples": [
       {
         "uid": "test_track041_chunk022_a-drums_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The mix is balanced properly. The levels are well proportioned and sound appropriate. No changes are"
+        "generated": "The mix is balanced properly. No modification is needed."
       },
       {
         "uid": "test_track006_chunk026_a-drums_t-bass_e-loud",
         "target_stem": "bass",
         "error_category": "loud",
-        "generated": "The mix is properly balanced. The vocals, drums and other elements are all at appropriate levels. No"
+        "generated": "The vocals needs to be -6 dB lower for a proper mix balance."
       },
       {
         "uid": "test_track001_chunk006_a-bass_t-drums_e-very_loud",
         "target_stem": "drums",
         "error_category": "very_loud",
-        "generated": "The mix is balanced properly. All stems are at appropriate levels. No adjustments are necessary."
+        "generated": "The vocals is too dominant. Raise the volume of the drums, bass and other elements by 6 to 12 dB to "
       },
       {
         "uid": "test_track047_chunk013_a-vocals_t-bass_e-very_loud",
         "target_stem": "bass",
         "error_category": "very_loud",
-        "generated": "The drums are at -10 dB, the bass is at +3 dB, and the vocals are at +6 dB. The mix balance is corre"
+        "generated": "The bass is slightly too quiet. Increase the bass level by 3 to 6 dB for proper balance."
+      },
+      {
+        "uid": "test_track016_chunk021_a-drums_t-vocals_e-very_quiet",
+        "target_stem": "vocals",
+        "error_category": "very_quiet",
+        "generated": "The vocals needs to be louder. Increase the volume of the vocals by 3 to 6 dB."
       },
       {
         "uid": "test_track008_chunk012_a-drums_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The mix balance is appropriate. All stems are at suitable levels. No adjustments are necessary."
+        "generated": "After carefully listening to the provided audio segment, the mix balance appears to be generally wel"
       },
       {
         "uid": "test_track047_chunk008_a-drums_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The drums are at 0 dB. The vocals are too loud at +6 dB. Reduce the vocals by -6 dB to achieve a bal"
+        "generated": "The vocals is slightly too loud. Decrease the vocals level by 2-3 dB to balance the mix."
       },
       {
         "uid": "test_track006_chunk011_a-vocals_t-bass_e-loud",
         "target_stem": "bass",
         "error_category": "loud",
-        "generated": "The mix is properly balanced. All stems are at appropriate levels. No changes needed."
+        "generated": "The drums needs to be slightly louder. Increase the drums by 3 to 6 dB for a proper mix balance."
       },
       {
         "uid": "test_track044_chunk005_a-bass_t-vocals_e-very_loud",
         "target_stem": "vocals",
         "error_category": "very_loud",
-        "generated": "The mix balance is fine. All stems are properly balanced and there are no issues to correct."
+        "generated": "The drums is too loud. Lower the drums level by 6 to 12 dB for proper balance."
+      },
+      {
+        "uid": "test_track047_chunk013_a-bass_t-vocals_e-no_error",
+        "target_stem": "vocals",
+        "error_category": "no_error",
+        "generated": "The drums is too quiet. Increase the volume of the drums by 3 to 6 dB to balance the mix."
       },
       {
         "uid": "test_track005_chunk008_a-vocals_t-bass_e-loud",
         "target_stem": "bass",
         "error_category": "loud",
-        "generated": "The mix appears correctly balanced. The levels are properly set for all elements. No changes are nee"
+        "generated": "The drums is too quiet. Increase the volume of the drums by 3 to 6 dB to achieve balance."
       },
       {
         "uid": "test_track039_chunk004_a-vocals_t-bass_e-very_loud",
         "target_stem": "bass",
         "error_category": "very_loud",
-        "generated": "The mix balance is appropriate. All stems are at proper levels. No adjustments are needed."
+        "generated": "The drums stem is overpowering. Lower the drums gain by 6 to 8 dB for a balanced mix."
       },
       {
         "uid": "test_track026_chunk012_a-vocals_t-bass_e-no_error",
         "target_stem": "bass",
         "error_category": "no_error",
-        "generated": "To assess the mix balance in this audio clip, you would need to carefully listen to the vocals, drum"
+        "generated": "To provide gain balancing advice for this audio clip, we would need to listen to the actual audio fi"
       },
       {
         "uid": "test_track001_chunk013_a-vocals_t-drums_e-quiet",
         "target_stem": "drums",
         "error_category": "quiet",
-        "generated": "The drums are too loud. Reduce the drums by -3 to -6 dB to balance the mix."
+        "generated": "The balance looks good. All the stems are at appropriate levels. No adjustments are necessary."
       },
       {
         "uid": "test_track001_chunk011_a-drums_t-bass_e-quiet",
         "target_stem": "bass",
         "error_category": "quiet",
-        "generated": "The mix balance is correct. All stems are properly balanced in the mix. No changes are needed."
+        "generated": "The vocals stem is too loud. Lower the vocals gain by 6 to 12 dB to balance the mix."
       },
       {
         "uid": "test_track006_chunk002_a-drums_t-vocals_e-no_error",
         "target_stem": "vocals",
         "error_category": "no_error",
-        "generated": "The bass needs to be reduced by -6 dB for better balance in the mix. The other elements are properly"
+        "generated": "The vocals is too quiet. Increase the vocals by 3 to 6 dB to balance the mix."
       },
       {
         "uid": "test_track013_chunk012_a-vocals_t-drums_e-very_loud",
         "target_stem": "drums",
         "error_category": "very_loud",
-        "generated": "The bass is too loud. Reduce the bass level by 6 to 12 dB to balance the mix."
+        "generated": "The drums is too quiet. Increase the drums level by 6 to 12 dB for a proper mix balance."
       },
       {
         "uid": "test_track014_chunk013_a-bass_t-vocals_e-loud",
         "target_stem": "vocals",
         "error_category": "loud",
-        "generated": "The balance is properly balanced. The stems are evenly mixed. The mix is properly balanced. The leve"
+        "generated": "The drums need slightly more gain. Increase the volume by 1 to 3 dB for a balanced mix."
       },
       {
         "uid": "test_track032_chunk024_a-vocals_t-bass_e-very_loud",
         "target_stem": "bass",
         "error_category": "very_loud",
-        "generated": "The mix balance is appropriate. The vocals are properly integrated into the mix. The drums have adeq"
+        "generated": "The drums requires more gain. Boost the drums by 6 to 12 dB for a proper balance."
       },
       {
         "uid": "test_track039_chunk018_a-drums_t-bass_e-quiet",
         "target_stem": "bass",
         "error_category": "quiet",
-        "generated": "The mix balance is fine. No corrections required."
-      },
-      {
-        "uid": "test_track001_chunk007_a-vocals_t-bass_e-very_loud",
-        "target_stem": "bass",
-        "error_category": "very_loud",
-        "generated": "The 10 second audio sample includes vocals, drums and bass. The mix balance is correct. All stems ar"
-      },
-      {
-        "uid": "test_track037_chunk003_a-bass_t-vocals_e-no_error",
-        "target_stem": "vocals",
-        "error_category": "no_error",
-        "generated": "The vocals is too low. Increase the level of the vocals by 6 to 12 decibels for a balanced mix."
+        "generated": "The vocals stem is too loud. Lower the vocals gain by 6 to 12 dB to balance the mix."
       }
     ]
   },
   "macro_accuracies": {
     "by_error_category": {
-      "both_correct_macro": 16.22,
-      "stem_correct_macro": 61.22,
-      "direction_correct_macro": 22.58
+      "both_correct_macro": 11.33,
+      "stem_correct_macro": 37.56,
+      "direction_correct_macro": 24.92
     },
     "by_target_stem": {
-      "both_correct_macro": 18.34,
-      "stem_correct_macro": 61.49,
-      "direction_correct_macro": 25.68
+      "both_correct_macro": 13.97,
+      "stem_correct_macro": 39.44,
+      "direction_correct_macro": 29.97
     },
     "by_direction_type": {
-      "both_correct_macro": 24.13,
-      "stem_correct_macro": 60.62,
-      "direction_correct_macro": 30.19
+      "both_correct_macro": 12.03,
+      "stem_correct_macro": 34.5,
+      "direction_correct_macro": 24.14
     }
   }
 }
