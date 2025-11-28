@@ -1,0 +1,43 @@
+\subsection{Training Strategy}
+\label{sec:training-strategy}
+
+We employ supervised fine-tuning (SFT) to train our models on the synthesized instruction-response pairs.
+To assess the contribution of different architectural components, we evaluate two primary model configurations that differ in the extent of parameter adaptation.
+
+\subsubsection{Model Configurations}
+
+\paragraph{Audio-Only Projection (Baseline)}
+\label{sec:projection-only}
+
+The baseline configuration evaluates whether a learnable projection layer alone is sufficient to map audio features to the language model's semantic space.
+This configuration employs a frozen Qwen2-7B-Instruct backbone with 4-bit quantization, a frozen MERT-v1-330M audio encoder, and a trainable MLP projection network.
+The projection network consists of four hidden layers with dimensions [2048, 4096, 4096, 2048], using GELU activation functions, layer normalization, and dropout regularization.
+This constrained setup forces the model to learn the audio-to-text mapping entirely through the projection layer, providing insight into the minimum architectural requirements for the task.
+
+\paragraph{Joint Adaptation (Projection + LoRA)}
+\label{sec:projection-lora}
+
+The joint adaptation configuration extends the baseline by incorporating Low-Rank Adaptation (LoRA) adapters on all linear layers of the language model.
+Specifically, LoRA adapters are applied to the attention projection layers (\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}) and the feed-forward network layers (\texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}).
+The LoRA adapters use a rank $r=8$, scaling factor $\alpha=16$, and dropout rate of 0.1.
+This configuration allows the language model to adapt its internal representations to better process the audio-conditioned inputs, potentially improving performance at the cost of increased parameter count and training complexity.
+
+\subsubsection{Implementation Details}
+
+All models are implemented using PyTorch~\cite{pytorch} with the HuggingFace Transformers library~\cite{wolf-etal-2020-transformers} and the Parameter-Efficient Fine-Tuning (PEFT) framework~\cite{peft}.
+To enable efficient training of large language models, we employ 4-bit NormalFloat (NF4) quantization~\cite{dettmers2023qlora} with double quantization and bfloat16 compute type through the bitsandbytes library~\cite{bitsandbytes}.
+The audio encoder remains frozen throughout training, while the projection layer and, when applicable, LoRA adapters are trained end-to-end.
+
+\subsubsection{Training Protocol}
+
+All models are trained using the AdamW optimizer~\cite{loshchilov2017decoupled} with a learning rate of $1 \times 10^{-4}$.
+We employ a cosine learning rate schedule with a warmup period covering 1\% of the total training steps.
+Training is conducted with an effective batch size of 16, achieved through a per-device batch size of 2 and gradient accumulation over 8 steps.
+Mixed precision training is enabled using bfloat16 to reduce memory consumption and accelerate training.
+
+The training objective combines the standard causal language modeling (CLM) loss with an auxiliary projection loss weighted at 0.05.
+This auxiliary loss ensures strong gradient flow to the projection layer, which is particularly important for the baseline configuration where the projection layer is the sole trainable component.
+Models are trained for up to 100 epochs with early stopping based on validation loss to prevent overfitting.
+
+
+
