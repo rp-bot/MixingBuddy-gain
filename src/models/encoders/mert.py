@@ -113,7 +113,7 @@ class MERTEncoder(nn.Module):
         # Learnable layer weights for weighted average (25 layers + 1 embedding layer)
         # Initialize with uniform weights that sum to 1
         num_layers = 25  # MERT-v1-330M has 25 layers
-        self.layer_weights = nn.Parameter(torch.ones(num_layers) / num_layers)
+        self.layer_weights = nn.Parameter(torch.ones(num_layers, device=self.device) / num_layers)
         
         # Optionally freeze layer weights
         self.freeze_layer_weights = freeze_layer_weights

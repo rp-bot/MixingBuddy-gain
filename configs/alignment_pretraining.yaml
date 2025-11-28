@@ -1,0 +1,72 @@
+# Audio-Text Alignment Pre-training Configuration
+model:
+  encoder:
+    model_name: "m-a-p/MERT-v1-330M"
+    freeze: true
+    input_sample_rate: 24000
+    crop_audio: false
+  qformer:
+    num_queries: 8      # Was 16 - reduce capacity to prevent overfitting
+    num_layers: 4       # Was 6 - shallower
+    num_heads: 8
+    hidden_dim: 512
+    dropout: 0.3        # Was 0.3 (re-affirming high dropout)
+    feedforward_dim: null
+  llm_model_name: "Qwen/Qwen2-7B-Instruct"
+  pooling_type: "attention"  # Options: "mean", "max", "cls", "attention", "gem"
+
+loss:
+  mse_weight: 0.0
+  cosine_weight: 0.0
+  contrastive_weight: 1.0
+  temperature: 0.07 
+
+data:
+  train_path: "/home/hice1/pvadhulas3/Documents/MixingBuddy-gain/data/musdb18hq_processed/train/training_samples_augmented_variations_filtered.jsonl"
+  val_path: "/home/hice1/pvadhulas3/Documents/MixingBuddy-gain/data/musdb18hq_processed/test/test_samples_variations.jsonl"
+  val_max_samples: 1000
+  sample_rate: 24000
+  max_audio_length: 240000
+  text_field: "response"
+  batch_size: 64
+  num_workers: 4
+  pin_memory: true
+
+training:
+  # Slightly higher LR and milder weight decay so the Q-Former can learn richer structure.
+  learning_rate: 1.0e-4
+  weight_decay: 0.1     # Was 0.05 - stronger regularization
+  betas: [0.9, 0.999]
+  num_epochs: 30        # Was 10
+  warmup_ratio: 0.0
+  lr_scheduler: "constant"
+  save_steps: 1000
+  save_total_limit: 3
+  logging_steps: 50
+  eval_steps: 200
+  gradient_accumulation_steps: 2
+  max_grad_norm: 1.0
+  fp16: false
+  bf16: true
+  audio_augmentation:
+    # Keep augmentation for robustness but make it milder to reduce train/val domain gap.
+    enabled: true
+    gain_range_db: 6.0              # ±3.0 dB gain
+    noise_snr_db_range: [30.0, 40.0]  # More aggressive noise
+    dc_offset_range: 0.05           # Larger DC offset
+
+env:
+  seed: 42
+  output_dir: "outputs/checkpoints/mixing_buddy_milestone_0/alignment_pretraining_contrastive_only"
+  project_name: "audio-text-alignment"
+  use_wandb: false
+
+resume:
+  enabled: false
+  checkpoint_path: null
+
+hydra:
+  run:
+    dir: outputs/checkpoints/mixing_buddy_milestone_0/alignment_pretraining_contrastive_only
+  job:
+    chdir: false

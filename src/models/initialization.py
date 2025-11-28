@@ -96,15 +96,26 @@ def initialize_model_and_tokenizer(
     )
     
     # Handle frozen projection and encoder weights loading
+    # Note: For Q-Former projections, weights can be loaded via pretrained_path in projection config
+    # so we only require training.resume.checkpoint_path for non-Q-Former projections
     freeze_projection = cfg.model.projection.get("freeze_projection", False)
     freeze_layer_weights = cfg.model.encoder.get("freeze_layer_weights", False)
+    projection_type = cfg.model.projection.get("type", "linear")
     
-    if freeze_projection or freeze_layer_weights:
+    # Check if Q-Former already loaded weights via pretrained_path
+    qformer_pretrained = cfg.model.projection.get("pretrained_path", None)
+    mert_pretrained = cfg.model.projection.get("mert_layer_weights_path", None)
+    
+    # Skip checkpoint loading if using Q-Former with pretrained paths (already loaded in model init)
+    if projection_type == "qformer" and (qformer_pretrained or mert_pretrained):
+        logger.info("Q-Former projection with pretrained weights - skipping checkpoint loading (already loaded)")
+    elif freeze_projection or freeze_layer_weights:
         # Get checkpoint path from resume config
         checkpoint_path = cfg.training.resume.get("checkpoint_path", None)
         if checkpoint_path is None:
             raise ValueError(
-                "freeze_projection or freeze_layer_weights is enabled but no checkpoint_path provided in training.resume"
+                "freeze_projection or freeze_layer_weights is enabled but no checkpoint_path provided in training.resume "
+                "(and no pretrained_path specified for Q-Former projection)"
             )
         
         if not os.path.exists(checkpoint_path):

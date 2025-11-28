@@ -1,0 +1,51 @@
+# @package model
+
+# Model configuration - Pre-trained Q-Former projection with LoRA adapters
+# Q-Former was pre-trained to align MERT audio embeddings with LLM text embeddings
+model_name: "Qwen/Qwen2-7B-Instruct"
+config_name: "qwen2_7b_mert_qformer"
+use_qlora: true
+
+# LoRA configuration with all linear layer target modules
+lora:
+  r: 16
+  lora_alpha: 32
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  lora_dropout: 0.1
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+# QLoRA quantization configuration
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+
+# Audio encoder configuration - MERT-v1-330M
+encoder:
+  model_name: "m-a-p/MERT-v1-330M"
+  freeze: true
+  device: cuda
+  input_sample_rate: 24000
+  freeze_layer_weights: true
+
+# Q-Former projection configuration
+# Pre-trained to align MERT audio embeddings with LLM text embeddings
+projection:
+  type: "qformer"
+  num_queries: 32          # Must match pre-trained checkpoint
+  num_layers: 6            # Must match pre-trained checkpoint
+  num_heads: 8             # Must match pre-trained checkpoint
+  hidden_dim: 1024         # Must match pre-trained checkpoint
+  dropout: 0.1
+  # Path to pre-trained Q-Former weights (from checkpoint-2166)
+  pretrained_path: "outputs/checkpoints/mixing_buddy_milestone_0/best_models/qformer-11-25/qformer_best.pt"
+  # Path to pre-trained MERT encoder weights (includes the 25 learnable layer weights)
+  mert_layer_weights_path: "outputs/checkpoints/mixing_buddy_milestone_0/best_models/qformer-11-25/mert_encoder_best.pt"
+  # Freeze the pre-trained Q-Former (only train LoRA adapters)
+  freeze_projection: true
+  # Auxiliary loss not needed when Q-Former is frozen
+  use_auxiliary_loss: false
+  auxiliary_loss_weight: 0.0
+

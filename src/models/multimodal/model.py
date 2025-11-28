@@ -8,6 +8,7 @@ from src.models.encoders.encodec import EncodecEncoder
 from src.models.encoders.mert import MERTEncoder
 from src.models.projections import MLPProjection
 from src.models.projections.cross_attention import CrossAttentionProjection
+from src.models.projections.qformer import QFormerProjection
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,64 @@ class ModularMultimodalModel(nn.Module):
                 feature_dim=audio_hidden_size, output_dim=llm_hidden_size, **cross_attn_config
             )
             self.use_cross_attention = True
+        elif projection_config.get("type") == "qformer":
+            qformer_config = dict(projection_config)
+            qformer_config.pop("type", None)
+            qformer_config.pop("use_auxiliary_loss", None)
+            qformer_config.pop("auxiliary_loss_weight", None)
+            freeze_projection = qformer_config.pop("freeze_projection", False)
+            pretrained_path = qformer_config.pop("pretrained_path", None)
+            mert_layer_weights_path = qformer_config.pop("mert_layer_weights_path", None)
+            
+            self.audio_projection = QFormerProjection(
+                audio_dim=audio_hidden_size, 
+                output_dim=llm_hidden_size, 
+                **qformer_config
+            )
+            
+            # Load pre-trained Q-Former weights if specified
+            if pretrained_path:
+                logger.info(f"Loading pre-trained Q-Former weights from {pretrained_path}")
+                state_dict = torch.load(pretrained_path, map_location="cpu")
+                self.audio_projection.load_state_dict(state_dict)
+                logger.info("Pre-trained Q-Former weights loaded successfully")
+            
+            # Load pre-trained MERT layer weights if specified
+            if mert_layer_weights_path and hasattr(self.audio_encoder, "layer_weights"):
+                logger.info(f"Loading pre-trained MERT layer weights from {mert_layer_weights_path}")
+                mert_state = torch.load(mert_layer_weights_path, map_location="cpu")
+                # Support both formats:
+                # 1. {"layer_weights": tensor} from alignment training
+                # 2. Full encoder state dict from 06_train_model.py (mert_encoder.bin)
+                if "layer_weights" in mert_state:
+                    # Simple format from alignment training
+                    self.audio_encoder.layer_weights.data = mert_state["layer_weights"].to(
+                        self.audio_encoder.layer_weights.device
+                    )
+                elif isinstance(mert_state, dict) and any("layer_weights" in k for k in mert_state.keys()):
+                    # Full encoder state dict - extract layer_weights
+                    for key, value in mert_state.items():
+                        if "layer_weights" in key:
+                            self.audio_encoder.layer_weights.data = value.to(
+                                self.audio_encoder.layer_weights.device
+                            )
+                            break
+                else:
+                    # Assume it's a full state dict that can be loaded directly
+                    self.audio_encoder.load_state_dict(mert_state, strict=False)
+                
+                # Ensure layer weights stay frozen if freeze_layer_weights is set
+                if self.audio_encoder.freeze_layer_weights:
+                    self.audio_encoder.layer_weights.requires_grad = False
+                    logger.info("MERT layer weights loaded and frozen (freeze_layer_weights=True)")
+                else:
+                    logger.info("Pre-trained MERT layer weights loaded (trainable)")
+            
+            # Freeze Q-Former if specified
+            if freeze_projection:
+                logger.info("Freezing Q-Former projection (pre-trained weights will not be updated)")
+                for param in self.audio_projection.parameters():
+                    param.requires_grad = False
         else:
             raise ValueError(
                 f"Unsupported projection type: {projection_config.get('type')}"

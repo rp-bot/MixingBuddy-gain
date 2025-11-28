@@ -39,11 +39,19 @@ class ProjectionDiagnosticCallback(TrainerCallback):
         )
 
         if not proj_in_optimizer:
-            logger.warning(
-                "Projection parameters NOT in optimizer; checking requires_grad status"
-            )
-            for name, param in self.model.audio_projection.named_parameters():
-                logger.warning("%s: requires_grad=%s", name, param.requires_grad)
+            # Check if projection is intentionally frozen
+            all_frozen = all(not p.requires_grad for p in self.model.audio_projection.parameters())
+            if all_frozen:
+                logger.info(
+                    "Projection parameters NOT in optimizer (intentionally frozen). "
+                    "This is expected when freeze_projection=True."
+                )
+            else:
+                logger.warning(
+                    "Projection parameters NOT in optimizer; checking requires_grad status"
+                )
+                for name, param in self.model.audio_projection.named_parameters():
+                    logger.warning("%s: requires_grad=%s", name, param.requires_grad)
 
         self.optimizer_checked = True
 
@@ -70,13 +78,21 @@ class ProjectionDiagnosticCallback(TrainerCallback):
                     len(optimizer_param_ids),
                 )
                 if not proj_in_optimizer:
-                    logger.warning(
-                        "Projection parameters NOT in optimizer at first step"
-                    )
-                    for name, param in self.model.audio_projection.named_parameters():
-                        logger.warning(
-                            "%s: requires_grad=%s", name, param.requires_grad
+                    # Check if projection is intentionally frozen
+                    all_frozen = all(not p.requires_grad for p in self.model.audio_projection.parameters())
+                    if all_frozen:
+                        logger.info(
+                            "Projection parameters NOT in optimizer at first step (intentionally frozen). "
+                            "This is expected when freeze_projection=True."
                         )
+                    else:
+                        logger.warning(
+                            "Projection parameters NOT in optimizer at first step"
+                        )
+                        for name, param in self.model.audio_projection.named_parameters():
+                            logger.warning(
+                                "%s: requires_grad=%s", name, param.requires_grad
+                            )
                 self.optimizer_checked = True
 
         if self.step == 1:
