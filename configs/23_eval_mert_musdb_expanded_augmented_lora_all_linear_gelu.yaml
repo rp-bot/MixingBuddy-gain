@@ -57,7 +57,7 @@ evaluation:
   use_random_projection: false # Use the trained projection weights
 
   # Generation samples for evaluation
-  num_generation_samples: 100 # Multiple samples for better statistical significance
+  num_generation_samples: 10000 # Multiple samples for better statistical significance
 
   # Partial ground truth settings
   use_partial_ground_truth: false
@@ -71,7 +71,7 @@ evaluation:
     max_memory_usage_gb: 8.0 # MERT is efficient but still needs some headroom
 
   decode_audio_embeddings:
-    enabled: true
+    enabled: false
     top_k: 3
     max_samples: 5
     max_audio_tokens: null

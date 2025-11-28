@@ -1,258 +1,417 @@
 {
   "overall_performance": {
-    "total_predictions": 100,
-    "both_correct": 51,
-    "both_correct_percentage": 51.0,
-    "stem_correct": 63,
-    "stem_correct_percentage": 63.0,
-    "direction_correct": 59,
-    "direction_correct_percentage": 59.0
+    "total_predictions": 10000,
+    "both_correct": 5014,
+    "both_correct_percentage": 50.14,
+    "stem_correct": 5677,
+    "stem_correct_percentage": 56.77,
+    "direction_correct": 5840,
+    "direction_correct_percentage": 58.4,
+    "magnitude_correct": 6095,
+    "magnitude_eligible": 8015,
+    "magnitude_correct_percentage": 76.04
   },
   "by_error_category": {
     "loud": {
-      "total": 16,
-      "both_correct": 4,
-      "both_correct_percentage": 25.0,
-      "stem_correct": 9,
-      "stem_correct_percentage": 56.25,
-      "direction_correct": 5,
-      "direction_correct_percentage": 31.25
+      "total": 1998,
+      "both_correct": 751,
+      "both_correct_percentage": 37.59,
+      "stem_correct": 1068,
+      "stem_correct_percentage": 53.45,
+      "direction_correct": 978,
+      "direction_correct_percentage": 48.95,
+      "magnitude_correct": 1239,
+      "magnitude_eligible": 1998,
+      "magnitude_correct_percentage": 62.01
     },
     "no_error": {
-      "total": 20,
-      "both_correct": 3,
-      "both_correct_percentage": 15.0,
-      "stem_correct": 3,
-      "stem_correct_percentage": 15.0,
-      "direction_correct": 3,
-      "direction_correct_percentage": 15.0
+      "total": 1985,
+      "both_correct": 158,
+      "both_correct_percentage": 7.96,
+      "stem_correct": 158,
+      "stem_correct_percentage": 7.96,
+      "direction_correct": 158,
+      "direction_correct_percentage": 7.96,
+      "magnitude_correct": 0,
+      "magnitude_eligible": 0,
+      "magnitude_correct_percentage": null
     },
     "quiet": {
-      "total": 16,
-      "both_correct": 9,
-      "both_correct_percentage": 56.25,
-      "stem_correct": 14,
-      "stem_correct_percentage": 87.5,
-      "direction_correct": 10,
-      "direction_correct_percentage": 62.5
+      "total": 1997,
+      "both_correct": 1088,
+      "both_correct_percentage": 54.48,
+      "stem_correct": 1249,
+      "stem_correct_percentage": 62.54,
+      "direction_correct": 1377,
+      "direction_correct_percentage": 68.95,
+      "magnitude_correct": 930,
+      "magnitude_eligible": 1997,
+      "magnitude_correct_percentage": 46.57
     },
     "very_loud": {
-      "total": 30,
-      "both_correct": 23,
-      "both_correct_percentage": 76.67,
-      "stem_correct": 25,
-      "stem_correct_percentage": 83.33,
-      "direction_correct": 25,
-      "direction_correct_percentage": 83.33
+      "total": 2013,
+      "both_correct": 1585,
+      "both_correct_percentage": 78.74,
+      "stem_correct": 1705,
+      "stem_correct_percentage": 84.7,
+      "direction_correct": 1711,
+      "direction_correct_percentage": 85.0,
+      "magnitude_correct": 1968,
+      "magnitude_eligible": 2013,
+      "magnitude_correct_percentage": 97.76
     },
     "very_quiet": {
-      "total": 18,
-      "both_correct": 12,
-      "both_correct_percentage": 66.67,
-      "stem_correct": 12,
-      "stem_correct_percentage": 66.67,
-      "direction_correct": 16,
-      "direction_correct_percentage": 88.89
+      "total": 2007,
+      "both_correct": 1432,
+      "both_correct_percentage": 71.35,
+      "stem_correct": 1497,
+      "stem_correct_percentage": 74.59,
+      "direction_correct": 1616,
+      "direction_correct_percentage": 80.52,
+      "magnitude_correct": 1958,
+      "magnitude_eligible": 2007,
+      "magnitude_correct_percentage": 97.56
     }
   },
   "by_target_stem": {
     "bass": {
-      "total": 40,
-      "both_correct": 21,
-      "both_correct_percentage": 52.5,
-      "stem_correct": 27,
-      "stem_correct_percentage": 67.5,
-      "direction_correct": 22,
-      "direction_correct_percentage": 55.0
+      "total": 3302,
+      "both_correct": 1461,
+      "both_correct_percentage": 44.25,
+      "stem_correct": 1793,
+      "stem_correct_percentage": 54.3,
+      "direction_correct": 1742,
+      "direction_correct_percentage": 52.76,
+      "magnitude_correct": 1673,
+      "magnitude_eligible": 2662,
+      "magnitude_correct_percentage": 62.85
     },
     "drums": {
-      "total": 23,
-      "both_correct": 12,
-      "both_correct_percentage": 52.17,
-      "stem_correct": 13,
-      "stem_correct_percentage": 56.52,
-      "direction_correct": 14,
-      "direction_correct_percentage": 60.87
+      "total": 3322,
+      "both_correct": 1655,
+      "both_correct_percentage": 49.82,
+      "stem_correct": 1811,
+      "stem_correct_percentage": 54.52,
+      "direction_correct": 1855,
+      "direction_correct_percentage": 55.84,
+      "magnitude_correct": 1887,
+      "magnitude_eligible": 2642,
+      "magnitude_correct_percentage": 71.42
     },
     "vocals": {
-      "total": 37,
-      "both_correct": 18,
-      "both_correct_percentage": 48.65,
-      "stem_correct": 23,
-      "stem_correct_percentage": 62.16,
-      "direction_correct": 23,
-      "direction_correct_percentage": 62.16
+      "total": 3376,
+      "both_correct": 1898,
+      "both_correct_percentage": 56.22,
+      "stem_correct": 2073,
+      "stem_correct_percentage": 61.4,
+      "direction_correct": 2243,
+      "direction_correct_percentage": 66.44,
+      "magnitude_correct": 2535,
+      "magnitude_eligible": 2711,
+      "magnitude_correct_percentage": 93.51
     }
   },
   "by_direction_type": {
     "decrease": {
-      "total": 46,
-      "both_correct": 27,
-      "both_correct_percentage": 58.7,
-      "stem_correct": 34,
-      "stem_correct_percentage": 73.91,
-      "direction_correct": 30,
-      "direction_correct_percentage": 65.22
+      "total": 4011,
+      "both_correct": 2336,
+      "both_correct_percentage": 58.24,
+      "stem_correct": 2773,
+      "stem_correct_percentage": 69.13,
+      "direction_correct": 2689,
+      "direction_correct_percentage": 67.04,
+      "magnitude_correct": 3207,
+      "magnitude_eligible": 4011,
+      "magnitude_correct_percentage": 79.96
     },
     "increase": {
-      "total": 34,
-      "both_correct": 21,
-      "both_correct_percentage": 61.76,
-      "stem_correct": 26,
-      "stem_correct_percentage": 76.47,
-      "direction_correct": 26,
-      "direction_correct_percentage": 76.47
+      "total": 4004,
+      "both_correct": 2520,
+      "both_correct_percentage": 62.94,
+      "stem_correct": 2746,
+      "stem_correct_percentage": 68.58,
+      "direction_correct": 2993,
+      "direction_correct_percentage": 74.75,
+      "magnitude_correct": 2888,
+      "magnitude_eligible": 4004,
+      "magnitude_correct_percentage": 72.13
     },
     "no_error": {
-      "total": 20,
-      "both_correct": 3,
-      "both_correct_percentage": 15.0,
-      "stem_correct": 3,
-      "stem_correct_percentage": 15.0,
-      "direction_correct": 3,
-      "direction_correct_percentage": 15.0
+      "total": 1985,
+      "both_correct": 158,
+      "both_correct_percentage": 7.96,
+      "stem_correct": 158,
+      "stem_correct_percentage": 7.96,
+      "direction_correct": 158,
+      "direction_correct_percentage": 7.96,
+      "magnitude_correct": 0,
+      "magnitude_eligible": 0,
+      "magnitude_correct_percentage": null
     }
   },
   "error_analysis": {
-    "total_errors": 49,
+    "total_errors": 4986,
     "error_examples": [
       {
         "uid": "test_track041_chunk022_a-drums_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The bass is too quiet. Raise the bass level by 6 to 12 dB to balance the mix."
+        "generated": "The bass is too quiet. Raise the bass level by 6 to 12 dB to balance the mix.",
+        "solution_sentence": "Raise the bass level by 6 to 12 dB to balance the mix.",
+        "expected_min_db": 6.0,
+        "expected_max_db": 12.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": true
       },
       {
         "uid": "test_track006_chunk026_a-drums_t-bass_e-loud",
         "target_stem": "bass",
         "error_category": "loud",
-        "generated": "The bass needs to be slightly quieter. Lower the bass by 3 to 6 dB to achieve proper balance."
+        "generated": "The bass needs to be slightly quieter. Lower the bass by 3 to 6 dB to achieve proper balance.",
+        "solution_sentence": "Lower the bass by 3 to 6 dB to achieve proper balance.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track047_chunk013_a-vocals_t-bass_e-very_loud",
         "target_stem": "bass",
         "error_category": "very_loud",
-        "generated": "The drums is almost inaudible. Boost the drums between 6 and 12 dB to achieve balance."
+        "generated": "The drums is almost inaudible. Boost the drums between 6 and 12 dB to achieve balance.",
+        "solution_sentence": "Boost the drums between 6 and 12 dB to achieve balance.",
+        "expected_min_db": 6.0,
+        "expected_max_db": 12.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": true
       },
       {
         "uid": "test_track016_chunk021_a-drums_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The bass is too quiet. Raise the bass level by 6 to 12 dB to balance the mix."
-      },
-      {
-        "uid": "test_track013_chunk017_a-vocals_t-drums_e-very_loud",
-        "target_stem": "drums",
-        "error_category": "very_loud",
-        "generated": "The bass is excessively loud. Lower the bass level by 6 to 12 dB to balance the mix."
+        "generated": "The bass is too quiet. Raise the bass level by 6 to 12 dB to balance the mix.",
+        "solution_sentence": "Raise the bass level by 6 to 12 dB to balance the mix.",
+        "expected_min_db": 6.0,
+        "expected_max_db": 12.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": true
       },
       {
         "uid": "test_track047_chunk008_a-drums_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The bass is too quiet. Raise the bass level by 6 to 12 dB to balance the mix."
+        "generated": "The bass is too quiet. Raise the bass level by 6 to 12 dB to balance the mix.",
+        "solution_sentence": "Raise the bass level by 6 to 12 dB to balance the mix.",
+        "expected_min_db": 6.0,
+        "expected_max_db": 12.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": true
       },
       {
         "uid": "test_track006_chunk011_a-vocals_t-bass_e-loud",
         "target_stem": "bass",
         "error_category": "loud",
-        "generated": "The bass needs to be slightly quieter. Lower the bass by 3 to 6 dB to achieve proper balance."
+        "generated": "The bass needs to be slightly quieter. Lower the bass by 3 to 6 dB to achieve proper balance.",
+        "solution_sentence": "Lower the bass by 3 to 6 dB to achieve proper balance.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track047_chunk013_a-bass_t-vocals_e-no_error",
         "target_stem": "vocals",
         "error_category": "no_error",
-        "generated": "The vocals requires a slight reduction. Lower the vocals level by 3 to 6 dB to balance the mix."
+        "generated": "The vocals requires a slight reduction. Lower the vocals level by 3 to 6 dB to balance the mix.",
+        "solution_sentence": "Lower the vocals level by 3 to 6 dB to balance the mix.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track035_chunk005_a-vocals_t-drums_e-no_error",
         "target_stem": "drums",
         "error_category": "no_error",
-        "generated": "The drums is a little low. Increase the drums gain by 3 to 6 dB for proper balance."
+        "generated": "The drums is a little low. Increase the drums gain by 3 to 6 dB for proper balance.",
+        "solution_sentence": "Increase the drums gain by 3 to 6 dB for proper balance.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track005_chunk008_a-vocals_t-bass_e-loud",
         "target_stem": "bass",
         "error_category": "loud",
-        "generated": "The bass needs to be slightly quieter. Lower the bass by 3 to 6 dB to achieve proper balance."
+        "generated": "The bass needs to be slightly quieter. Lower the bass by 3 to 6 dB to achieve proper balance.",
+        "solution_sentence": "Lower the bass by 3 to 6 dB to achieve proper balance.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track026_chunk012_a-vocals_t-bass_e-no_error",
         "target_stem": "bass",
         "error_category": "no_error",
-        "generated": "The bass is slightly quiet. Boost the bass between 3 and 6 dB to achieve balance."
+        "generated": "The bass is slightly quiet. Boost the bass between 3 and 6 dB to achieve balance.",
+        "solution_sentence": "Boost the bass between 3 and 6 dB to achieve balance.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track006_chunk002_a-drums_t-vocals_e-no_error",
         "target_stem": "vocals",
         "error_category": "no_error",
-        "generated": "The vocals is a little low. Increase the vocals gain by 3 to 6 dB for proper balance."
+        "generated": "The vocals is a little low. Increase the vocals gain by 3 to 6 dB for proper balance.",
+        "solution_sentence": "Increase the vocals gain by 3 to 6 dB for proper balance.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track037_chunk003_a-bass_t-vocals_e-no_error",
         "target_stem": "vocals",
         "error_category": "no_error",
-        "generated": "The vocals requires a slight reduction. Lower the vocals level by 3 to 6 dB to balance the mix."
+        "generated": "The vocals requires a slight reduction. Lower the vocals level by 3 to 6 dB to balance the mix.",
+        "solution_sentence": "Lower the vocals level by 3 to 6 dB to balance the mix.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track011_chunk020_a-bass_t-drums_e-no_error",
         "target_stem": "drums",
         "error_category": "no_error",
-        "generated": "The vocals is a little high. Lower the vocals gain by 3 to 6 dB for proper balance."
+        "generated": "The vocals is a little high. Lower the vocals gain by 3 to 6 dB for proper balance.",
+        "solution_sentence": "Lower the vocals gain by 3 to 6 dB for proper balance.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track042_chunk013_a-vocals_t-bass_e-no_error",
         "target_stem": "bass",
         "error_category": "no_error",
-        "generated": "The drums is a little high. Lower the drums gain by 3 to 6 dB for proper balance."
+        "generated": "The drums is a little high. Lower the drums gain by 3 to 6 dB for proper balance.",
+        "solution_sentence": "Lower the drums gain by 3 to 6 dB for proper balance.",
+        "expected_min_db": null,
+        "expected_max_db": null,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track045_chunk005_a-bass_t-vocals_e-quiet",
         "target_stem": "vocals",
         "error_category": "quiet",
-        "generated": "The mix is well-balanced with all stems at proper levels. The balance is correct. No modifications n"
+        "generated": "The mix is well-balanced with all stems at proper levels. The balance is correct. No modifications n",
+        "solution_sentence": "The balance is correct.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": null,
+        "predicted_max_db": null,
+        "magnitude_correct": false
       },
       {
         "uid": "test_track013_chunk014_a-vocals_t-drums_e-loud",
         "target_stem": "drums",
         "error_category": "loud",
-        "generated": "The bass is somewhat loud. Decrease the bass level by 3 to 6 dB to balance the mix."
+        "generated": "The bass is somewhat loud. Decrease the bass level by 3 to 6 dB to balance the mix.",
+        "solution_sentence": "Decrease the bass level by 3 to 6 dB to balance the mix.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": 3.0,
+        "predicted_max_db": 6.0,
+        "magnitude_correct": true
       },
       {
         "uid": "test_track029_chunk009_a-drums_t-bass_e-very_loud",
         "target_stem": "bass",
         "error_category": "very_loud",
-        "generated": "The bass is barely audible. Increase the bass level between 6 and 12 dB to balance the mix."
+        "generated": "The vocals is almost inaudible. Boost the vocals between 6 and 12 dB to achieve balance.",
+        "solution_sentence": "Boost the vocals between 6 and 12 dB to achieve balance.",
+        "expected_min_db": 6.0,
+        "expected_max_db": 12.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": true
       },
       {
         "uid": "test_track000_chunk008_a-bass_t-vocals_e-very_quiet",
         "target_stem": "vocals",
         "error_category": "very_quiet",
-        "generated": "The drums is too quiet. Raise the drums level by 6 to 12 dB to balance the mix."
+        "generated": "The drums is too quiet. Raise the drums level by 6 to 12 dB to balance the mix.",
+        "solution_sentence": "Raise the drums level by 6 to 12 dB to balance the mix.",
+        "expected_min_db": 6.0,
+        "expected_max_db": 12.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": true
       },
       {
-        "uid": "test_track048_chunk012_a-vocals_t-drums_e-very_loud",
-        "target_stem": "drums",
-        "error_category": "very_loud",
-        "generated": "The bass needs significant boosting. Increase the bass level between 6 and 12 dB to balance the mix."
+        "uid": "test_track045_chunk000_a-drums_t-bass_e-quiet",
+        "target_stem": "bass",
+        "error_category": "quiet",
+        "generated": "The vocals is too loud and needs to be brought down. Reduce the vocals by 6 to 12 dB to achieve prop",
+        "solution_sentence": "The vocals is too loud and needs to be brought down.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": 6.0,
+        "predicted_max_db": 12.0,
+        "magnitude_correct": false
+      },
+      {
+        "uid": "test_track026_chunk013_a-drums_t-bass_e-loud",
+        "target_stem": "bass",
+        "error_category": "loud",
+        "generated": "The mix analysis shows all stems are properly balanced. Each element is at the correct level. No cha",
+        "solution_sentence": "Each element is at the correct level.",
+        "expected_min_db": 3.0,
+        "expected_max_db": 6.0,
+        "predicted_min_db": null,
+        "predicted_max_db": null,
+        "magnitude_correct": false
       }
     ]
   },
   "macro_accuracies": {
     "by_error_category": {
-      "both_correct_macro": 47.92,
-      "stem_correct_macro": 61.75,
-      "direction_correct_macro": 56.19
+      "both_correct_macro": 50.02,
+      "stem_correct_macro": 56.65,
+      "direction_correct_macro": 58.28,
+      "magnitude_correct_macro": 75.97
     },
     "by_target_stem": {
-      "both_correct_macro": 51.11,
-      "stem_correct_macro": 62.06,
-      "direction_correct_macro": 59.34
+      "both_correct_macro": 50.1,
+      "stem_correct_macro": 56.74,
+      "direction_correct_macro": 58.35,
+      "magnitude_correct_macro": 75.93
     },
     "by_direction_type": {
-      "both_correct_macro": 45.15,
-      "stem_correct_macro": 55.13,
-      "direction_correct_macro": 52.23
+      "both_correct_macro": 43.05,
+      "stem_correct_macro": 48.56,
+      "direction_correct_macro": 49.92,
+      "magnitude_correct_macro": 76.04
     }
   }
 }
