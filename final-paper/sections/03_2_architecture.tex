@@ -1,11 +1,11 @@
 \subsection{Architecture}
 \label{sec:architecture}
 
-Our architecture implements a multimodal framework that processes 10-second audio segments paired with textual instructions to generate accurate feedback addressing gain balancing anomalies.
+Our architecture implements a multimodal framework that processes 10-second audio segments paired with textual instructions to generate accurate text feedback addressing gain balancing anomalies.
 Following the audio prefixing approach demonstrated in multimodal language models~\cite{Gong_Luo_Liu_Karlinsky_Glass_2024}, we concatenate audio embeddings with text embeddings before passing them to the large language model.
-This design requires training an audio projection layer to align the encoder output embeddings (1024 dimensions) with the LLM input embedding space (typically 3584 dimensions for Qwen2-7B-Instruct).
+This design requires training an audio projection layer to align the encoder output embeddings (1024 dimensions) with the LLM input embedding space (typically 3584 dimensions for Qwen2-7B-Instruct)~\cite{Gong_Luo_Liu_Karlinsky_Glass_2024}.
 While alternative modality alignment techniques exist~\cite{Liu_Hussain_Wu_Sun_Shan_2024}, audio prefixing provides an effective starting point for our application.
-The architecture employs MERT-v1-330M as the audio encoder, a trainable MLP projection layer, and Qwen2-7B-Instruct as the backbone language model.
+The architecture employs MERT-v1-330M as the audio encoder~\cite{MERT-v1-330M}, a trainable MLP projection layer, and Qwen2-7B-Instruct as the backbone language model.
 Figure~\ref{fig:architecture} illustrates the complete architecture.
 
 \begin{figure*}[!ht]
@@ -19,7 +19,7 @@ Figure~\ref{fig:architecture} illustrates the complete architecture.
 \subsubsection{Audio Encoder}
 \label{sec:audio-encoder}
 
-We employ the MERT-v1-330M encoder~\cite{} as our audio feature extractor.
+We employ the MERT-v1-330M encoder~\cite{MERT-v1-330M} as our audio feature extractor.
 The encoder produces 25 transformer layers of representations, from which we extract a weighted average using learnable layer weights.
 This weighted aggregation allows the model to adaptively emphasize different hierarchical levels of audio representation during training.
 The encoder outputs 1024-dimensional embeddings at each time step.

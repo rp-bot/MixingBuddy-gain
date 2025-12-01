@@ -1,0 +1,42 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented MixingBuddy, a multimodal large language model that provides structured mixing advice by analyzing multitrack audio and generating textual feedback identifying problematic stems and suggesting gain adjustments.
+Our approach demonstrates that LLMs can be effectively adapted for audio-conditioned mixing critique tasks through a combination of trainable projection layers and parameter-efficient LoRA adapters~\cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021}.
+
+\subsection{Key Findings}
+
+Our experimental evaluation reveals several important insights.
+The model achieves 50.14\% accuracy on the joint task of correctly identifying both the target stem and adjustment direction, with individual accuracies of 56.75\% for stem identification and 58.41\% for direction prediction.
+When the model correctly identifies the stem and direction, it demonstrates strong performance in magnitude prediction (76.04\% accuracy), indicating that the model can reliably determine appropriate adjustment ranges once the core problem is identified.
+
+The model shows strong recall across all tasks (89.99\% for error detection, 90.27\% for stem identification, 84.69\% for direction prediction), suggesting that it rarely misses actual mixing problems.
+However, precision varies more substantially, with the model sometimes incorrectly flagging well-balanced mixes as problematic, particularly for the ``no error'' category (7.96\% accuracy).
+This indicates that while the model is effective at detecting problems, it tends to be overly conservative in recognizing well-balanced mixes.
+
+Performance analysis reveals that the model excels at identifying extreme imbalances (78.74\% accuracy for ``very loud'' and 71.35\% for ``very quiet'' categories) but struggles with moderate imbalances and correctly identifying well-balanced mixes.
+The model also demonstrates better performance on vocal stems (56.22\% both correct) compared to drums (49.82\%) and bass (44.25\%), suggesting that semantic understanding may provide advantages for certain instrument types.
+
+\subsection{Limitations and Future Work}
+
+Several limitations of our current approach suggest directions for future research.
+First, the model's difficulty in correctly identifying well-balanced mixes (7.96\% accuracy on the ``no error'' category) represents a significant challenge for practical deployment, as false positives could undermine user trust.
+Future work could explore techniques to better calibrate the model's confidence or incorporate explicit training on balanced mixes.
+
+Second, the model's performance on moderate imbalances (37.59\% for ``loud'' and 54.48\% for ``quiet'' categories) indicates that subtle mixing issues remain challenging.
+This may require more sophisticated audio representations, larger training datasets, or alternative architectural approaches that better capture relative gain relationships.
+
+Third, while our focus on gain adjustments provides a tractable starting point, real-world mixing involves many additional parameters such as equalization, compression, and spatial effects.
+Extending the model to handle these additional mixing parameters represents an important direction for future work.
+
+Finally, the current evaluation relies on pattern-matching to extract structured information from free-form text responses.
+While this approach provides useful insights, future work could explore more structured output formats or evaluate the model's performance in real-world mixing scenarios with professional audio engineers.
+
+\subsection{Contributions}
+
+This work contributes to the field of automatic mixing by demonstrating that multimodal LLMs~\cite{Gong_Luo_Liu_Karlinsky_Glass_2024,Liu_Hussain_Wu_Sun_Shan_2024} can provide interpretable, structured feedback on mixing quality.
+Unlike previous ``black box'' approaches~\cite{waveunet,Steinmetz_Pons_Pascual_Serra_2020}, our model generates textual explanations that can help users understand mixing decisions.
+The parameter-efficient fine-tuning approach using LoRA adapters~\cite{Hu_Shen_Wallis_Allen-Zhu_Li_Wang_Wang_Chen_2021} makes the model accessible for practical deployment, and the evaluation framework provides a foundation for future research in audio-conditioned language models for music production.
+
+As multimodal LLMs continue to advance, we anticipate that models like MixingBuddy will play an increasingly important role in music production workflows, providing both automated assistance and educational feedback to help users develop their mixing skills.
+

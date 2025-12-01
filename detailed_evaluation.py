@@ -150,7 +150,7 @@ def analyze_prediction(item):
         
         if has_increase and has_decrease:
             # Contradictory instructions for the same stem: treat all as incorrect
-            return False, False, False, False  # both_correct, stem_correct, direction_correct, magnitude_correct
+            return False, False, False, False, None, None  # both_correct, stem_correct, direction_correct, magnitude_correct, identified_stem, identified_direction
 
     # Identify the main stem being talked about, and the direction
     identified_stem = None
@@ -172,10 +172,10 @@ def analyze_prediction(item):
             break
     
     # If no problem stem was identified, check for 'no_error' case
-        if not identified_stem:
-            if any(any(kw in s for kw in no_error_keywords) for s in generated_sents):
-                identified_direction = 'none'
-                identified_stem = target_stem
+    if not identified_stem:
+        if any(any(kw in s for kw in no_error_keywords) for s in generated_sents):
+            identified_direction = 'none'
+            identified_stem = target_stem
     
     # Compare with ground truth
     direction_correct = (identified_direction == expected_direction)
@@ -206,7 +206,7 @@ def analyze_prediction(item):
             abs(parsed_max - expected_max) <= eps
         )
 
-    return both_correct, stem_correct, direction_correct, magnitude_correct
+    return both_correct, stem_correct, direction_correct, magnitude_correct, identified_stem, identified_direction
 
 def main():
     if len(sys.argv) > 1:
@@ -222,10 +222,38 @@ def main():
     magnitude_correct = 0
     total_magnitude_eligible = 0  # Excludes no_error cases
     
+    # False positives and false negatives
+    # Error detection: FP = predicted error when no_error, FN = predicted no_error when error exists
+    error_detection_fp = 0  # predicted adjustment when ground truth is no_error
+    error_detection_fn = 0  # predicted no_error when ground truth requires adjustment
+    error_detection_tp = 0  # predicted adjustment when adjustment is needed
+    error_detection_tn = 0  # predicted no_error when no_error is correct
+    
+    # Stem identification: FP = predicted wrong stem, FN = failed to identify correct stem
+    stem_fp = 0  # predicted wrong stem (when a different stem is correct)
+    stem_fn = 0  # failed to identify correct stem (predicted different stem or no stem)
+    stem_tp = 0  # predicted correct stem
+    stem_tn = 0  # N/A for stem (always a stem should be identified if error exists)
+    
+    # Direction: FP = predicted wrong direction, FN = failed to predict correct direction
+    direction_fp = 0  # predicted wrong direction (e.g., increase when decrease needed)
+    direction_fn = 0  # failed to predict correct direction (predicted none or wrong direction)
+    direction_tp = 0  # predicted correct direction
+    direction_tn = 0  # predicted none when none is correct
+    
     # Breakdowns
-    by_error_category = defaultdict(lambda: {'total': 0, 'both': 0, 'stem': 0, 'direction': 0, 'magnitude': 0, 'magnitude_eligible': 0})
-    by_stem = defaultdict(lambda: {'total': 0, 'both': 0, 'stem': 0, 'direction': 0, 'magnitude': 0, 'magnitude_eligible': 0})
-    by_direction = defaultdict(lambda: {'total': 0, 'both': 0, 'stem': 0, 'direction': 0, 'magnitude': 0, 'magnitude_eligible': 0})
+    by_error_category = defaultdict(lambda: {'total': 0, 'both': 0, 'stem': 0, 'direction': 0, 'magnitude': 0, 'magnitude_eligible': 0,
+                                             'error_detection_fp': 0, 'error_detection_fn': 0, 'error_detection_tp': 0, 'error_detection_tn': 0,
+                                             'stem_fp': 0, 'stem_fn': 0, 'stem_tp': 0,
+                                             'direction_fp': 0, 'direction_fn': 0, 'direction_tp': 0, 'direction_tn': 0})
+    by_stem = defaultdict(lambda: {'total': 0, 'both': 0, 'stem': 0, 'direction': 0, 'magnitude': 0, 'magnitude_eligible': 0,
+                                  'error_detection_fp': 0, 'error_detection_fn': 0, 'error_detection_tp': 0, 'error_detection_tn': 0,
+                                  'stem_fp': 0, 'stem_fn': 0, 'stem_tp': 0,
+                                  'direction_fp': 0, 'direction_fn': 0, 'direction_tp': 0, 'direction_tn': 0})
+    by_direction = defaultdict(lambda: {'total': 0, 'both': 0, 'stem': 0, 'direction': 0, 'magnitude': 0, 'magnitude_eligible': 0,
+                                        'error_detection_fp': 0, 'error_detection_fn': 0, 'error_detection_tp': 0, 'error_detection_tn': 0,
+                                        'stem_fp': 0, 'stem_fn': 0, 'stem_tp': 0,
+                                        'direction_fp': 0, 'direction_fn': 0, 'direction_tp': 0, 'direction_tn': 0})
     
     # Error analysis
     errors = []
@@ -236,7 +264,7 @@ def main():
                 total += 1
                 item = json.loads(line)
                 
-                both, stem, direction, magnitude = analyze_prediction(item)
+                both, stem, direction, magnitude, identified_stem, identified_direction = analyze_prediction(item)
                 
                 if both:
                     both_correct += 1
@@ -245,8 +273,56 @@ def main():
                 if direction:
                     direction_correct += 1
                 
-                # Track by error category
+                # Calculate false positives and false negatives
                 error_cat = item['error_category']
+                target_stem = item['target_stem']
+                
+                # Determine expected direction
+                if error_cat in ['quiet', 'very_quiet']:
+                    expected_direction = 'increase'
+                elif error_cat in ['loud', 'very_loud']:
+                    expected_direction = 'decrease'
+                else:  # no_error
+                    expected_direction = 'none'
+                
+                # Error detection FP/FN
+                predicted_has_error = (identified_direction is not None and identified_direction != 'none')
+                ground_truth_has_error = (error_cat != 'no_error')
+                
+                if predicted_has_error and not ground_truth_has_error:
+                    error_detection_fp += 1
+                elif not predicted_has_error and ground_truth_has_error:
+                    error_detection_fn += 1
+                elif predicted_has_error and ground_truth_has_error:
+                    error_detection_tp += 1
+                elif not predicted_has_error and not ground_truth_has_error:
+                    error_detection_tn += 1
+                
+                # Stem identification FP/FN (only for cases where error exists)
+                if ground_truth_has_error:
+                    if identified_stem == target_stem:
+                        stem_tp += 1
+                    elif identified_stem is not None:
+                        stem_fp += 1  # predicted wrong stem
+                    else:
+                        stem_fn += 1  # failed to identify any stem
+                
+                # Direction FP/FN
+                if identified_direction == expected_direction:
+                    if expected_direction == 'none':
+                        direction_tn += 1
+                    else:
+                        direction_tp += 1
+                elif identified_direction is None:
+                    direction_fn += 1  # failed to predict direction
+                elif expected_direction == 'none' and identified_direction != 'none':
+                    direction_fp += 1  # predicted direction when none needed
+                elif expected_direction != 'none' and identified_direction == 'none':
+                    direction_fn += 1  # predicted none when direction needed
+                elif expected_direction != 'none' and identified_direction != 'none' and identified_direction != expected_direction:
+                    direction_fp += 1  # predicted wrong direction
+                
+                # Track by error category
                 by_error_category[error_cat]['total'] += 1
                 if both:
                     by_error_category[error_cat]['both'] += 1
@@ -254,6 +330,38 @@ def main():
                     by_error_category[error_cat]['stem'] += 1
                 if direction:
                     by_error_category[error_cat]['direction'] += 1
+                
+                # Track FP/FN by error category
+                if predicted_has_error and not ground_truth_has_error:
+                    by_error_category[error_cat]['error_detection_fp'] += 1
+                elif not predicted_has_error and ground_truth_has_error:
+                    by_error_category[error_cat]['error_detection_fn'] += 1
+                elif predicted_has_error and ground_truth_has_error:
+                    by_error_category[error_cat]['error_detection_tp'] += 1
+                elif not predicted_has_error and not ground_truth_has_error:
+                    by_error_category[error_cat]['error_detection_tn'] += 1
+                
+                if ground_truth_has_error:
+                    if identified_stem == target_stem:
+                        by_error_category[error_cat]['stem_tp'] += 1
+                    elif identified_stem is not None:
+                        by_error_category[error_cat]['stem_fp'] += 1
+                    else:
+                        by_error_category[error_cat]['stem_fn'] += 1
+                
+                if identified_direction == expected_direction:
+                    if expected_direction == 'none':
+                        by_error_category[error_cat]['direction_tn'] += 1
+                    else:
+                        by_error_category[error_cat]['direction_tp'] += 1
+                elif identified_direction is None:
+                    by_error_category[error_cat]['direction_fn'] += 1
+                elif expected_direction == 'none' and identified_direction != 'none':
+                    by_error_category[error_cat]['direction_fp'] += 1
+                elif expected_direction != 'none' and identified_direction == 'none':
+                    by_error_category[error_cat]['direction_fn'] += 1
+                elif expected_direction != 'none' and identified_direction != 'none' and identified_direction != expected_direction:
+                    by_error_category[error_cat]['direction_fp'] += 1
                 
                 # Only count magnitude for non-no_error cases
                 if error_cat != 'no_error':
@@ -264,7 +372,6 @@ def main():
                         by_error_category[error_cat]['magnitude'] += 1
                 
                 # Track by stem
-                target_stem = item['target_stem']
                 by_stem[target_stem]['total'] += 1
                 if both:
                     by_stem[target_stem]['both'] += 1
@@ -272,6 +379,39 @@ def main():
                     by_stem[target_stem]['stem'] += 1
                 if direction:
                     by_stem[target_stem]['direction'] += 1
+                
+                # Track FP/FN by stem
+                if predicted_has_error and not ground_truth_has_error:
+                    by_stem[target_stem]['error_detection_fp'] += 1
+                elif not predicted_has_error and ground_truth_has_error:
+                    by_stem[target_stem]['error_detection_fn'] += 1
+                elif predicted_has_error and ground_truth_has_error:
+                    by_stem[target_stem]['error_detection_tp'] += 1
+                elif not predicted_has_error and not ground_truth_has_error:
+                    by_stem[target_stem]['error_detection_tn'] += 1
+                
+                if ground_truth_has_error:
+                    if identified_stem == target_stem:
+                        by_stem[target_stem]['stem_tp'] += 1
+                    elif identified_stem is not None:
+                        by_stem[target_stem]['stem_fp'] += 1
+                    else:
+                        by_stem[target_stem]['stem_fn'] += 1
+                
+                if identified_direction == expected_direction:
+                    if expected_direction == 'none':
+                        by_stem[target_stem]['direction_tn'] += 1
+                    else:
+                        by_stem[target_stem]['direction_tp'] += 1
+                elif identified_direction is None:
+                    by_stem[target_stem]['direction_fn'] += 1
+                elif expected_direction == 'none' and identified_direction != 'none':
+                    by_stem[target_stem]['direction_fp'] += 1
+                elif expected_direction != 'none' and identified_direction == 'none':
+                    by_stem[target_stem]['direction_fn'] += 1
+                elif expected_direction != 'none' and identified_direction != 'none' and identified_direction != expected_direction:
+                    by_stem[target_stem]['direction_fp'] += 1
+                
                 # Only count magnitude for non-no_error cases
                 if error_cat != 'no_error':
                     by_stem[target_stem]['magnitude_eligible'] += 1
@@ -293,6 +433,39 @@ def main():
                     by_direction[dir_type]['stem'] += 1
                 if direction:
                     by_direction[dir_type]['direction'] += 1
+                
+                # Track FP/FN by direction
+                if predicted_has_error and not ground_truth_has_error:
+                    by_direction[dir_type]['error_detection_fp'] += 1
+                elif not predicted_has_error and ground_truth_has_error:
+                    by_direction[dir_type]['error_detection_fn'] += 1
+                elif predicted_has_error and ground_truth_has_error:
+                    by_direction[dir_type]['error_detection_tp'] += 1
+                elif not predicted_has_error and not ground_truth_has_error:
+                    by_direction[dir_type]['error_detection_tn'] += 1
+                
+                if ground_truth_has_error:
+                    if identified_stem == target_stem:
+                        by_direction[dir_type]['stem_tp'] += 1
+                    elif identified_stem is not None:
+                        by_direction[dir_type]['stem_fp'] += 1
+                    else:
+                        by_direction[dir_type]['stem_fn'] += 1
+                
+                if identified_direction == expected_direction:
+                    if expected_direction == 'none':
+                        by_direction[dir_type]['direction_tn'] += 1
+                    else:
+                        by_direction[dir_type]['direction_tp'] += 1
+                elif identified_direction is None:
+                    by_direction[dir_type]['direction_fn'] += 1
+                elif expected_direction == 'none' and identified_direction != 'none':
+                    by_direction[dir_type]['direction_fp'] += 1
+                elif expected_direction != 'none' and identified_direction == 'none':
+                    by_direction[dir_type]['direction_fn'] += 1
+                elif expected_direction != 'none' and identified_direction != 'none' and identified_direction != expected_direction:
+                    by_direction[dir_type]['direction_fp'] += 1
+                
                 # Only count magnitude for non-no_error cases
                 if error_cat != 'no_error':
                     by_direction[dir_type]['magnitude_eligible'] += 1
@@ -329,6 +502,51 @@ def main():
         print(f"  Magnitude (gain range) correct: {magnitude_correct}/{total_magnitude_eligible} ({magnitude_correct/total_magnitude_eligible*100:.2f}%)")
     else:
         print(f"  Magnitude (gain range) correct: N/A (no eligible cases)")
+    
+    print(f"\nFALSE POSITIVES AND FALSE NEGATIVES:")
+    print(f"  Error Detection:")
+    print(f"    True Positives (TP): {error_detection_tp} (predicted error when error exists)")
+    print(f"    True Negatives (TN): {error_detection_tn} (predicted no_error when no_error)")
+    print(f"    False Positives (FP): {error_detection_fp} (predicted error when no_error)")
+    print(f"    False Negatives (FN): {error_detection_fn} (predicted no_error when error exists)")
+    if (error_detection_tp + error_detection_fp) > 0:
+        precision = error_detection_tp / (error_detection_tp + error_detection_fp) * 100
+        print(f"    Precision: {precision:.2f}%")
+    if (error_detection_tp + error_detection_fn) > 0:
+        recall = error_detection_tp / (error_detection_tp + error_detection_fn) * 100
+        print(f"    Recall: {recall:.2f}%")
+    if (error_detection_tp + error_detection_fp) > 0 and (error_detection_tp + error_detection_fn) > 0:
+        f1 = 2 * precision * recall / (precision + recall)
+        print(f"    F1 Score: {f1:.2f}%")
+    
+    print(f"  Stem Identification (for error cases only):")
+    print(f"    True Positives (TP): {stem_tp} (predicted correct stem)")
+    print(f"    False Positives (FP): {stem_fp} (predicted wrong stem)")
+    print(f"    False Negatives (FN): {stem_fn} (failed to identify any stem)")
+    if (stem_tp + stem_fp) > 0:
+        precision = stem_tp / (stem_tp + stem_fp) * 100
+        print(f"    Precision: {precision:.2f}%")
+    if (stem_tp + stem_fn) > 0:
+        recall = stem_tp / (stem_tp + stem_fn) * 100
+        print(f"    Recall: {recall:.2f}%")
+    if (stem_tp + stem_fp) > 0 and (stem_tp + stem_fn) > 0:
+        f1 = 2 * precision * recall / (precision + recall)
+        print(f"    F1 Score: {f1:.2f}%")
+    
+    print(f"  Direction Prediction:")
+    print(f"    True Positives (TP): {direction_tp} (predicted correct direction)")
+    print(f"    True Negatives (TN): {direction_tn} (predicted none when none needed)")
+    print(f"    False Positives (FP): {direction_fp} (predicted wrong direction)")
+    print(f"    False Negatives (FN): {direction_fn} (failed to predict correct direction)")
+    if (direction_tp + direction_fp) > 0:
+        precision = direction_tp / (direction_tp + direction_fp) * 100
+        print(f"    Precision: {precision:.2f}%")
+    if (direction_tp + direction_fn) > 0:
+        recall = direction_tp / (direction_tp + direction_fn) * 100
+        print(f"    Recall: {recall:.2f}%")
+    if (direction_tp + direction_fp) > 0 and (direction_tp + direction_fn) > 0:
+        f1 = 2 * precision * recall / (precision + recall)
+        print(f"    F1 Score: {f1:.2f}%")
     
     print(f"\nBREAKDOWN BY ERROR CATEGORY:")
     for error_cat in sorted(by_error_category.keys()):
@@ -385,6 +603,19 @@ def main():
     if len(errors) > 10:
         print(f"  ... and {len(errors) - 10} more errors")
     
+    # Calculate precision, recall, and F1 for JSON output
+    error_precision = round(error_detection_tp / (error_detection_tp + error_detection_fp) * 100, 2) if (error_detection_tp + error_detection_fp) > 0 else None
+    error_recall = round(error_detection_tp / (error_detection_tp + error_detection_fn) * 100, 2) if (error_detection_tp + error_detection_fn) > 0 else None
+    error_f1 = round(2 * error_precision * error_recall / (error_precision + error_recall), 2) if error_precision is not None and error_recall is not None and (error_precision + error_recall) > 0 else None
+    
+    stem_precision = round(stem_tp / (stem_tp + stem_fp) * 100, 2) if (stem_tp + stem_fp) > 0 else None
+    stem_recall = round(stem_tp / (stem_tp + stem_fn) * 100, 2) if (stem_tp + stem_fn) > 0 else None
+    stem_f1 = round(2 * stem_precision * stem_recall / (stem_precision + stem_recall), 2) if stem_precision is not None and stem_recall is not None and (stem_precision + stem_recall) > 0 else None
+    
+    direction_precision = round(direction_tp / (direction_tp + direction_fp) * 100, 2) if (direction_tp + direction_fp) > 0 else None
+    direction_recall = round(direction_tp / (direction_tp + direction_fn) * 100, 2) if (direction_tp + direction_fn) > 0 else None
+    direction_f1 = round(2 * direction_precision * direction_recall / (direction_precision + direction_recall), 2) if direction_precision is not None and direction_recall is not None and (direction_precision + direction_recall) > 0 else None
+    
     # Prepare results for JSON output
     results = {
         'overall_performance': {
@@ -398,6 +629,34 @@ def main():
             'magnitude_correct': magnitude_correct,
             'magnitude_eligible': total_magnitude_eligible,
             'magnitude_correct_percentage': round(magnitude_correct/total_magnitude_eligible*100, 2) if total_magnitude_eligible > 0 else None
+        },
+        'false_positives_negatives': {
+            'error_detection': {
+                'true_positives': error_detection_tp,
+                'true_negatives': error_detection_tn,
+                'false_positives': error_detection_fp,
+                'false_negatives': error_detection_fn,
+                'precision': error_precision,
+                'recall': error_recall,
+                'f1_score': error_f1
+            },
+            'stem_identification': {
+                'true_positives': stem_tp,
+                'false_positives': stem_fp,
+                'false_negatives': stem_fn,
+                'precision': stem_precision,
+                'recall': stem_recall,
+                'f1_score': stem_f1
+            },
+            'direction_prediction': {
+                'true_positives': direction_tp,
+                'true_negatives': direction_tn,
+                'false_positives': direction_fp,
+                'false_negatives': direction_fn,
+                'precision': direction_precision,
+                'recall': direction_recall,
+                'f1_score': direction_f1
+            }
         },
         'by_error_category': {},
         'by_target_stem': {},
@@ -421,7 +680,24 @@ def main():
             'direction_correct_percentage': round(stats['direction']/stats['total']*100, 2) if stats['total'] > 0 else 0.0,
             'magnitude_correct': stats['magnitude'],
             'magnitude_eligible': stats['magnitude_eligible'],
-            'magnitude_correct_percentage': round(stats['magnitude']/stats['magnitude_eligible']*100, 2) if stats['magnitude_eligible'] > 0 else None
+            'magnitude_correct_percentage': round(stats['magnitude']/stats['magnitude_eligible']*100, 2) if stats['magnitude_eligible'] > 0 else None,
+            'error_detection': {
+                'true_positives': stats['error_detection_tp'],
+                'true_negatives': stats['error_detection_tn'],
+                'false_positives': stats['error_detection_fp'],
+                'false_negatives': stats['error_detection_fn']
+            },
+            'stem_identification': {
+                'true_positives': stats['stem_tp'],
+                'false_positives': stats['stem_fp'],
+                'false_negatives': stats['stem_fn']
+            },
+            'direction_prediction': {
+                'true_positives': stats['direction_tp'],
+                'true_negatives': stats['direction_tn'],
+                'false_positives': stats['direction_fp'],
+                'false_negatives': stats['direction_fn']
+            }
         }
     
     for stem in sorted(by_stem.keys()):
@@ -436,7 +712,24 @@ def main():
             'direction_correct_percentage': round(stats['direction']/stats['total']*100, 2) if stats['total'] > 0 else 0.0,
             'magnitude_correct': stats['magnitude'],
             'magnitude_eligible': stats['magnitude_eligible'],
-            'magnitude_correct_percentage': round(stats['magnitude']/stats['magnitude_eligible']*100, 2) if stats['magnitude_eligible'] > 0 else None
+            'magnitude_correct_percentage': round(stats['magnitude']/stats['magnitude_eligible']*100, 2) if stats['magnitude_eligible'] > 0 else None,
+            'error_detection': {
+                'true_positives': stats['error_detection_tp'],
+                'true_negatives': stats['error_detection_tn'],
+                'false_positives': stats['error_detection_fp'],
+                'false_negatives': stats['error_detection_fn']
+            },
+            'stem_identification': {
+                'true_positives': stats['stem_tp'],
+                'false_positives': stats['stem_fp'],
+                'false_negatives': stats['stem_fn']
+            },
+            'direction_prediction': {
+                'true_positives': stats['direction_tp'],
+                'true_negatives': stats['direction_tn'],
+                'false_positives': stats['direction_fp'],
+                'false_negatives': stats['direction_fn']
+            }
         }
     
     for dir_type in sorted(by_direction.keys()):
@@ -451,7 +744,24 @@ def main():
             'direction_correct_percentage': round(stats['direction']/stats['total']*100, 2) if stats['total'] > 0 else 0.0,
             'magnitude_correct': stats['magnitude'],
             'magnitude_eligible': stats['magnitude_eligible'],
-            'magnitude_correct_percentage': round(stats['magnitude']/stats['magnitude_eligible']*100, 2) if stats['magnitude_eligible'] > 0 else None
+            'magnitude_correct_percentage': round(stats['magnitude']/stats['magnitude_eligible']*100, 2) if stats['magnitude_eligible'] > 0 else None,
+            'error_detection': {
+                'true_positives': stats['error_detection_tp'],
+                'true_negatives': stats['error_detection_tn'],
+                'false_positives': stats['error_detection_fp'],
+                'false_negatives': stats['error_detection_fn']
+            },
+            'stem_identification': {
+                'true_positives': stats['stem_tp'],
+                'false_positives': stats['stem_fp'],
+                'false_negatives': stats['stem_fn']
+            },
+            'direction_prediction': {
+                'true_positives': stats['direction_tp'],
+                'true_negatives': stats['direction_tn'],
+                'false_positives': stats['direction_fp'],
+                'false_negatives': stats['direction_fn']
+            }
         }
     
     # Calculate macro accuracies (average across all classes, giving equal weight to each class)

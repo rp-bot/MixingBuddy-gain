@@ -3,13 +3,41 @@
     "total_predictions": 25650,
     "both_correct": 12787,
     "both_correct_percentage": 49.85,
-    "stem_correct": 14423,
-    "stem_correct_percentage": 56.23,
-    "direction_correct": 14981,
-    "direction_correct_percentage": 58.41,
+    "stem_correct": 14416,
+    "stem_correct_percentage": 56.2,
+    "direction_correct": 14987,
+    "direction_correct_percentage": 58.43,
     "magnitude_correct": 15608,
     "magnitude_eligible": 20520,
     "magnitude_correct_percentage": 76.06
+  },
+  "false_positives_negatives": {
+    "error_detection": {
+      "true_positives": 18460,
+      "true_negatives": 1051,
+      "false_positives": 4079,
+      "false_negatives": 2060,
+      "precision": 81.9,
+      "recall": 89.96,
+      "f1_score": 85.74
+    },
+    "stem_identification": {
+      "true_positives": 13940,
+      "false_positives": 5035,
+      "false_negatives": 1545,
+      "precision": 73.47,
+      "recall": 90.02,
+      "f1_score": 80.91
+    },
+    "direction_prediction": {
+      "true_positives": 14511,
+      "true_negatives": 476,
+      "false_positives": 8028,
+      "false_negatives": 2635,
+      "precision": 64.38,
+      "recall": 84.63,
+      "f1_score": 73.13
+    }
   },
   "by_error_category": {
     "loud": {
@@ -22,7 +50,24 @@
       "direction_correct_percentage": 49.57,
       "magnitude_correct": 3242,
       "magnitude_eligible": 5130,
-      "magnitude_correct_percentage": 63.2
+      "magnitude_correct_percentage": 63.2,
+      "error_detection": {
+        "true_positives": 3352,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 1778
+      },
+      "stem_identification": {
+        "true_positives": 2708,
+        "false_positives": 952,
+        "false_negatives": 1470
+      },
+      "direction_prediction": {
+        "true_positives": 2543,
+        "true_negatives": 0,
+        "false_positives": 809,
+        "false_negatives": 1778
+      }
     },
     "no_error": {
       "total": 5130,
@@ -34,7 +79,24 @@
       "direction_correct_percentage": 9.28,
       "magnitude_correct": 0,
       "magnitude_eligible": 0,
-      "magnitude_correct_percentage": null
+      "magnitude_correct_percentage": null,
+      "error_detection": {
+        "true_positives": 0,
+        "true_negatives": 1051,
+        "false_positives": 4079,
+        "false_negatives": 0
+      },
+      "stem_identification": {
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      "direction_prediction": {
+        "true_positives": 0,
+        "true_negatives": 476,
+        "false_positives": 4079,
+        "false_negatives": 575
+      }
     },
     "quiet": {
       "total": 5130,
@@ -46,19 +108,53 @@
       "direction_correct_percentage": 68.77,
       "magnitude_correct": 2372,
       "magnitude_eligible": 5130,
-      "magnitude_correct_percentage": 46.24
+      "magnitude_correct_percentage": 46.24,
+      "error_detection": {
+        "true_positives": 4926,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 204
+      },
+      "stem_identification": {
+        "true_positives": 3184,
+        "false_positives": 1944,
+        "false_negatives": 2
+      },
+      "direction_prediction": {
+        "true_positives": 3528,
+        "true_negatives": 0,
+        "false_positives": 1398,
+        "false_negatives": 204
+      }
     },
     "very_loud": {
       "total": 5130,
       "both_correct": 4041,
       "both_correct_percentage": 78.77,
-      "stem_correct": 4353,
-      "stem_correct_percentage": 84.85,
-      "direction_correct": 4337,
-      "direction_correct_percentage": 84.54,
+      "stem_correct": 4346,
+      "stem_correct_percentage": 84.72,
+      "direction_correct": 4343,
+      "direction_correct_percentage": 84.66,
       "magnitude_correct": 5007,
       "magnitude_eligible": 5130,
-      "magnitude_correct_percentage": 97.6
+      "magnitude_correct_percentage": 97.6,
+      "error_detection": {
+        "true_positives": 5097,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 33
+      },
+      "stem_identification": {
+        "true_positives": 4346,
+        "false_positives": 753,
+        "false_negatives": 31
+      },
+      "direction_prediction": {
+        "true_positives": 4343,
+        "true_negatives": 0,
+        "false_positives": 754,
+        "false_negatives": 33
+      }
     },
     "very_quiet": {
       "total": 5130,
@@ -70,7 +166,24 @@
       "direction_correct_percentage": 79.86,
       "magnitude_correct": 4987,
       "magnitude_eligible": 5130,
-      "magnitude_correct_percentage": 97.21
+      "magnitude_correct_percentage": 97.21,
+      "error_detection": {
+        "true_positives": 5085,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 45
+      },
+      "stem_identification": {
+        "true_positives": 3702,
+        "false_positives": 1386,
+        "false_negatives": 42
+      },
+      "direction_prediction": {
+        "true_positives": 4097,
+        "true_negatives": 0,
+        "false_positives": 988,
+        "false_negatives": 45
+      }
     }
   },
   "by_target_stem": {
@@ -84,7 +197,24 @@
       "direction_correct_percentage": 53.61,
       "magnitude_correct": 4295,
       "magnitude_eligible": 6840,
-      "magnitude_correct_percentage": 62.79
+      "magnitude_correct_percentage": 62.79,
+      "error_detection": {
+        "true_positives": 6111,
+        "true_negatives": 551,
+        "false_positives": 1159,
+        "false_negatives": 729
+      },
+      "stem_identification": {
+        "true_positives": 4410,
+        "false_positives": 1926,
+        "false_negatives": 504
+      },
+      "direction_prediction": {
+        "true_positives": 4376,
+        "true_negatives": 208,
+        "false_positives": 2894,
+        "false_negatives": 1072
+      }
     },
     "drums": {
       "total": 8550,
@@ -96,19 +226,53 @@
       "direction_correct_percentage": 56.25,
       "magnitude_correct": 4942,
       "magnitude_eligible": 6840,
-      "magnitude_correct_percentage": 72.25
+      "magnitude_correct_percentage": 72.25,
+      "error_detection": {
+        "true_positives": 5835,
+        "true_negatives": 392,
+        "false_positives": 1318,
+        "false_negatives": 1005
+      },
+      "stem_identification": {
+        "true_positives": 4486,
+        "false_positives": 1466,
+        "false_negatives": 888
+      },
+      "direction_prediction": {
+        "true_positives": 4649,
+        "true_negatives": 160,
+        "false_positives": 2504,
+        "false_negatives": 1237
+      }
     },
     "vocals": {
       "total": 8550,
       "both_correct": 4701,
       "both_correct_percentage": 54.98,
-      "stem_correct": 5159,
-      "stem_correct_percentage": 60.34,
-      "direction_correct": 5588,
-      "direction_correct_percentage": 65.36,
+      "stem_correct": 5152,
+      "stem_correct_percentage": 60.26,
+      "direction_correct": 5594,
+      "direction_correct_percentage": 65.43,
       "magnitude_correct": 6371,
       "magnitude_eligible": 6840,
-      "magnitude_correct_percentage": 93.14
+      "magnitude_correct_percentage": 93.14,
+      "error_detection": {
+        "true_positives": 6514,
+        "true_negatives": 108,
+        "false_positives": 1602,
+        "false_negatives": 326
+      },
+      "stem_identification": {
+        "true_positives": 5044,
+        "false_positives": 1643,
+        "false_negatives": 153
+      },
+      "direction_prediction": {
+        "true_positives": 5486,
+        "true_negatives": 108,
+        "false_positives": 2630,
+        "false_negatives": 326
+      }
     }
   },
   "by_direction_type": {
@@ -116,13 +280,30 @@
       "total": 10260,
       "both_correct": 5995,
       "both_correct_percentage": 58.43,
-      "stem_correct": 7061,
-      "stem_correct_percentage": 68.82,
-      "direction_correct": 6880,
-      "direction_correct_percentage": 67.06,
+      "stem_correct": 7054,
+      "stem_correct_percentage": 68.75,
+      "direction_correct": 6886,
+      "direction_correct_percentage": 67.12,
       "magnitude_correct": 8249,
       "magnitude_eligible": 10260,
-      "magnitude_correct_percentage": 80.4
+      "magnitude_correct_percentage": 80.4,
+      "error_detection": {
+        "true_positives": 8449,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 1811
+      },
+      "stem_identification": {
+        "true_positives": 7054,
+        "false_positives": 1705,
+        "false_negatives": 1501
+      },
+      "direction_prediction": {
+        "true_positives": 6886,
+        "true_negatives": 0,
+        "false_positives": 1563,
+        "false_negatives": 1811
+      }
     },
     "increase": {
       "total": 10260,
@@ -134,7 +315,24 @@
       "direction_correct_percentage": 74.32,
       "magnitude_correct": 7359,
       "magnitude_eligible": 10260,
-      "magnitude_correct_percentage": 71.73
+      "magnitude_correct_percentage": 71.73,
+      "error_detection": {
+        "true_positives": 10011,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 249
+      },
+      "stem_identification": {
+        "true_positives": 6886,
+        "false_positives": 3330,
+        "false_negatives": 44
+      },
+      "direction_prediction": {
+        "true_positives": 7625,
+        "true_negatives": 0,
+        "false_positives": 2386,
+        "false_negatives": 249
+      }
     },
     "no_error": {
       "total": 5130,
@@ -146,7 +344,24 @@
       "direction_correct_percentage": 9.28,
       "magnitude_correct": 0,
       "magnitude_eligible": 0,
-      "magnitude_correct_percentage": null
+      "magnitude_correct_percentage": null,
+      "error_detection": {
+        "true_positives": 0,
+        "true_negatives": 1051,
+        "false_positives": 4079,
+        "false_negatives": 0
+      },
+      "stem_identification": {
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0
+      },
+      "direction_prediction": {
+        "true_positives": 0,
+        "true_negatives": 476,
+        "false_positives": 4079,
+        "false_negatives": 575
+      }
     }
   },
   "error_analysis": {
@@ -397,20 +612,20 @@
   "macro_accuracies": {
     "by_error_category": {
       "both_correct_macro": 49.85,
-      "stem_correct_macro": 56.23,
-      "direction_correct_macro": 58.4,
+      "stem_correct_macro": 56.2,
+      "direction_correct_macro": 58.43,
       "magnitude_correct_macro": 76.06
     },
     "by_target_stem": {
       "both_correct_macro": 49.85,
-      "stem_correct_macro": 56.23,
-      "direction_correct_macro": 58.41,
+      "stem_correct_macro": 56.2,
+      "direction_correct_macro": 58.43,
       "magnitude_correct_macro": 76.06
     },
     "by_direction_type": {
       "both_correct_macro": 43.09,
-      "stem_correct_macro": 48.41,
-      "direction_correct_macro": 50.22,
+      "stem_correct_macro": 48.38,
+      "direction_correct_macro": 50.24,
       "magnitude_correct_macro": 76.06
     }
   }
