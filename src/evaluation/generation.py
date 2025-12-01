@@ -50,6 +50,8 @@ def generate_and_compare(
     num_prefix_tokens: int = 5,
     checkpoint_number: Optional[int] = None,
     add_first_sentence_to_instruction: bool = False,
+    use_tqdm: bool = True,
+    log_every_n_samples: Optional[int] = None,
 ):
     """Generate responses for samples and save to JSONL for later analysis.
     
@@ -65,6 +67,8 @@ def generate_and_compare(
         num_prefix_tokens: Number of tokens from ground truth to use as prefix
         checkpoint_number: Checkpoint number to include in filename (e.g., 500)
         add_first_sentence_to_instruction: If True, append first sentence of ground truth to instruction
+        use_tqdm: If True, show tqdm progress bar during generation (default: True)
+        log_every_n_samples: Log progress every N samples (None to disable periodic logging, default: None)
     """
     logger.info("Generating samples for qualitative evaluation")
     if use_partial_ground_truth:
@@ -85,7 +89,9 @@ def generate_and_compare(
 
     total_samples = num_samples if num_samples is not None else len(dataset)
 
-    for i in tqdm(range(total_samples), desc="Generating predictions"):
+    # Use tqdm if enabled, otherwise use regular range
+    iterator = tqdm(range(total_samples), desc="Generating predictions") if use_tqdm else range(total_samples)
+    for i in iterator:
         sample = dataset[i]
         instruction = sample["instruction"]
         audio = sample["audio"]
@@ -167,35 +173,51 @@ def generate_and_compare(
         }
         predictions.append(prediction)
 
-        if i < 3:
-            logger.debug(
-                "Sample %d/%d: uid=%s stem=%s err=%s",
-                i + 1,
-                total_samples,
-                global_uid,
-                target_stem,
-                error_category,
-            )
-            
-            # Log full input/output for verification
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": text_for_generation},
-            ]
-            # Note: This recreates the prompt string. The actual input embeddings 
-            # will include the prefix tokens appended after this.
-            prompt_str = model.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-            
-            log_msg = f"\n{'='*40}\nSample {i+1} Visualization:"
-            log_msg += f"\n--- INPUT PROMPT (Chat Template) ---\n{prompt_str}"
-            
-            if prefix_text is not None:
-                log_msg += f"\n--- PREFIX (Appended to Input) ---\n{prefix_text}"
+        # Log first 3 samples with full details, then periodic logging if configured
+        should_log = i < 3 or (log_every_n_samples is not None and (i + 1) % log_every_n_samples == 0)
+        
+        if should_log:
+            if i < 3:
+                # Full detailed logging for first 3 samples
+                logger.debug(
+                    "Sample %d/%d: uid=%s stem=%s err=%s",
+                    i + 1,
+                    total_samples,
+                    global_uid,
+                    target_stem,
+                    error_category,
+                )
                 
-            log_msg += f"\n--- GENERATED OUTPUT ---\n{generated_text}\n{'='*40}"
-            logger.info(log_msg)
+                # Log full input/output for verification
+                messages = [
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": text_for_generation},
+                ]
+                # Note: This recreates the prompt string. The actual input embeddings 
+                # will include the prefix tokens appended after this.
+                prompt_str = model.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+                
+                log_msg = f"\n{'='*40}\nSample {i+1} Visualization:"
+                log_msg += f"\n--- INPUT PROMPT (Chat Template) ---\n{prompt_str}"
+                
+                if prefix_text is not None:
+                    log_msg += f"\n--- PREFIX (Appended to Input) ---\n{prefix_text}"
+                    
+                log_msg += f"\n--- GENERATED OUTPUT ---\n{generated_text}\n{'='*40}"
+                logger.info(log_msg)
+            else:
+                # Periodic progress logging
+                logger.info(
+                    "Progress: %d/%d samples (%.1f%%) - uid=%s stem=%s err=%s",
+                    i + 1,
+                    total_samples,
+                    100.0 * (i + 1) / total_samples,
+                    global_uid,
+                    target_stem,
+                    error_category,
+                )
 
     predictions_dir = output_dir / "predictions"
     predictions_dir.mkdir(parents=True, exist_ok=True)

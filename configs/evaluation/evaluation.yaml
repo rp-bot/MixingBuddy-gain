@@ -16,6 +16,8 @@ save_predictions: true
 # Parameters for the generation script (08_generate_samples.py)
 num_generation_samples: 100 # Set to null to generate for all samples
 max_new_tokens: 1024
+use_tqdm: true # Enable tqdm progress bars during generation (set to false for cleaner logging)
+log_every_n_samples: null # Log progress every N samples (null to disable, e.g., 10 to log every 10 samples)
 
 # Evaluation metrics to compute
 metrics:

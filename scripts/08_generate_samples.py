@@ -144,6 +144,8 @@ def main(cfg: DictConfig):
     use_partial_ground_truth = cfg.evaluation.get("use_partial_ground_truth", False)
     num_prefix_tokens = cfg.evaluation.get("num_prefix_tokens", 5)
     add_first_sentence_to_instruction = cfg.evaluation.get("add_first_sentence_to_instruction", False)
+    use_tqdm = cfg.evaluation.get("use_tqdm", True)
+    log_every_n_samples = cfg.evaluation.get("log_every_n_samples", None)
 
     # Generate and compare (limit can be None to generate for all samples)
     predictions_file = generate_and_compare(
@@ -158,6 +160,8 @@ def main(cfg: DictConfig):
         num_prefix_tokens=num_prefix_tokens,
         checkpoint_number=checkpoint_number,
         add_first_sentence_to_instruction=add_first_sentence_to_instruction,
+        use_tqdm=use_tqdm,
+        log_every_n_samples=log_every_n_samples,
     )
 
     maybe_decode_audio_embeddings(cfg, model, test_dataset, output_dir)

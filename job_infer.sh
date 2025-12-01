@@ -3,7 +3,7 @@
 #SBATCH -N1 --ntasks-per-node=1         # 1 node and 1 core
 #SBATCH --gres=gpu:H100:1               # Request 1 H100 GPU
 #SBATCH --mem-per-gpu=224GB             # Recommended memory for H100
-#SBATCH -t10:00:00                      # 2 hours of walltime (adjust as needed)
+#SBATCH -t12:00:00                      # 1 hour of walltime (adjust as needed)
 #SBATCH -o outputs/logs/h100_infer-%j.out            # Output file name (%j = job ID)
 
 # --- Optional Email Notifications ---

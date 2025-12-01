@@ -57,7 +57,9 @@ evaluation:
   use_random_projection: false # Use the trained projection weights
 
   # Generation samples for evaluation
-  num_generation_samples: 10000 # Multiple samples for better statistical significance
+  num_generation_samples: null # Multiple samples for better statistical significance
+  use_tqdm: false # Disable tqdm progress bars for cleaner logging
+  log_every_n_samples: 50 # Log progress every 50 samples
 
   # Partial ground truth settings
   use_partial_ground_truth: false
