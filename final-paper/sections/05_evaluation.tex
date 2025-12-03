@@ -1,22 +1,12 @@
 \section{Evaluation}
 \label{sec:evaluation}
 
-We evaluate the model configuration described in Section~\ref{sec:training-strategy} to assess its performance on the mixing advice task.
-We employ a pattern-matching based evaluation approach to assess the accuracy of generated mixing advice.
-
-The evaluation process analyzes each generated response to identify three key components: (1) the target stem that requires adjustment, (2) the direction of the required adjustment (increase, decrease, or no adjustment needed), and (3) the magnitude of the adjustment expressed as a dB range (e.g., 3--6 dB or 6--12 dB).
-
-% \subsubsection{Accuracy Metrics}
-
-% We evaluate model performance using four complementary accuracy metrics:
-% \begin{itemize}
-%     \item \textbf{Stem accuracy}: The percentage of predictions where the identified target stem matches the ground truth stem that received the gain adjustment.
-%     \item \textbf{Direction accuracy}: The percentage of predictions where the identified adjustment direction (increase, decrease, or none) matches the expected direction based on the error category.
-%     \item \textbf{Both correct}: The percentage of predictions where both the stem and direction are correctly identified, representing the strictest accuracy measure.
-%     \item \textbf{Magnitude accuracy}: The percentage of predictions where the identified adjustment magnitude range (e.g., 3--6 dB or 6--12 dB) matches the expected range based on the error category.
-% \end{itemize}
-
-% Magnitude accuracy is only evaluated for samples where an adjustment is required (i.e., excluding the ``no error'' category), as these samples do not have an expected magnitude range.
+We evaluate the model configuration described in Section~\ref{sec:training-strategy} to assess its performance on the accuracy of the mixing advice task.
+Our model's advice generation is well aligned with the ground truth advice patterns.
+This allows us to use the pattern-matching approach to evaluate the accuracy of the generated advice.
+We use a test set of 25,650 samples to evaluate the accuracy of the generated advice.
+We evaluate the accuracies of the target stem, direction, and the suggested magnitude range in the generated advice.
+For each breakdown dimension, we compute both overall performance and performance by error category, stem, and direction.
 
 % \subsubsection{False Positives and False Negatives}
 
@@ -39,4 +29,3 @@ The evaluation process analyzes each generated response to identify three key co
 %     \item \textbf{By direction type}: Performance breakdown by the required adjustment direction (increase, decrease, no error) to evaluate directional prediction capabilities.
 % \end{itemize}
 
-For each breakdown dimension, we compute both micro-averaged accuracies (overall performance) and macro-averaged accuracies (average across all classes, giving equal weight to each class regardless of sample distribution).

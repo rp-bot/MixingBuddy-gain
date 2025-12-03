@@ -1,85 +1,62 @@
 \section{Results}
 \label{sec:results}
 
-We present the experimental results for the model configuration described in Section~\ref{sec:training-strategy}.
-The evaluation methodology is detailed in Section~\ref{sec:evaluation}.
+On a test set of 25,650 samples, MixingBuddy-gain achieves $49.85\%$ accuracy for the joint task of correctly identifying both the target stem and error direction (e.g., ``The \textbf{drums} are \textbf{too loud}'').
+The model achieves 76.06\% accuracy for magnitude range prediction on applicable samples.
 
-\subsection{Projection + LoRA Configuration}
-\label{sec:results-projection-lora}
-
-We evaluate the configuration employing a trainable projection layer with LoRA adapters on all linear layers of the language model.
-This configuration allows the model to adapt its internal representations to better process audio-conditioned inputs while maintaining parameter efficiency.
-
-\subsubsection{Overall Performance}
-
-On a test set of 25,650 samples, the projection + LoRA configuration achieves 49.85\% accuracy for the joint task of correctly identifying both the target stem and adjustment direction.
-The model demonstrates 56.20\% accuracy for stem identification and 58.43\% accuracy for direction prediction.
-For magnitude prediction, which evaluates whether the model correctly identifies the adjustment range (e.g., 3--6 dB or 6--12 dB), the model achieves 76.06\% accuracy on the 20,520 samples where magnitude evaluation is applicable.
-These results indicate that while the model can identify problematic stems with reasonable accuracy, the joint task of correctly identifying both components remains challenging.
-However, when the model correctly identifies the stem and direction, it demonstrates strong performance in predicting the appropriate magnitude of adjustment.
-
-\subsubsection{False Positives, False Negatives, and F1 Scores}
-
-Table~\ref{tab:results-fp-fn-f1} presents the false positive and false negative rates, along with precision, recall, and F1 scores for error detection, stem identification, and direction prediction.
-The model demonstrates strong recall across all tasks (89.96\% for error detection, 90.02\% for stem identification, 84.63\% for direction prediction), indicating that it rarely misses actual mixing problems or fails to identify stems when errors exist.
-However, precision varies more substantially, with error detection achieving 81.90\% precision, stem identification achieving 73.47\% precision, and direction prediction achieving 64.38\% precision.
-The F1 scores, which balance precision and recall, reflect this trade-off: error detection achieves the highest F1 score (85.74\%), followed by stem identification (80.91\%) and direction prediction (73.13\%).
-This suggests that while the model is effective at detecting problems, it sometimes incorrectly flags well-balanced mixes as problematic (4,079 false positives out of 5,130 no-error cases, representing 79.5\% of no-error cases).
-Direction prediction shows the highest false positive rate (8,028 false positives) and the lowest F1 score (73.13\%), indicating that the model frequently predicts the wrong adjustment direction, which is particularly concerning as incorrect direction predictions would worsen mix balance.
+Table~\ref{tab:results-fp-fn-f1} details the precision, recall, and F1 scores.
+The model demonstrates consistently strong recall across all tasks ($>84\%$), indicating it rarely misses actual mixing problems.
+However, precision varies more substantially, with error detection achieving the highest precision, followed by stem identification and direction prediction.
+This trade-off is reflected in the F1 scores, where error detection leads, followed by stem identification and direction prediction.
 
 \begin{table}[!t]
 \centering
-\caption{False positives, false negatives, precision, recall, and F1 scores for the projection + LoRA configuration.}
+\caption{False positives, false negatives, precision, recall, and F1 scores}
 \label{tab:results-fp-fn-f1}
-\begin{tabular}{lcccccc}
+\begin{tabular}{lccccc}
 \hline
 \textbf{Task} & \textbf{FP} & \textbf{FN} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
 \hline
-Error Detection & 4079 & 2060 & 81.90\% & 89.96\% & 85.74\% \\
+Error Detection & 4079 & 2060 & 81.9\% & 89.96\% & 85.74\% \\
 Stem Identification & 5035 & 1545 & 73.47\% & 90.02\% & 80.91\% \\
 Direction Prediction & 8028 & 2635 & 64.38\% & 84.63\% & 73.13\% \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsubsection{Performance by Error Category}
 
 Table~\ref{tab:results-error-category} presents the performance breakdown across the five error categories.
-The model shows strong performance on the \textit{very loud} category, achieving 78.8\% accuracy for both stem and direction identification, suggesting that extreme loudness issues are more readily detectable.
-Magnitude prediction is particularly strong for extreme categories, with 97.6\% accuracy for \textit{very loud} and 97.2\% for \textit{very quiet}, indicating that when the model correctly identifies extreme imbalances, it can reliably predict the appropriate adjustment range.
-Performance on the \textit{very quiet} category is also strong (69.3\% both correct), indicating that the model can effectively identify stems that are too quiet.
-Performance on the \textit{quiet} category is moderate (53.8\% both correct), though magnitude prediction drops to 46.2\%, suggesting challenges in determining the appropriate adjustment range for moderate quietness issues.
-The model struggles most with the \textit{loud} category (38.1\% both correct, 63.2\% magnitude) and the \textit{no error} category (9.3\% both correct), indicating challenges in distinguishing moderate imbalances and correctly identifying well-balanced mixes.
+The model shows strongest performance on extreme categories (\textit{very loud} and \textit{very quiet}), suggesting that significant imbalances are more readily detectable.
+Magnitude prediction is also particularly reliable for these extreme categories.
+Performance drops for moderate categories (\textit{loud} and \textit{quiet}), particularly for magnitude prediction in the \textit{quiet} category.
+The model struggles most with the \textit{no error} category, indicating a challenge in correctly identifying well-balanced mixes without false positives.
 
 \begin{table}[!t]
 \centering
-\caption{Performance breakdown by error category for the projection + LoRA configuration.}
+\caption{Performance breakdown by error category}
 \label{tab:results-error-category}
 \begin{tabular}{lccccc}
 \hline
 \textbf{Category} & \textbf{N} & \textbf{Both} & \textbf{Stem} & \textbf{Dir.} & \textbf{Mag.} \\
 \hline
-very loud & 5130 & 78.8\% & 84.7\% & 84.7\% & 97.6\% \\
 very quiet & 5130 & 69.3\% & 72.2\% & 79.9\% & 97.2\% \\
 quiet & 5130 & 53.8\% & 62.1\% & 68.8\% & 46.2\% \\
+no error & 5130 & 9.3\% & -- & -- & -- \\
 loud & 5130 & 38.1\% & 52.8\% & 49.6\% & 63.2\% \\
-no error & 5130 & 9.3\% & 9.3\% & 9.3\% & -- \\
+very loud & 5130 & 78.8\% & 84.7\% & 84.7\% & 97.6\% \\
 \hline
 \textbf{Macro Avg.} & -- & \textbf{49.9\%} & \textbf{56.2\%} & \textbf{58.4\%} & \textbf{76.1\%} \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsubsection{Performance by Target Stem}
-
 Table~\ref{tab:results-target-stem} shows the performance breakdown across the three target stems.
-The model demonstrates best performance on vocals (55.0\% both correct), followed by drums (49.9\% both correct) and bass (44.7\% both correct).
-Magnitude prediction shows a similar pattern, with vocals achieving 93.1\% accuracy, significantly higher than drums (72.3\%) and bass (62.8\%).
-This suggests that vocal stem identification may benefit from the model's language understanding capabilities, as vocals often contain more semantic content that can be leveraged for identification, and this advantage extends to magnitude prediction as well.
+The model performs best on vocals, followed by drums and bass, for both identification and magnitude prediction.
+This suggests that vocal stem identification may benefit from the model's language understanding capabilities, as vocals often contain more semantic content that can be leveraged for identification.
 
 \begin{table}[!t]
 \centering
-\caption{Performance breakdown by target stem for the projection + LoRA configuration.}
+\caption{Performance breakdown by target stem}
 \label{tab:results-target-stem}
 \begin{tabular}{lccccc}
 \hline
@@ -94,26 +71,24 @@ bass & 8550 & 44.7\% & 54.0\% & 53.6\% & 62.8\% \\
 \end{tabular}
 \end{table}
 
-\subsubsection{Performance by Direction Type}
-
 Table~\ref{tab:results-direction} presents the performance breakdown by adjustment direction.
-The model shows stronger performance for \textit{increase} predictions (61.6\% both correct) compared to \textit{decrease} predictions (58.4\% both correct), suggesting that identifying when stems are too quiet may be slightly easier than identifying when they are too loud.
-However, magnitude prediction is stronger for \textit{decrease} predictions (80.4\%) compared to \textit{increase} predictions (71.7\%), indicating that when the model correctly identifies that a stem needs to be reduced, it can more accurately predict the appropriate reduction range.
-The \textit{no error} category remains challenging (9.3\% both correct), consistent with the error category analysis, indicating that the model struggles to recognize well-balanced mixes.
+The model shows slightly stronger performance for \textit{increase} predictions compared to \textit{decrease} predictions for identification.
+However, this trend reverses for magnitude prediction, where \textit{decrease} predictions are more accurate.
+This suggests that while detecting that a stem is too quiet is easier, determining the precise amount of reduction needed for a loud stem is more reliable once detected.
 
 \begin{table}[!t]
 \centering
-\caption{Performance breakdown by direction type for the projection + LoRA configuration.}
+\caption{Performance breakdown by direction type}
 \label{tab:results-direction}
 \begin{tabular}{lccccc}
 \hline
 \textbf{Direction} & \textbf{N} & \textbf{Both} & \textbf{Stem} & \textbf{Dir.} & \textbf{Mag.} \\
 \hline
-increase & 10260 & 61.6\% & 67.1\% & 74.3\% & 71.7\% \\
-decrease & 10260 & 58.4\% & 68.8\% & 67.1\% & 80.4\% \\
-no error & 5130 & 9.3\% & 9.3\% & 9.3\% & -- \\
+decrease & 10260 & 58.43\% & 68.75\% & 67.12\% & 80.4\% \\
+no error & 5130 & 9.3\% & -- & -- & -- \\
+increase & 10260 & 61.56\% & 67.12\% & 74.32\% & 71.73\% \\
 \hline
-\textbf{Macro Avg.} & -- & \textbf{43.1\%} & \textbf{48.4\%} & \textbf{50.2\%} & \textbf{76.1\%} \\
+\textbf{Macro Avg.} & -- & \textbf{43.09\%} & \textbf{48.38\%} & \textbf{50.24\%} & \textbf{76.06\%} \\
 \hline
 \end{tabular}
 \end{table}

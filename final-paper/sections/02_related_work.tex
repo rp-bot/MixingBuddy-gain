@@ -1,28 +1,24 @@
 \section{Related Work}
 \label{sec:related_work}
 
-Early automatic mixing research centered on systems that captured expert knowledge through explicit mixing rules and heuristics.
-\cite{Perez_Gonzalez_Reiss_2013} developed an autonomous mixing system based on knowledge engineering principles.
-\cite{bocko2010automatic} employed probabilistic expert systems, a formal knowledge-based approach from early AI research, for automatic music production.
-Subsequent work explored machine learning techniques for instrument-specific effects, such as \cite{Chourdakis_Reiss_2017}'s approach to intelligent artificial reverberation application.
+Early automatic mixing research centered on systems that captured expert knowledge through explicit mixing rules, including knowledge engineering and machine learning techniques for instrument-specific effects \cite{DeMan_Reiss_2013, bocko2010automatic, Chourdakis_Reiss_2017}.
 While these methods provided interpretable control and domain-specific optimization, they were limited in their ability to generalize across diverse musical styles and lacked the flexibility to adapt to unseen mixing scenarios.
 
 The advent of deep learning brought significant advances in automatic mixing, with models capable of learning complex mappings from raw audio to mixing parameters.
-\cite{waveunet} introduced Wave-U-Net autoencoders for automatic mixing, demonstrating that end-to-end neural architectures could produce professional-quality mixes.
-\cite{Steinmetz_Pons_Pascual_Serra_2020} further advanced the field with a differentiable mixing console incorporating neural audio effects, enabling gradient-based optimization of mixing parameters.
-These deep learning approaches achieved notable success in terms of accuracy (matching professional mixes), controllability (allowing high-level parameter adjustment), and diversity (accommodating different genres and styles).
+\cite{waveunet} introduced Wave-U-Net autoencoders for automatic mixing.
+\cite{Steinmetz_Pons_Pascual_Serra_2021} further advanced the field with a differentiable mixing console incorporating neural audio effects, enabling gradient-based optimization of mixing parameters.
+These deep learning approaches achieved notable success in terms of accuracy, controllability, and diversity.
 However, a critical limitation of these systems is that they are not explainable.
 
 To bridge the semantic gap between audio processing and human understanding,
-\cite{Venkatesh_Moffat_Miranda_2022} demonstrated word embeddings for automatic equalization in audio mixing, while \cite{Chu_OReilly_Barnett_Pardo_2025} developed Text2FX, which harnesses CLAP \cite{clap} embeddings for text-guided audio effects.
-Early semantic mixing approaches \cite{semantic-mixing} laid the groundwork for understanding how high-level, semantic knowledge could inform mixing decisions.
+\cite{Venkatesh_Moffat_Miranda_2022} demonstrated word embeddings for automatic equalization in audio mixing. \cite{Chu_OReilly_Barnett_Pardo_2024} developed Text2FX, which harnesses CLAP \cite{clap} embeddings for text-guided audio effects.
 
 Building on language-audio integration, recent work has explored prompt-driven interfaces that map natural language instructions directly to mixing tasks.
-\cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2025} investigated whether large language models can predict audio effects parameters from natural language, while \cite{Melechovsky_Mehrish_Herremans_2025} developed SonicMaster, a controllable all-in-one music restoration and mastering system.
+\cite{Doh_Koo_Martinez-Ramirez_Liao_Nam_Mitsufuji_2024} investigated whether large language models can predict audio effects parameters from natural language, while \cite{Melechovsky_Mehrish_Herremans_2025} developed SonicMaster, a controllable all-in-one music restoration and mastering system.
 \cite{Clemens_Marasovic_2025} introduced MixAssist, an audio-language dataset for co-creative AI assistance in music mixing, demonstrating the potential for collaborative human-AI mixing workflows.
 
 Multimodal audio-language models have emerged as a powerful paradigm for combining audio understanding with language reasoning capabilities.
-One architectural approach, direct tokenization (also known as the unified approach), converts raw audio into discrete tokens via audio codecs and extends the LLM vocabulary to include these audio tokens.
+One architectural approach, direct tokenization (also known as the unified approach), converts raw audio into discrete tokens and extends the LLM vocabulary to include these audio tokens.
 This enables the language model to process audio and text within a unified framework.
 Key works in this direction include \cite{Rubenstein_Asawaroengchai_Nguyen_Bapna_Borsos_Quitry_Chen_Badawy_Han_Kharitonov_etal_2023}'s AudioPaLM, \cite{Du_Wang_Chen_Chu_Gao_Li_Hu_Zhou_Xu_Ma_etal_2024}'s LauraGPT, and \cite{Zhang_Li_Zhang_Zhan_Wang_Zhou_Qiu_2023}'s SpeechGPT.
 The unified approach offers the advantage of strong alignment between audio and text.
@@ -32,6 +28,4 @@ An alternative architectural paradigm, the cascade (or feature extraction) appro
 In this framework, audio is first encoded into feature representations that are then processed by the language model, which can generate text responses or guide audio generation.
 Examples include \cite{Liu_Hussain_Wu_Sun_Shan_2024}'s M$^{2}$UGen and \cite{Gong_Luo_Liu_Karlinsky_Glass_2024}'s Listen, Think, and Understand (LTU).
 This approach relies on the theory that aligning audio and text features is sufficient for cross-modal reasoning.
-The alignment is significatnly simpler than the unified approach.
-
-Our work addresses this gap by leveraging multimodal audio-language models to provide linguistic feedback and reasoning about mixes.
+The alignment is significatnly less resource-intensive than the unified approach.
